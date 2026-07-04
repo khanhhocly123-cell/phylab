@@ -1,0 +1,67 @@
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://26.91.150.35:3000
+- Environments: .env.local
+✓ Ready in 1635ms
+- Experiments (use with caution):
+  · optimizePackageImports
+
+ GET / 200 in 831ms (next.js: 358ms, application-code: 473ms)
+✓ Compiled in 263ms
+ GET / 200 in 458ms (next.js: 346ms, application-code: 112ms)
+[TTS Route] Querying VNPT SmartVoice for text: "Chào em, chị là trợ lý phai lá..."
+ POST /api/vnpt/tts 200 in 371ms
+✓ Compiled in 235ms
+ GET / 200 in 332ms (next.js: 215ms, application-code: 116ms)
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 1 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 108ms
+[TTS Route] Querying VNPT SmartVoice for text: "Chào em, chị là trợ lý phai lá..."
+ POST /api/vnpt/tts 200 in 20ms
+[TTS Route] Querying VNPT SmartVoice for text: "Chào em, chị là trợ lý phai lá..."
+ POST /api/vnpt/tts 200 in 41ms
+✓ Compiled in 172ms
+ GET / 200 in 226ms (next.js: 157ms, application-code: 68ms)
+ POST /api/auth/login 200 in 504ms
+✓ Compiled in 307ms
+ GET / 200 in 276ms (next.js: 203ms, application-code: 73ms)
+✓ Compiled in 237ms
+ GET / 200 in 210ms (next.js: 161ms, application-code: 48ms)
+✓ Compiled in 206ms
+ GET / 200 in 265ms (next.js: 198ms, application-code: 67ms)
+✓ Compiled in 191ms
+ GET / 200 in 234ms (next.js: 159ms, application-code: 76ms)
+ POST /api/vnpt/ocr 200 in 427ms
+[TTS Route] Querying VNPT SmartVoice for text: "Chào em, chị là trợ lý phai lá..."
+ POST /api/vnpt/tts 200 in 132ms
+✓ Compiled in 222ms
+ GET / 200 in 261ms (next.js: 204ms, application-code: 58ms)
+ POST /api/vnpt/chat 200 in 181ms
+ POST /api/vnpt/chat 200 in 77ms
+ POST /api/vnpt/chat 200 in 65ms
+ POST /api/vnpt/chat 200 in 70ms
+ POST /api/vnpt/chat 200 in 25ms
+ GET / 200 in 378ms (next.js: 9ms, application-code: 369ms)
+[TTS Route] Querying VNPT SmartVoice for text: "Chào em, chị là trợ lý phai lá..."
+ POST /api/vnpt/tts 200 in 135ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 1 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 80ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 2 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 57ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 3 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 54ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 4 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 62ms
+ POST /api/vnpt/chat 200 in 61ms
+ POST /api/vnpt/chat 200 in 34ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 5 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 52ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 6 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 16ms
+ GET /api/vnpt/chat 200 in 13ms
+[TTS Route] Querying VNPT SmartVoice for text: "Em đã lắp được 7 trên tổng số ..."
+ POST /api/vnpt/tts 200 in 105ms
+ POST /api/vnpt/chat 200 in 103ms
+[TTS Route] Querying VNPT SmartVoice for text: "Trước khi đo, mình phải cân bằ..."
+ POST /api/vnpt/tts 200 in 19ms
+ POST /api/vnpt/chat 200 in 33ms
+ POST /api/vnpt/chat 200 in 31ms

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Table, LineChart as LineChartIcon, FileText, GraduationCap,
   Send, CheckCircle2, AlertTriangle, Sparkles, Printer, RotateCcw,
@@ -26,6 +26,10 @@ interface NoteSectionProps {
   reports: ExperimentReport[];
   labData?: LabData | null;
   studentName?: string;
+  assistantSettings?: {
+    pronoun?: "anh" | "chị";
+    answerStyle?: "short" | "detailed";
+  };
   onReportGraded?: (report: ExperimentReport) => void;
 }
 
@@ -37,6 +41,21 @@ const LAB_META: Record<LabKind, { title: string; formula: string; sLabel: string
   freefall: { title: "Số liệu — Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", sLabel: "s (m)", unit: "m/s²" },
 };
 
+const DEMO_TRIALS: Record<string, RichTrial[]> = {
+  "do-toc-do-vat-chuyen-dong": [
+    { lab: "average", s: 0.20, t: 0.635, theta: 15, balanced: true, studentResult: 0.315 },
+    { lab: "average", s: 0.35, t: 0.842, theta: 15, balanced: true, studentResult: 0.416 },
+    { lab: "average", s: 0.25, t: 0.536, theta: 20, balanced: true, studentResult: 0.466 },
+    { lab: "instant", s: 0.0182, t: 0.036, theta: 20, balanced: true, studentResult: 0.506 },
+    { lab: "instant", s: 0.0182, t: 0.032, theta: 30, balanced: true, studentResult: 0.569 },
+  ],
+  "do-gia-toc-roi-tu-do": [
+    { lab: "freefall", s: 0.20, t: 0.203, balanced: true, studentResult: 9.71 },
+    { lab: "freefall", s: 0.40, t: 0.287, balanced: true, studentResult: 9.71 },
+    { lab: "freefall", s: 0.60, t: 0.352, balanced: true, studentResult: 9.69 },
+  ],
+};
+
 function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> {
   const out: Partial<Record<LabKind, RichTrial[]>> = {};
   for (const t of trials) {
@@ -46,10 +65,10 @@ function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> 
   return out;
 }
 
-export default function NoteSection({ reports, labData, studentName, onReportGraded }: NoteSectionProps) {
+export default function NoteSection({ reports, labData, studentName, assistantSettings, onReportGraded }: NoteSectionProps) {
   const lessonIds = Object.keys(EXPERIMENT_SPECS);
   const [activeLesson, setActiveLesson] = useState<string>(
-    () => labData?.lessonId || lessonIds[0] || ""
+    () => labData?.lessonId || reports[0]?.lessonId || lessonIds[0] || ""
   );
   const [tab, setTab] = useState<TabKey>("data");
 
@@ -60,7 +79,8 @@ export default function NoteSection({ reports, labData, studentName, onReportGra
   );
   const trials: RichTrial[] = useMemo(() => {
     if (labData && labData.lessonId === activeLesson && labData.trials.length) return labData.trials;
-    return activeReport?.trials ?? [];
+    if (activeReport?.trials?.length) return activeReport.trials;
+    return DEMO_TRIALS[activeLesson] ?? [];
   }, [labData, activeLesson, activeReport]);
 
   const samples = useMemo(() => groupByLab(trials), [trials]);
@@ -74,6 +94,22 @@ export default function NoteSection({ reports, labData, studentName, onReportGra
   const [aiComment, setAiComment] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!trials.length) return;
+    setResults((prev) => {
+      if (Object.keys(prev).length) return prev;
+      const next: Record<string, string> = {};
+      const grouped = groupByLab(trials);
+      (Object.keys(grouped) as LabKind[]).forEach((lab) => {
+        (grouped[lab] || []).forEach((tr, i) => {
+          const value = tr.studentResult ?? correctResultOf(lab, tr.s, tr.t);
+          next[`${lab}-${i}`] = Number.isFinite(value) ? String(Number(value).toFixed(lab === "freefall" ? 2 : 3)) : "";
+        });
+      });
+      return next;
+    });
+  }, [trials]);
 
   const flash = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -97,7 +133,7 @@ export default function NoteSection({ reports, labData, studentName, onReportGra
 
   const handleGrade = async () => {
     if (trials.length === 0) {
-      flash("Chưa có số liệu — hãy đo ở phòng Lab rồi Xuất sang Note.", false);
+      flash("Chưa có số liệu — hãy đo ở phòng Lab rồi Xuất sang Sổ Báo Cáo.", false);
       return;
     }
     // Đồ thị BẮT BUỘC: chưa vẽ + chấm đồ thị thì không cho nộp báo cáo.
@@ -133,6 +169,7 @@ export default function NoteSection({ reports, labData, studentName, onReportGra
           dataCloseness: s0?.dataCloseness,
           physicalCloseness: s0?.physicalCloseness,
           badSetupCount: g.samples.reduce((a, s) => a + s.badSetupCount, 0),
+          assistantSettings,
         }),
       });
       const data = await res.json();
@@ -175,7 +212,7 @@ export default function NoteSection({ reports, labData, studentName, onReportGra
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2DFD8]/60 pb-3 print:hidden">
         <h2 className="text-base md:text-lg font-black text-[#321E12] flex items-center gap-2">
           <FileText className="w-5 h-5 text-[#C85A17] stroke-[2.5]" />
-          Notes — Chấm điểm &amp; Báo cáo
+          Sổ Báo Cáo — Chấm điểm &amp; Báo cáo
         </h2>
         <select
           value={activeLesson}
@@ -268,7 +305,7 @@ export default function NoteSection({ reports, labData, studentName, onReportGra
       )}
 
       {/* ---------- TAB: ÔN TẬP ---------- */}
-      {tab === "review" && <ReviewTab lessonId={activeLesson} lessonTitle={spec?.title} />}
+      {tab === "review" && <ReviewTab lessonId={activeLesson} lessonTitle={spec?.title} assistantSettings={assistantSettings} />}
 
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl shadow-lg text-xs font-black flex items-center gap-2 animate-scale-up print:hidden ${
@@ -290,7 +327,7 @@ function EmptyState() {
       <Table className="w-12 h-12 mx-auto mb-3 stroke-[1.5] text-[#605248]/40" />
       <h3 className="text-sm font-black text-[#321E12]">Chưa có số liệu để chấm</h3>
       <p className="text-xs font-bold mt-2">
-        Vào <b>Phòng Lab</b>, đo đủ các câu trong đề rồi bấm <b>“Xuất sang Note”</b> để chấm điểm ở đây.
+        Vào <b>Phòng Lab</b>, đo đủ các câu trong đề rồi bấm <b>“Xuất sang Sổ Báo Cáo”</b> để chấm điểm ở đây.
       </p>
     </div>
   );
@@ -650,7 +687,15 @@ function ReportTab({
   );
 }
 
-function ReviewTab({ lessonId, lessonTitle }: { lessonId: string; lessonTitle?: string }) {
+function ReviewTab({
+  lessonId,
+  lessonTitle,
+  assistantSettings,
+}: {
+  lessonId: string;
+  lessonTitle?: string;
+  assistantSettings?: { pronoun?: "anh" | "chị"; answerStyle?: "short" | "detailed" };
+}) {
   const review = getReview(lessonId);
   if (!review) {
     return <div className="bg-white border border-[#E2DFD8] rounded-2xl p-8 text-center text-xs font-bold text-[#605248]">Chưa có bộ ôn tập cho bài này.</div>;
@@ -662,7 +707,7 @@ function ReviewTab({ lessonId, lessonTitle }: { lessonId: string; lessonTitle?: 
         <QuizRunner quizzes={review.quizzes} />
       </div>
       <div className="lg:col-span-1">
-        <AiChat lessonTitle={lessonTitle} />
+        <AiChat lessonTitle={lessonTitle} assistantSettings={assistantSettings} />
       </div>
     </div>
   );

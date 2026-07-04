@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { ExperimentSpec } from "@/lib/types";
-import { BookOpen, ChevronLeft, ChevronRight, Check, Lock } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Check, Lock, Info, MousePointerClick } from "lucide-react";
 import PhotogatePrelab from "./prelab/PhotogatePrelab";
 import PlumbBasePrelab from "./prelab/PlumbBasePrelab";
 import { MC964Interactive, CaliperZoom } from "./prelab/MC964Prelab";
@@ -21,7 +21,7 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
   const [caliperInputText, setCaliperInputText] = useState("");
 
   const isB11 = spec.id === "do-gia-toc-roi-tu-do";
-  const totalSlides = 4; // Cover + Photogate + MC964 + (Caliper or PlumbBase)
+  const totalSlides = 5; // Prelab intro + Cover + Photogate + MC964 + (Caliper or PlumbBase)
 
   const handleCaliperSubmit = (valStr: string) => {
     const val = parseFloat(valStr);
@@ -78,8 +78,48 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
       {/* Slide Container */}
       <div className="bg-[#fefbf5] rounded-3xl border border-slate-200 min-h-[480px] p-4 md:p-6 flex flex-col justify-between">
         <div className="flex-1 flex flex-col justify-center">
-          {/* SLIDE 0: Cover */}
+          {/* SLIDE 0: Prelab Intro */}
           {slide === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center max-w-2xl mx-auto py-8 animate-[fadeIn_0.3s_ease-out]">
+              <div className="inline-flex items-center gap-2 text-xs tracking-[0.2em] text-brand-orange font-black uppercase mb-3">
+                <Info className="w-4 h-4" /> Prelab là gì?
+              </div>
+              <h3 className="text-xl md:text-2xl font-black text-brand-blue leading-snug">
+                Làm quen dụng cụ trước khi vào phòng Lab
+              </h3>
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed mt-4 mb-7">
+                Prelab giúp em hiểu vai trò của từng dụng cụ, thử thao tác cơ bản và tránh nhầm lẫn khi vào phần đo số liệu chính. Đây vẫn là phần tương tác, nhưng mục tiêu là chuẩn bị: quan sát, thử, ghi nhận điều kiện ban đầu.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-7">
+                <div className="bg-white border border-brand-orange/15 rounded-2xl p-4 text-left">
+                  <div className="w-9 h-9 rounded-xl bg-brand-orange text-white grid place-items-center mb-3">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-black text-brand-blue mb-1">Hiểu dụng cụ</div>
+                  <div className="text-[11px] font-semibold text-slate-500 leading-relaxed">
+                    Biết cổng quang, MC964 và dụng cụ căn chỉnh dùng để làm gì.
+                  </div>
+                </div>
+                <div className="bg-white border border-brand-orange/15 rounded-2xl p-4 text-left">
+                  <div className="w-9 h-9 rounded-xl bg-brand-orange text-white grid place-items-center mb-3">
+                    <MousePointerClick className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-black text-brand-blue mb-1">Thử thao tác</div>
+                  <div className="text-[11px] font-semibold text-slate-500 leading-relaxed">
+                    Tương tác thử với thiết bị trước khi phải lắp ráp và đo thật.
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[#fff7ed] border border-brand-orange/20 rounded-2xl px-4 py-3 text-[11px] sm:text-xs font-bold text-brand-blue leading-relaxed">
+                Sau Prelab, em sẽ vào Phòng Lab để lắp thiết bị, nối dây, đo số liệu và xuất sang Sổ Báo Cáo.
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE 1: Cover */}
+          {slide === 1 && (
             <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xl mx-auto py-8 animate-[fadeIn_0.3s_ease-out]">
               <div className="text-xs tracking-[0.25em] text-brand-orange font-black uppercase mb-2">Giới thiệu bài học</div>
               <h3 className="text-xl md:text-2xl font-black text-brand-blue leading-snug">{spec.title}</h3>
@@ -100,8 +140,8 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
             </div>
           )}
 
-          {/* SLIDE 1: Photogate */}
-          {slide === 1 && (
+          {/* SLIDE 2: Photogate */}
+          {slide === 2 && (
             <div className="flex-1 flex flex-col gap-4 animate-[fadeIn_0.3s_ease-out]">
               <div className="border-b border-dashed border-slate-200 pb-2 mb-1">
                 <span className="text-[10px] font-black text-brand-orange uppercase">Thiết bị 1/3</span>
@@ -111,8 +151,8 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
             </div>
           )}
 
-          {/* SLIDE 2: MC964 */}
-          {slide === 2 && (
+          {/* SLIDE 3: MC964 */}
+          {slide === 3 && (
             <div className="flex-1 flex flex-col gap-4 animate-[fadeIn_0.3s_ease-out]">
               <div className="border-b border-dashed border-slate-200 pb-2 mb-1">
                 <span className="text-[10px] font-black text-brand-orange uppercase">Thiết bị 2/3</span>
@@ -122,8 +162,8 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
             </div>
           )}
 
-          {/* SLIDE 3: Caliper (Bài 6) or PlumbBase (Bài 11) */}
-          {slide === 3 && (
+          {/* SLIDE 4: Caliper (Bài 6) or PlumbBase (Bài 11) */}
+          {slide === 4 && (
             <div className="flex-1 flex flex-col gap-4 animate-[fadeIn_0.3s_ease-out]">
               {isB11 ? (
                 <>

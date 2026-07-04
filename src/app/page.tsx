@@ -18,6 +18,16 @@ import { MathText } from "@/components/Latex";
 import { getExperimentSpec, EXPERIMENT_SPECS } from "@/experiments/specs";
 import { LessonId, ExperimentReport, RichTrial } from "@/lib/types";
 
+export type AssistantSettings = {
+  pronoun: "anh" | "chị";
+  answerStyle: "short" | "detailed";
+};
+
+const DEFAULT_ASSISTANT_SETTINGS: AssistantSettings = {
+  pronoun: "chị",
+  answerStyle: "short",
+};
+
 /**
  * LabChooser — Bộ chọn thí nghiệm: luôn hiện 2 lựa chọn để HS tự chọn/ nhận diện,
  * KHÔNG nhảy thẳng vào bài đã chọn trước đó. Dùng chung cho tab Phòng Lab và Prelab.
@@ -168,6 +178,24 @@ export default function Page() {
   // Header dropdown states
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [assistantSettings, setAssistantSettings] = useState<AssistantSettings>(() => {
+    if (typeof window === "undefined") return DEFAULT_ASSISTANT_SETTINGS;
+    try {
+      const saved = JSON.parse(localStorage.getItem("assistantSettings") || "null") as Partial<AssistantSettings> | null;
+      return {
+        pronoun: saved?.pronoun === "anh" ? "anh" : "chị",
+        answerStyle: saved?.answerStyle === "detailed" ? "detailed" : "short",
+      };
+    } catch {
+      return DEFAULT_ASSISTANT_SETTINGS;
+    }
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("assistantSettings", JSON.stringify(assistantSettings));
+    }
+  }, [assistantSettings]);
 
   // Reports state initialized with some mock past items for high visual fidelity
   const [reports, setReports] = useState<ExperimentReport[]>([
@@ -206,6 +234,7 @@ export default function Page() {
 
   const activeSpec = activeLessonId ? getExperimentSpec(activeLessonId) : null;
   const isDoingExperiment = activeTab === "lab" && activeLessonId !== null && !!prelabPassed[activeLessonId];
+  const isScanMode = activeTab === "scan";
 
   React.useEffect(() => {
     if (isDoingExperiment) {
@@ -311,13 +340,13 @@ export default function Page() {
 
   return (
     <div className={`flex flex-col lg:flex-row h-screen w-screen bg-[#FAF9F6] text-[#321E12] font-nunito overflow-hidden select-none ${
-      isDoingExperiment ? "pb-0" : "pb-16"
+      isDoingExperiment || isScanMode ? "pb-0" : "pb-16"
     } lg:pb-0`}>
       
       {/* ================= 1. GLOBAL LEFT SIDEBAR (Desktop only) ================= */}
       <aside
         className={`hidden print:!hidden ${
-          isDoingExperiment ? "lg:hidden" : "lg:flex"
+          isDoingExperiment || isScanMode ? "lg:hidden" : "lg:flex"
         } flex-col ${
           sidebarCollapsed ? "w-24" : "w-72"
         } bg-[#FAF9F6] border-r border-[#E2DFD8] justify-between h-full p-6 z-30 flex-shrink-0 transition-all duration-300 relative`}
@@ -368,7 +397,7 @@ export default function Page() {
               { label: "Trang chủ", tab: "home" as const, icon: Home },
               { label: "Phòng Lab của tôi", tab: "lab" as const, icon: Clipboard },
               { label: "Quét tài liệu", tab: "scan" as const, icon: Camera },
-              { label: "Notes", tab: "notes" as const, icon: FileText },
+              { label: "Sổ Báo Cáo", tab: "notes" as const, icon: FileText },
               { label: "Prelab", tab: "prelab" as const, icon: BookOpen }
             ].map((item) => {
               const Icon = item.icon;
@@ -430,7 +459,7 @@ export default function Page() {
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* Top Header */}
-        <header className={`h-16 border-b border-[#E2DFD8] bg-[#FAF9F6] px-6 items-center justify-between flex-shrink-0 z-20 print:hidden ${isDoingExperiment ? "hidden md:flex" : "flex"}`}>
+        <header className={`h-16 border-b border-[#E2DFD8] bg-[#FAF9F6] px-6 items-center justify-between flex-shrink-0 z-20 print:hidden ${isScanMode ? "hidden" : isDoingExperiment ? "hidden md:flex" : "flex"}`}>
           
           {/* Left Header Title / Breadcrumbs */}
           <div className="flex items-center gap-2">
@@ -444,7 +473,7 @@ export default function Page() {
               <span className="cursor-pointer hover:text-[#C85A17] transition-colors">Phylab</span>
               <span>&gt;</span>
               <span className="text-[#321E12] font-black">
-                {activeTab === "home" ? "Trang chủ" : activeTab === "lab" ? "Phòng Lab của tôi" : activeTab === "scan" ? "Quét tài liệu" : activeTab === "notes" ? "Notes" : "Prelab"}
+                {activeTab === "home" ? "Trang chủ" : activeTab === "lab" ? "Phòng Lab của tôi" : activeTab === "scan" ? "Quét tài liệu" : activeTab === "notes" ? "Sổ Báo Cáo" : "Prelab"}
               </span>
             </div>
           </div>
@@ -514,7 +543,7 @@ export default function Page() {
               </button>
 
               {profileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-[min(256px,calc(100vw-24px))] bg-[#FFFFFF] border border-[#E2DFD8] rounded-3xl shadow-lg p-4.5 z-50 animate-scale-up text-xs font-bold text-[#321E12] space-y-3">
+                <div className="absolute right-0 mt-2 w-[min(304px,calc(100vw-24px))] bg-[#FFFFFF] border border-[#E2DFD8] rounded-3xl shadow-lg p-4.5 z-50 animate-scale-up text-xs font-bold text-[#321E12] space-y-3">
                   <div className="flex items-center gap-3 pb-3 border-b border-[#E2DFD8]/60">
                     <div className="w-10 h-10 rounded-full bg-[#C85A17] text-white flex items-center justify-center font-black text-lg">
                       N
@@ -537,6 +566,48 @@ export default function Page() {
                     <div className="flex justify-between">
                       <span>Mã HS:</span>
                       <span className="text-[#321E12] font-black">PH-2026-09</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#E2DFD8]/60 space-y-2.5">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-[#C85A17] mb-1.5">Trợ lý Phylab</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {(["chị", "anh"] as const).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setAssistantSettings((s) => ({ ...s, pronoun: p }))}
+                            className={`py-2 rounded-xl border text-[11px] font-black transition-colors ${
+                              assistantSettings.pronoun === p
+                                ? "bg-[#FFF2E6] text-[#C85A17] border-[#C85A17]/40"
+                                : "bg-white text-[#605248] border-[#E2DFD8] hover:bg-[#FFF8F0]"
+                            }`}
+                          >
+                            Xưng {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-[#605248] mb-1.5">Giọng văn khi chat</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {([
+                          ["short", "Ngắn gọn"],
+                          ["detailed", "Chi tiết"],
+                        ] as const).map(([value, label]) => (
+                          <button
+                            key={value}
+                            onClick={() => setAssistantSettings((s) => ({ ...s, answerStyle: value }))}
+                            className={`py-2 rounded-xl border text-[11px] font-black transition-colors ${
+                              assistantSettings.answerStyle === value
+                                ? "bg-[#FFF2E6] text-[#C85A17] border-[#C85A17]/40"
+                                : "bg-white text-[#605248] border-[#E2DFD8] hover:bg-[#FFF8F0]"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -569,12 +640,14 @@ export default function Page() {
 
         {/* Scrollable Content Pane */}
         <main className={`flex-1 bg-[#FAF9F6] relative bg-cover bg-center bg-no-repeat ${
-          isDoingExperiment
+          isScanMode
+            ? "overflow-hidden p-0"
+            : isDoingExperiment
             ? "overflow-hidden p-0"
             : "overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8"
-        }`} style={{ backgroundImage: "url('/images/background.webp')" }}>
-          <div className={`${activeTab === "lab" ? "max-w-none" : "max-w-[1280px] justify-between"} mx-auto w-full flex flex-col ${isDoingExperiment ? "h-full" : "min-h-full"}`}>
-            <div className={`w-full ${isDoingExperiment ? "h-full flex flex-col" : ""}`}>
+        }`} style={{ backgroundImage: isScanMode ? "none" : "url('/images/background.webp')" }}>
+          <div className={`${activeTab === "lab" || isScanMode ? "max-w-none" : "max-w-[1280px] justify-between"} mx-auto w-full flex flex-col ${isDoingExperiment || isScanMode ? "h-full" : "min-h-full"}`}>
+            <div className={`w-full ${isDoingExperiment || isScanMode ? "h-full flex flex-col" : ""}`}>
               {/* 0. HOME VIEW */}
               {activeTab === "home" && (
                 <div className="animate-scale-up">
@@ -599,10 +672,13 @@ export default function Page() {
 
               {/* 1. SCAN SCREEN VIEW */}
               {activeTab === "scan" && (
-                <div className="animate-scale-up">
+                <div className="animate-scale-up h-full">
                   <ScanScreen 
                     onLessonMatched={handleLessonSelect}
-                    onManualSelect={() => setActiveTab("home")} 
+                    onManualSelect={() => {
+                      setActiveLessonId(null);
+                      setActiveTab("lab");
+                    }} 
                   />
                 </div>
               )}
@@ -623,6 +699,7 @@ export default function Page() {
                       spec={activeSpec}
                       measuredD={measuredD}
                       studentName={studentName}
+                      assistantSettings={assistantSettings}
                       onExportNote={handleExportNote}
                       onReplayPrelab={() => setPrelabOverlay(true)}
                       onExitLab={() => setActiveLessonId(null)}
@@ -642,6 +719,7 @@ export default function Page() {
                     reports={reports}
                     labData={labData}
                     studentName={studentName}
+                    assistantSettings={assistantSettings}
                     onReportGraded={handleReportGraded}
                   />
                 </div>
@@ -664,7 +742,7 @@ export default function Page() {
             </div>
 
             {/* Decorative background bottom footer */}
-            {!isDoingExperiment && (
+            {!isDoingExperiment && !isScanMode && (
               <footer className="mt-12 text-center text-[10px] font-black text-[#605248]/30 uppercase tracking-widest pb-4 print:hidden">
                 Phylab &copy; 2026 | Vietnamese Student HackAIthon
               </footer>
@@ -674,7 +752,7 @@ export default function Page() {
       </div>
 
       {/* ================= MOBILE BOTTOM FLOATING DOCK (Fixed at bottom) ================= */}
-      {(!activeSpec || !prelabPassed[activeSpec.id] || activeTab !== "lab") && (
+      {activeTab !== "scan" && (!activeSpec || !prelabPassed[activeSpec.id] || activeTab !== "lab") && (
         <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden print:hidden">
         <nav className="h-16 bg-white/85 backdrop-blur-md border border-[#E2DFD8]/80 rounded-2xl flex items-center justify-around px-2.5 shadow-[0_8px_32px_rgba(50,30,18,0.12)]">
           {/* Tab: Home */}
@@ -718,7 +796,7 @@ export default function Page() {
             }`}
           >
             <FileText className="w-5 h-5 stroke-[2.5]" />
-            <span className="text-[9px] font-black mt-1">Notes</span>
+            <span className="text-[9px] font-black mt-1">Sổ Báo Cáo</span>
           </button>
 
           {/* Tab: Prelab */}

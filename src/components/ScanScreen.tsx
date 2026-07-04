@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Camera, CheckCircle, Play, Upload, AlertTriangle, RotateCcw, X, Scan, Sun, Sparkles, ChevronUp } from "lucide-react";
 import { LessonId } from "@/lib/types";
-import Logo from "./Logo";
 
 interface ScanScreenProps {
   onLessonMatched: (lessonId: LessonId) => void;
@@ -155,9 +154,15 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-[#FFFBF7] border-2 border-[#E2DFD8] rounded-[32px] p-5 my-4 text-[#321E12] font-nunito shadow-xs">
+    <div className="w-full min-h-[100dvh] sm:min-h-0 sm:max-w-xl sm:mx-auto bg-[#050505] sm:bg-[#FFFBF7] sm:border-2 sm:border-[#E2DFD8] sm:rounded-[32px] p-3 sm:p-5 sm:my-4 text-[#321E12] font-nunito sm:shadow-xs relative">
+      <button
+        onClick={onManualSelect}
+        className="absolute top-4 left-4 z-30 px-3 py-2 bg-black/45 sm:bg-[#FFF2E6] backdrop-blur-md border border-white/20 sm:border-[#C85A17]/25 text-white sm:text-[#C85A17] text-[10px] font-black rounded-xl transition-all cursor-pointer active:scale-95"
+      >
+        ← Thoát
+      </button>
       {/* Header Deck */}
-      <div className="flex items-center justify-between pb-3.5 mb-5 border-b border-[#E2DFD8]/60">
+      <div className="hidden sm:flex items-center justify-between pb-3.5 mb-5 border-b border-[#E2DFD8]/60">
         <div className="text-left flex-1 min-w-0">
           <h2 className="text-base font-black text-[#321E12] uppercase tracking-wide">Quét trang Sách giáo khoa</h2>
           <p className="text-[10px] font-bold text-[#605248] mt-0.5 truncate">
@@ -173,7 +178,7 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
       </div>
 
       {/* Unified Viewfinder Card */}
-      <div className="relative w-full aspect-[9/13.5] max-w-sm mx-auto bg-slate-950 rounded-[28px] overflow-hidden border-4 border-white shadow-[0_12px_28px_rgba(50,30,18,0.06)] flex flex-col items-center justify-center">
+      <div className="relative w-full h-[calc(100dvh-108px)] sm:h-auto sm:aspect-[9/13.5] sm:max-w-sm mx-auto bg-slate-950 sm:rounded-[28px] overflow-hidden sm:border-4 sm:border-white sm:shadow-[0_12px_28px_rgba(50,30,18,0.06)] flex flex-col items-center justify-center">
         {/* Stream */}
         {useCamera && !preview && (
           <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
@@ -306,7 +311,7 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
                 onClick={onManualSelect}
                 className="flex-1 py-1.5 bg-[#DF742E] hover:bg-[#B24A0C] text-white text-[10px] font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
               >
-                Chọn bằng tay
+                Thoát quét
               </button>
             </div>
           </div>
@@ -314,7 +319,7 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
       </div>
 
       {/* Shutter Deck Controls */}
-      <div className="mt-6 flex items-center justify-center gap-6 max-w-sm mx-auto">
+      <div className="mt-3 sm:mt-6 flex items-center justify-center gap-6 max-w-sm mx-auto">
         {/* 1. Upload Button (Small icon on the left) */}
         <button
           onClick={() => {

@@ -13,10 +13,16 @@ export interface LabExportPayload {
   trials: Array<Record<string, unknown>>;
 }
 
+interface AssistantSettings {
+  pronoun?: "anh" | "chị";
+  answerStyle?: "short" | "detailed";
+}
+
 interface LabRoomProps {
   spec: ExperimentSpec;
   measuredD: number;           // MÉT (từ Prelab caliper của page.tsx)
   studentName?: string;        // để ra đề theo từng học sinh
+  assistantSettings?: AssistantSettings;
   onExportNote: (payload: LabExportPayload) => void;
   onReplayPrelab: () => void;
   onExitLab: () => void;       // thoát phòng lab -> về bộ chọn thí nghiệm
@@ -26,7 +32,7 @@ interface LabRoomProps {
  * LabRoom — Khung phòng Lab: chọn engine theo bài, cấp TTS + gom số liệu xuất Note.
  * Giữ shell RealPhyLab; engine bên trong là bản kéo-thả-nối-dây + vật lý thật của φLab.
  */
-export default function LabRoom({ spec, measuredD, studentName, onExportNote, onReplayPrelab, onExitLab }: LabRoomProps) {
+export default function LabRoom({ spec, measuredD, studentName, assistantSettings, onExportNote, onReplayPrelab, onExitLab }: LabRoomProps) {
   const { speak, stop, muted, toggleMute } = useTTS();
   const isFreeFall = spec.id === "do-gia-toc-roi-tu-do";
 
@@ -41,6 +47,7 @@ export default function LabRoom({ spec, measuredD, studentName, onExportNote, on
       {isFreeFall ? (
         <FreeFallBench
           studentName={studentName}
+          assistantSettings={assistantSettings}
           speak={speak}
           muted={muted}
           onToggleMute={toggleMute}
@@ -52,6 +59,7 @@ export default function LabRoom({ spec, measuredD, studentName, onExportNote, on
         <LabBench
           measuredD={measuredMm}
           studentName={studentName}
+          assistantSettings={assistantSettings}
           speak={speak}
           muted={muted}
           onToggleMute={toggleMute}

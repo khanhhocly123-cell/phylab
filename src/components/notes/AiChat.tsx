@@ -6,13 +6,19 @@ import { MathText } from "../Latex";
 
 interface Msg { role: "user" | "ai"; text: string; source?: string }
 
+interface AssistantSettings {
+  pronoun?: "anh" | "chị";
+  answerStyle?: "short" | "detailed";
+}
+
 /**
  * AiChat — ô hỏi đáp AI (Trợ lý Phylab / VNPT SmartBot) để hỏi bài.
  * Gọi /api/vnpt/chat (task chat). Dùng trong Notes.
  */
-export default function AiChat({ lessonTitle }: { lessonTitle?: string }) {
+export default function AiChat({ lessonTitle, assistantSettings }: { lessonTitle?: string; assistantSettings?: AssistantSettings }) {
+  const pronoun = assistantSettings?.pronoun === "anh" ? "Anh" : "Chị";
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "ai", text: `Chào em! Anh là Trợ lý Phylab. Em hỏi anh bất cứ điều gì về ${lessonTitle || "bài thực hành"} nhé — công thức, cách đo, cách tính sai số…`, source: "local" },
+    { role: "ai", text: `Chào em! ${pronoun} là Trợ lý Phylab. Em hỏi ${pronoun.toLowerCase()} bất cứ điều gì về ${lessonTitle || "bài thực hành"} nhé — công thức, cách đo, cách tính sai số…`, source: "local" },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,10 +38,10 @@ export default function AiChat({ lessonTitle }: { lessonTitle?: string }) {
       const res = await fetch("/api/vnpt/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [{ role: "user", content: text }] }),
+        body: JSON.stringify({ messages: [{ role: "user", content: text }], assistantSettings }),
       });
       const data = await res.json();
-      setMessages((m) => [...m, { role: "ai", text: data.message || "Anh chưa trả lời được, em thử lại nhé.", source: data.source }]);
+      setMessages((m) => [...m, { role: "ai", text: data.message || `${pronoun} chưa trả lời được, em thử lại nhé.`, source: data.source }]);
     } catch {
       setMessages((m) => [...m, { role: "ai", text: "Mất kết nối tới trợ lý. Em thử lại sau nhé.", source: "local" }]);
     } finally {
@@ -48,7 +54,7 @@ export default function AiChat({ lessonTitle }: { lessonTitle?: string }) {
       <div className="flex items-center gap-2 px-4 py-3 border-b border-[#E2DFD8]">
         <div className="w-7 h-7 rounded-lg bg-[#C85A17] text-white grid place-items-center font-black">φ</div>
         <div className="flex-1">
-          <p className="text-xs font-black text-[#321E12]">Hỏi Trợ lý AI</p>
+          <p className="text-xs font-black text-[#321E12]">Hỏi Trợ lý Phylab</p>
           <p className="text-[9px] font-bold text-[#605248]/70">Hỏi bài về thí nghiệm &amp; lý thuyết</p>
         </div>
         <Sparkles className="w-4 h-4 text-[#C85A17]" />

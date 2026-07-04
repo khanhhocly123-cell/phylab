@@ -246,6 +246,17 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }
   };
 
+  const handleQuickDemoLogin = () => {
+    stopCamera();
+    setErrorMsg("");
+    setSuccess(true);
+    const name = "Khánh (TestUser101)";
+    setStudentName(name);
+    setTimeout(() => {
+      onLoginSuccess(name);
+    }, 700);
+  };
+
   const renderEkycUi = (isMobile = false) => {
     if (success) {
       return (
@@ -346,6 +357,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <ChevronLeft className="w-4.5 h-4.5" />
             </button>
           </div>
+          <button
+            onClick={handleQuickDemoLogin}
+            className="absolute right-3 top-12 z-20 px-3 py-1.5 bg-white/90 hover:bg-white text-brand-orange text-[9px] font-black rounded-full border border-white/50 shadow-md active:scale-95 transition-all cursor-pointer"
+            title="Bỏ qua bước nhận diện trong bản demo"
+          >
+            Bỏ qua demo
+          </button>
         </div>
       );
     }
@@ -404,6 +422,12 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <Sparkles className="w-4.5 h-4.5" />
             So khớp Face ID & Đăng nhập
           </button>
+          <button
+            onClick={handleQuickDemoLogin}
+            className="w-full py-3 bg-white hover:bg-[#FFF7EF] text-brand-orange text-xs font-black rounded-xl border border-brand-orange/25 transition-all active:scale-95 cursor-pointer"
+          >
+            Bỏ qua Face ID trong bản demo
+          </button>
         </div>
       );
     }
@@ -411,6 +435,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     // Fallback UI if camera is not active and photos are not yet fully provided
     return (
       <div className="w-full space-y-4">
+        {loginMode === "face" && (
+          <div className="rounded-xl border border-brand-orange/20 bg-[#FFF7EF] p-3 text-[10px] font-bold text-brand-blue leading-relaxed">
+            Face ID chỉ là bước demo cá nhân hóa. Nếu camera điện thoại không mượt, em có thể bỏ qua và vào app bằng tài khoản mẫu.
+          </div>
+        )}
         <div className={`grid ${loginMode === "face" ? "grid-cols-2 gap-3" : "grid-cols-1"} w-full`}>
           {/* Card photo slot */}
           <div className="flex flex-col items-center p-3 border border-dashed border-brand-orange/20 bg-brand-cream/20 rounded-xl">
@@ -493,6 +522,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <Sparkles className="w-4.5 h-4.5" />
           So khớp Face ID & Đăng nhập
         </button>
+        {loginMode === "face" && (
+          <button
+            onClick={handleQuickDemoLogin}
+            className="w-full py-3 bg-white hover:bg-[#FFF7EF] text-brand-orange text-xs font-black rounded-xl border border-brand-orange/25 transition-all active:scale-95 cursor-pointer"
+          >
+            Bỏ qua Face ID trong bản demo
+          </button>
+        )}
       </div>
     );
   };

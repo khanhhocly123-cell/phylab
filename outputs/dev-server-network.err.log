@@ -1,0 +1,146 @@
+⨯ ./src/components/lab/LabBench.jsx:1207:21
+Expression expected
+  [90m1205 |[0m                       )}
+  [90m1206 |[0m                       </div>
+[31m[1m>[0m [90m1207 |[0m                     </section>
+  [90m     |[0m                     [31m[1m^[0m
+  [90m1208 |[0m                   )}
+  [90m1209 |[0m                   {renderSideContent({ assistant: [36mfalse[0m, progress: [36mfalse[0m, data: [36mtrue[0m })}
+  [90m1210 |[0m                 </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/lab/LabBench.jsx [Client Component Browser]
+    ./src/components/lab/LabRoom.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/lab/LabBench.jsx [Client Component SSR]
+    ./src/components/lab/LabRoom.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/components/lab/LabBench.jsx:1207:22
+Unterminated regexp literal
+  [90m1205 |[0m                       )}
+  [90m1206 |[0m                       </div>
+[31m[1m>[0m [90m1207 |[0m                     </section>
+  [90m     |[0m                      [31m[1m^^^^^^^^^[0m
+  [90m1208 |[0m                   )}
+  [90m1209 |[0m                   {renderSideContent({ assistant: [36mfalse[0m, progress: [36mfalse[0m, data: [36mtrue[0m })}
+  [90m1210 |[0m                 </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/lab/LabBench.jsx [Client Component Browser]
+    ./src/components/lab/LabRoom.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/lab/LabBench.jsx [Client Component SSR]
+    ./src/components/lab/LabRoom.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+⨯ ./src/components/lab/LabBench.jsx:1207:21
+Expression expected
+  [90m1205 |[0m                       )}
+  [90m1206 |[0m                       </div>
+[31m[1m>[0m [90m1207 |[0m                     </section>
+  [90m     |[0m                     [31m[1m^[0m
+  [90m1208 |[0m                   )}
+  [90m1209 |[0m                   {renderSideContent({ assistant: [36mfalse[0m, progress: [36mfalse[0m, data: [36mtrue[0m })}
+  [90m1210 |[0m                 </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/lab/LabBench.jsx [Client Component Browser]
+    ./src/components/lab/LabRoom.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/lab/LabBench.jsx [Client Component SSR]
+    ./src/components/lab/LabRoom.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/components/lab/LabBench.jsx:1207:22
+Unterminated regexp literal
+  [90m1205 |[0m                       )}
+  [90m1206 |[0m                       </div>
+[31m[1m>[0m [90m1207 |[0m                     </section>
+  [90m     |[0m                      [31m[1m^^^^^^^^^[0m
+  [90m1208 |[0m                   )}
+  [90m1209 |[0m                   {renderSideContent({ assistant: [36mfalse[0m, progress: [36mfalse[0m, data: [36mtrue[0m })}
+  [90m1210 |[0m                 </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/lab/LabBench.jsx [Client Component Browser]
+    ./src/components/lab/LabRoom.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/lab/LabBench.jsx [Client Component SSR]
+    ./src/components/lab/LabRoom.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/components/lab/LabBench.jsx:1207:21
+Expression expected
+  1205 |                       )}
+  1206 |                       </div>
+> 1207 |                     </section>
+       |                     ^
+  1208 |                   )}
+  1209 |                   {renderSideContent({ assistant: false, progress: false, data: true })}
+  1210 |                 </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/components/lab/LabBench.jsx [Client Component Browser]
+    ./src/components/lab/LabRoom.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/lab/LabBench.jsx [Client Component SSR]
+    ./src/components/lab/LabRoom.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/components/lab/LabBench.jsx:1207:21)
+    at <unknown> (Error: (./src/components/lab/LabBench.jsx:1207:21)
+[browser] Camera access error: NotAllowedError: Permission dismissed (src/components/LoginScreen.tsx:101:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)
+[browser] Không truy cập được Camera: NotAllowedError: Permission denied by system (src/components/ScanScreen.tsx:56:15)

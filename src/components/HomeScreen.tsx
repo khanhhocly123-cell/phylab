@@ -80,7 +80,7 @@ export default function HomeScreen({
       tab: "lab" as const,
     },
     {
-      label: "Notes",
+      label: "Sổ Báo Cáo",
       desc: "Ghi chép & xem lại kiến thức",
       icon: FileText,
       tab: "notes" as const,
@@ -343,7 +343,7 @@ export default function HomeScreen({
                 color: "bg-[#F3F8F2] text-[#2E7D32] border-[#2E7D32]/15",
               },
               {
-                label: "Notes",
+                label: "Sổ Báo Cáo",
                 desc: "Ghi chép",
                 icon: FileText,
                 tab: "notes" as const,

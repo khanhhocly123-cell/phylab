@@ -104,7 +104,7 @@ function buildPath() {
 }
 const PATH = buildPath();
 
-export default function LabBench({ measuredD = 20.0, studentName, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+export default function LabBench({ measuredD = 20.0, studentName, assistantSettings, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
   const [lab, setLab] = useState("average");
   // Đề bài RA THEO TỪNG HỌC SINH (deterministic) — không ai giống ai.
   const set = useMemo(
@@ -154,7 +154,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
   const [chatA, setChatA] = useState(null);       // { text, source }
   const [chatBusy, setChatBusy] = useState(false);
   const [chatHistory, setChatHistory] = useState([
-    { role: "assistant", text: "Chào bạn! Mình là trợ lý AI. Bạn cần hỗ trợ gì về bài thí nghiệm này?" }
+    { role: "assistant", text: "Chào em! Mình là Trợ lý Phylab. Em cần hỗ trợ gì về bài thí nghiệm này?" }
   ]);
   const chatScrollRef = useRef(null);
   useEffect(() => {
@@ -166,6 +166,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
   const [sheetOpen, setSheetOpen] = useState(false); // Google Maps bottom sheet
   const [zoomMode, setZoomMode] = useState("full"); // "full", "rail", "clock"
   const [aiDeBai, setAiDeBai] = useState("");         // đề bài do Trợ lý (Smartbot) diễn đạt
+  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -214,6 +215,27 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
   const modeOK = lab === "average" ? mode === "A<->B" : mode === "A";
   const setupDone = assembled && wiredOK && power && modeOK; // set up thành công -> hiện đề bài
   const deBai = setupDone ? (aiDeBai || set.prompt) : "";
+  const currentTargets = lab === "average" ? suggestedAvg : suggestedInst;
+  const currentTaskIndex = clamp(activeTaskIndex, 0, Math.max(0, currentTargets.length - 1));
+  const currentTask = currentTargets[currentTaskIndex];
+  const isTargetMeasured = (target) => (
+    !!target && trials.some((t) =>
+      t.lab === lab &&
+      t.theta === target.theta &&
+      (lab === "instant" || Math.abs(t.sEF - target.sEF) < 1e-6)
+    )
+  );
+
+  useEffect(() => {
+    setActiveTaskIndex(0);
+  }, [lab, studentName]);
+
+  useEffect(() => {
+    if (!currentTargets.length) return;
+    const next = currentTargets.findIndex((target) => !isTargetMeasured(target));
+    if (next >= 0 && next !== activeTaskIndex) setActiveTaskIndex(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trials.length, lab, currentTargets.length]);
 
   function placeTool(k) {
     if (placed.has(k)) return;
@@ -427,7 +449,9 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
     setChatHistory((prev) => [...prev, { role: "assistant", text: "" }]);
     
     try {
-      await ask(text, {
+      const reply = await ask(text, {
+        assistantSettings,
+        labContext: buildSmartBotContext(),
         onToken: (piece) => {
           setChatHistory((prev) => {
             const copy = [...prev];
@@ -439,6 +463,16 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
           });
         }
       });
+      if (reply?.buttons?.length) {
+        setChatHistory((prev) => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+          if (last && last.role === "assistant") {
+            copy[copy.length - 1] = { ...last, actions: reply.buttons };
+          }
+          return copy;
+        });
+      }
     } catch {
       setChatHistory((prev) => {
         const copy = [...prev];
@@ -452,14 +486,121 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
       setChatBusy(false);
     }
   }
+
+  function buildSmartBotContext() {
+    return {
+      screen: "lab",
+      labId: "b6",
+      lab,
+      assembled,
+      activeGroupNames: activeGroup.map((k) => TOOLS.find((t) => t.k === k)?.name).filter(Boolean),
+      placedCount,
+      requiredCount: required.length,
+      balanced,
+      power,
+      wiredOK,
+      modeOK,
+      isReset,
+      rolling,
+      trialsCount: trials.length,
+      targetCount,
+      currentTask: currentTask ? {
+        index: currentTaskIndex + 1,
+        theta: currentTask.theta,
+        sEF: currentTask.sEF,
+        measured: isTargetMeasured(currentTask),
+      } : null,
+      nextStepText,
+    };
+  }
+
+  function runAssistantAction(payload) {
+    if (payload === "auto_place_next") {
+      const next = activeGroup.find((k) => reqSet.has(k) && !placed.has(k));
+      if (next) {
+        placeTool(next);
+        flash(`Đã tự động lắp: ${TOOLS.find((t) => t.k === next)?.name || next}`);
+      } else {
+        flash("Các dụng cụ chính đã được lắp.");
+      }
+      return;
+    }
+    if (payload === "auto_wire") {
+      if (!placed.has("clock") || !placed.has("gateE") || (lab === "average" && !placed.has("gateF"))) {
+        flash("Cần lắp đủ đồng hồ và cổng quang trước khi tự động nối dây.");
+        return;
+      }
+      setFace("back");
+      if (lab === "average") {
+        setWires({ A: "E", B: "F" });
+        flash("Đã nối dây cổng E→A và F→B");
+      } else {
+        setWires({ A: "E", B: null });
+        flash("Đã nối dây cổng E→A");
+      }
+      return;
+    }
+    if (payload === "auto_power") {
+      if (!placed.has("clock")) {
+        flash("Chưa lắp đồng hồ nên chưa thể bật nguồn.");
+        return;
+      }
+      setPower(true);
+      flash("Đã bật nguồn đồng hồ");
+      return;
+    }
+    if (payload === "auto_mode") {
+      if (!placed.has("clock")) {
+        flash("Chưa lắp đồng hồ nên chưa thể chọn MODE.");
+        return;
+      }
+      setMode(lab === "average" ? "A<->B" : "A");
+      flash(`Đã chọn MODE ${lab === "average" ? "A↔B" : "A"}`);
+      return;
+    }
+    if (payload === "auto_fix_screw") {
+      if (!placed.has("standR")) {
+        flash("Cần lắp giá đỡ phải trước khi cố định vít.");
+        return;
+      }
+      setBalanced(true);
+      flash("Đã cố định vít cân bằng máng.");
+      return;
+    }
+    if (payload === "auto_reset") {
+      if (!placed.has("clock")) {
+        flash("Chưa lắp đồng hồ nên chưa thể reset số đo.");
+        return;
+      }
+      resetTimer();
+      flash("Đã reset số đo về 0");
+    }
+  }
+
+  const renderAssistantActions = (msg) => (
+    msg.actions?.length ? (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        {msg.actions.map((action) => (
+          <button
+            key={`${action.payload}-${action.title}`}
+            type="button"
+            onClick={() => runAssistantAction(action.payload)}
+            style={{ border: `1px solid ${C.orange}`, background: "#FFF7EF", color: C.orangeDk, borderRadius: 9, padding: "6px 9px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: FONT }}
+          >
+            {action.title}
+          </button>
+        ))}
+      </div>
+    ) : null
+  );
   function exportNote() {
     if (!trials.length) { flash("Chưa có số liệu để xuất."); return; }
-    onExportNote?.({ lab, measuredD, trials }); flash("Đã gửi số liệu sang Note.");
+    onExportNote?.({ lab, measuredD, trials }); flash("Đã gửi số liệu sang Sổ Báo Cáo.");
   }
   // Thoát phòng lab — hỏi xác nhận nếu còn số liệu chưa xuất Note.
   function handleExit() {
     if (!onBack) return;
-    if (trials.length > 0 && !window.confirm(`Bạn có ${trials.length} lần đo chưa xuất sang Note. Thoát phòng lab và bỏ số liệu này?`)) return;
+    if (trials.length > 0 && !window.confirm(`Bạn có ${trials.length} lần đo chưa xuất sang Sổ Báo Cáo. Thoát phòng lab và bỏ số liệu này?`)) return;
     onBack();
   }
 
@@ -555,6 +696,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
     balanced, power, wiredOK, modeOK, isReset, rolling,
     ballAtEnd, justMeasured: justRolled,
     trialsCount: trials.length, targetCount,
+    assistantSettings,
   });
   const tone = TONE[tip.tone] || C.navy;
 
@@ -579,7 +721,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
     const targets = lab === "average" ? suggestedAvg : suggestedInst;
     fetch("/api/vnpt/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task: "problem", labKind: lab, targets, prompt: set.prompt }),
+      body: JSON.stringify({ task: "problem", labKind: lab, targets, prompt: set.prompt, assistantSettings }),
     })
       .then((r) => r.json())
       .then((d) => { if (!cancel && d?.message) setAiDeBai(d.message); })
@@ -596,7 +738,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
           <section style={{ ...cardStyle, background: "#FFFDF9", border: "1px solid #EFE8DF", borderRadius: 16, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #F0E6D8", paddingBottom: 6 }}>
               <MessageSquare className="w-4 h-4 text-[#C85A17]" />
-              <b style={{ color: C.ink, fontSize: 12.5 }}>Trợ lý Hỏi đáp AI</b>
+              <b style={{ color: C.ink, fontSize: 12.5 }}>Trợ lý Phylab</b>
               {chatBusy && <span style={{ fontSize: 10, color: C.orange, marginLeft: "auto" }}>Đang trả lời...</span>}
             </div>
 
@@ -619,6 +761,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
                   }}
                 >
                   {msg.text ? <MathText text={msg.text} /> : <span style={{ color: C.sub }}>...</span>}
+                  {msg.role === "assistant" && renderAssistantActions(msg)}
                 </div>
               ))}
             </div>
@@ -693,6 +836,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
                     <span style={{ color: C.ink, lineHeight: 1.45 }}>
                       {msg.text ? <MathText text={msg.text} /> : "..."}
                     </span>
+                    {msg.role === "assistant" && renderAssistantActions(msg)}
                   </div>
                 ))}
               </div>
@@ -723,32 +867,6 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
                 </span>
                 <span style={{ color: s.done ? C.sub : C.ink, textDecoration: s.done ? "line-through" : "none", display: "inline-flex", alignItems: "center", gap: 8 }}>
                   {s.t}
-                  {s.k === "wire" && !s.done && isMobile && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (lab === "average") {
-                          setWires({ A: "E", B: "F" });
-                          flash("Đã nối dây cổng E→A và F→B");
-                        } else {
-                          setWires({ A: "E", B: null });
-                          flash("Đã nối dây cổng E→A");
-                        }
-                      }}
-                      style={{
-                        padding: "2px 8px",
-                        background: C.orange,
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 6,
-                        fontSize: 10,
-                        fontWeight: "bold",
-                        cursor: "pointer"
-                      }}
-                    >
-                      Nối nhanh
-                    </button>
-                  )}
                 </span>
               </div>
             ))}
@@ -802,7 +920,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
             {!trials.length && <div style={{ fontSize: isMobile ? 13 : 13, color: C.sub2, fontStyle: "italic" }}>Chưa có lần đo. Reset → thả bi → Ghi số liệu.</div>}
           </div>
           <button onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8 }}>Ghi số liệu</button>
-          <button onClick={exportNote} style={{ ...btnBig, width: "100%" }}>Xuất sang Note</button>
+          <button onClick={exportNote} style={{ ...btnBig, width: "100%" }}>Xuất sang Sổ Báo Cáo</button>
         </section>
       )}
     </>
@@ -925,6 +1043,55 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
           />
           {isMobile && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+              {assembled && (
+                <section style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: 12, display: "flex", flexDirection: "column", gap: 10, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: C.ink }}>Điều khiển dễ bấm</span>
+                    <button
+                      type="button"
+                      onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng máng."); }}
+                      disabled={!placed.has("standR")}
+                      style={{ border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 10, padding: "7px 9px", fontSize: 11, fontWeight: 900, opacity: placed.has("standR") ? 1 : 0.45 }}
+                    >
+                      Cố định vít
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                    {[
+                      ["full", "Toàn cảnh"],
+                      ["rail", "Máng/cổng"],
+                      ["clock", "Đồng hồ"],
+                    ].map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setZoomMode(key)}
+                        style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 10, padding: "8px 6px", fontSize: 11, fontWeight: 900 }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: lab === "average" ? "1fr 1fr" : "1fr", gap: 8 }}>
+                    <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg }}>
+                      <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Giá đỡ phải · θ={theta}°</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                        <button type="button" disabled={!placed.has("standR")} onClick={() => setTheta((v) => clamp(v - 1, LAB6.angle.min, LAB6.angle.max))} style={mobileAdjustBtn}>-1°</button>
+                        <button type="button" disabled={!placed.has("standR")} onClick={() => setTheta((v) => clamp(v + 1, LAB6.angle.min, LAB6.angle.max))} style={mobileAdjustBtn}>+1°</button>
+                      </div>
+                    </div>
+                    {lab === "average" && (
+                      <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg }}>
+                        <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Cổng F · sEF={(sEF * 100).toFixed(0)}cm</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                          <button type="button" disabled={!placed.has("gateF")} onClick={() => setSEF((v) => clamp(+(v - 0.01).toFixed(2), LAB6.sEF.min, LAB6.sEF.max))} style={mobileAdjustBtn}>-1cm</button>
+                          <button type="button" disabled={!placed.has("gateF")} onClick={() => setSEF((v) => clamp(+(v + 0.01).toFixed(2), LAB6.sEF.min, LAB6.sEF.max))} style={mobileAdjustBtn}>+1cm</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
               {/* Progress bar and next step indicator */}
               <section style={{
                 background: "#fff",
@@ -995,7 +1162,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
                   )}
                 </div>
                 <div style={{ fontSize: 11.5, color: C.sub, textAlign: "center" }}>
-                  Cần hỏi thêm? Mở <b style={{ color: C.orange }}>Trợ lý AI</b> ở thanh dưới cùng để chat.
+                  Cần hỏi thêm? Mở <b style={{ color: C.orange }}>Trợ lý Phylab</b> ở thanh dưới cùng để chat.
                 </div>
               </section>
 
@@ -1003,52 +1170,65 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
                 /* Sau khi lắp xong: hiện ĐỀ BÀI + bảng ghi số liệu ngay trong luồng chính
                    (trước đây đề bài bị ẩn trên mobile vì chỉ nằm ở cột tiến trình). */
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {/* THAO TÁC NHANH — bấm là xong, khỏi phải kéo dây/chạm núm nhỏ trên điện thoại. */}
-                  {!setupDone && (
-                    <section style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 10, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
-                      <div style={{ ...sideTitle, marginBottom: 0, fontSize: 13, color: C.orangeDk }}>Thao tác nhanh — chạm để cài đặt</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        {[
-                          { label: "Cân bằng máng", done: balanced, act: () => { setBalanced((v) => !v); flash(balanced ? "Đã bỏ cân bằng" : "Đã cân bằng máng"); } },
-                          { label: "Nối dây tự động", done: wiredOK, act: () => { setFace("back"); if (lab === "average") { setWires({ A: "E", B: "F" }); flash("Đã nối cổng E→A và F→B"); } else { setWires({ A: "E", B: null }); flash("Đã nối cổng E→A"); } } },
-                          { label: "Bật nguồn đồng hồ", done: power, act: () => { setPower((v) => !v); flash(power ? "Đã tắt nguồn" : "Đã bật nguồn đồng hồ"); } },
-                          { label: `Chọn MODE ${lab === "average" ? "A↔B" : "A"}`, done: modeOK, act: () => { setMode(lab === "average" ? "A<->B" : "A"); flash(`Đã chọn MODE ${lab === "average" ? "A↔B" : "A"}`); } },
-                        ].map((q) => (
-                          <button key={q.label} onClick={q.act}
-                            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${q.done ? C.good : C.orange}`, background: q.done ? "#F3F8F3" : "#FFF7EF", color: q.done ? C.good : C.orangeDk, fontSize: 12.5, fontWeight: 800, cursor: "pointer", fontFamily: FONT, textAlign: "center", lineHeight: 1.2 }}>
-                            {q.done && <Check className="w-4 h-4 stroke-[3]" />}
-                            {q.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.sub, textAlign: "center" }}>
-                        Hoặc tự thao tác trên bàn: chạm đầu dây rồi chạm ổ cắm ở mặt sau đồng hồ.
-                      </div>
-                    </section>
-                  )}
                   {setupDone && (
                     <section style={{ background: "#FFFDF9", border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 9, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
                       <div style={{ ...sideTitle, marginBottom: 0, fontSize: 13, color: C.orangeDk }}>
-                        Đề bài Trợ lý giao — tự chỉnh θ{lab === "average" ? " và sEF" : ""} rồi đo
+                        Câu đo hiện tại
                       </div>
-                      {deBai && (
-                        <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, whiteSpace: "pre-line" }}>
-                          <MathText text={deBai} />
-                        </div>
-                      )}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {(lab === "average" ? suggestedAvg : suggestedInst).map((sg, i) => {
-                          const used = trials.some((t) => t.lab === lab && t.theta === sg.theta && (lab === "instant" || Math.abs(t.sEF - sg.sEF) < 1e-6));
-                          return (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 11px", borderRadius: 9, border: `1px solid ${C.line}`, background: used ? "#F3F8F3" : C.bg, fontSize: 13, color: C.ink }}>
-                              <span>Câu {i + 1}: θ={sg.theta}°{sg.sEF ? `, sEF=${(sg.sEF * 100).toFixed(0)}cm` : ""}</span>
-                              <span style={{ color: used ? C.good : C.sub, display: "inline-flex", alignItems: "center", gap: 3, fontWeight: used ? 800 : 400 }}>
-                                {used ? (<><Check className="w-3.5 h-3.5 stroke-[3] text-[#27AE60]" />đã đo</>) : "chưa đo"}
-                              </span>
+                      {currentTask && (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 12px", borderRadius: 12, border: `1px solid ${isTargetMeasured(currentTask) ? C.good : C.line}`, background: isTargetMeasured(currentTask) ? "#F3F8F3" : "#fff" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 11, color: C.sub, fontWeight: 900 }}>
+                                Câu {currentTaskIndex + 1}/{currentTargets.length}
+                              </div>
+                              <div style={{ fontSize: 16, color: C.ink, fontWeight: 900, lineHeight: 1.35 }}>
+                                θ={currentTask.theta}°{currentTask.sEF ? ` · sEF=${(currentTask.sEF * 100).toFixed(0)}cm` : ""}
+                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
+                            <span style={{ flexShrink: 0, color: isTargetMeasured(currentTask) ? C.good : C.sub, fontSize: 12, fontWeight: 900 }}>
+                              {isTargetMeasured(currentTask) ? "đã đo" : "chưa đo"}
+                            </span>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTheta(currentTask.theta);
+                                if (currentTask.sEF) setSEF(currentTask.sEF);
+                                flash("Đã áp dụng mục tiêu đo hiện tại");
+                              }}
+                              style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5 }}
+                            >
+                              Áp dụng mục tiêu
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTaskIndex((i) => (i + 1) % currentTargets.length)}
+                              style={{ border: `1px solid ${C.line}`, background: "#fff", color: C.ink, borderRadius: 11, padding: "10px 8px", fontSize: 12.5, fontWeight: 900, fontFamily: FONT }}
+                            >
+                              Câu tiếp theo
+                            </button>
+                          </div>
+                          <div style={{ display: "flex", gap: 5, justifyContent: "center" }}>
+                            {currentTargets.map((target, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                aria-label={`Câu ${i + 1}`}
+                                onClick={() => setActiveTaskIndex(i)}
+                                style={{ width: 9, height: 9, borderRadius: 999, border: "none", background: i === currentTaskIndex ? C.orange : isTargetMeasured(target) ? C.good : "#DDD3C7", padding: 0 }}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {deBai && (
+                        <details style={{ fontSize: 12, color: C.sub }}>
+                          <summary style={{ cursor: "pointer", fontWeight: 900, color: C.orangeDk }}>Xem toàn bộ đề bài</summary>
+                          <div style={{ marginTop: 8, lineHeight: 1.5, whiteSpace: "pre-line" }}><MathText text={deBai} /></div>
+                        </details>
+                      )}
                     </section>
                   )}
                   {renderSideContent({ assistant: false, progress: false, data: true })}
@@ -1082,18 +1262,18 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
         {/* PHẢI / BOTTOM SHEET: Trợ lý / Tiến trình / Ghi số liệu */}
         {isMobile ? (
           <motion.div
-            animate={{ height: sheetOpen ? "70%" : "48px" }}
+            animate={{ height: sheetOpen ? "78%" : 48 }}
             transition={{ type: "spring", damping: 20, stiffness: 180 }}
             style={{
               position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
+              bottom: sheetOpen ? 0 : 12,
+              left: sheetOpen ? 0 : "auto",
+              right: sheetOpen ? 0 : 12,
+              width: sheetOpen ? "auto" : "min(220px, calc(100% - 24px))",
               background: "#FFFBF7",
-              borderTop: `2px solid ${C.line}`,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              boxShadow: "0 -8px 24px rgba(50,30,18,0.12)",
+              border: `2px solid ${C.line}`,
+              borderRadius: sheetOpen ? "24px 24px 0 0" : 18,
+              boxShadow: sheetOpen ? "0 -8px 24px rgba(50,30,18,0.12)" : "0 8px 24px rgba(50,30,18,0.14)",
               zIndex: 40,
               display: "flex",
               flexDirection: "column",
@@ -1103,10 +1283,10 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
             {/* Click-to-toggle handle */}
             <div 
               onClick={() => setSheetOpen(!sheetOpen)}
-              style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: `1px solid ${C.line}`, touchAction: "none" }}
+              style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "none", padding: "0 14px" }}
             >
               <span style={{ fontSize: 11, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Trợ lý AI
+                {sheetOpen ? "Trợ lý Phylab" : "Hỏi Phylab"}
               </span>
               {sheetOpen ? (
                 <ChevronDown className="w-4 h-4 text-[#C85A17]" />
@@ -1116,7 +1296,7 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
             </div>
             
             {/* Sheet body */}
-            <div style={{ flex: 1, overflow: "auto", padding: "0 12px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ flex: 1, overflow: "auto", padding: "0 12px 24px", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
               {assembled 
                 ? renderSideContent({ assistant: true, progress: false, data: false })
                 : renderSideContent({ assistant: true, progress: true, data: false })
@@ -1429,4 +1609,5 @@ const sideTitle = { fontSize: 12.5, fontWeight: 800, color: C.sub, textTransform
 const cardStyle = { background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, flexShrink: 0 };
 const btnBig = { padding: "11px 20px", borderRadius: 11, border: "none", background: C.orange, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: FONT };
 const btnNavy = { padding: "10px 20px", borderRadius: 11, border: `1px solid ${C.navy}`, background: "#fff", color: C.navy, fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: FONT };
+const mobileAdjustBtn = { border: `1px solid ${C.orange}`, background: "#fff", color: C.orangeDk, borderRadius: 10, padding: "9px 6px", fontSize: 12, fontWeight: 900, fontFamily: FONT };
 const toastStyle = { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", background: C.navy, color: "#fff", padding: "9px 16px", borderRadius: 10, fontSize: 12.5, fontWeight: 700, boxShadow: "0 6px 18px rgba(0,0,0,.2)", maxWidth: 460, textAlign: "center", zIndex: 9999 };

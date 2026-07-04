@@ -67,6 +67,13 @@ export const LINES = {
     "Xuất sắc, em đã đo đủ các vị trí. Bấm Xuất sang Note rồi sang báo cáo để tính gia tốc trung bình và sai số, so với gia tốc chuẩn xem lệch bao nhiêu nhé.",
 };
 
+function applyGuidePersona(text, pronoun = "chị") {
+  if (!text || pronoun !== "anh") return text;
+  return text
+    .replace(/(^|[\s"'([{])Chị(?=$|[\s,.!?;:)\]}])/g, "$1Anh")
+    .replace(/(^|[\s"'([{])chị(?=$|[\s,.!?;:)\]}])/g, "$1anh");
+}
+
 /**
  * @param {object} s trạng thái thí nghiệm (UI-agnostic)
  *  { labId, lab, assembled, activeGroupNames, placedCount, requiredCount,
@@ -76,7 +83,8 @@ export const LINES = {
 export function guide(s = {}) {
   const inst = s.lab === "instant";
   const b11 = s.labId === "b11";
-  const G = (id, text, tone) => ({ id, text, tone });
+  const pronoun = s.assistantSettings?.pronoun === "anh" ? "anh" : "chị";
+  const G = (id, text, tone) => ({ id, text: applyGuidePersona(text, pronoun), tone });
 
   if (s.trialsCount >= s.targetCount && s.targetCount > 0)
     return G("done", b11 ? LINES.done11 : inst ? LINES.doneInst : LINES.doneAvg, "done");
@@ -145,16 +153,16 @@ export function localAnswer(q) {
 }
 
 /**
- * ask(text, {onToken}) — điểm vào chung cho ô hỏi đáp.
+ * ask(text, {onToken, assistantSettings, labContext}) — điểm vào chung cho ô hỏi đáp.
  * Ưu tiên API /api/vnpt/chat (VNPT Smartbot của RealPhyLab); lỗi → FAQ cục bộ.
  * Trả về { text, source: "smartbot" | "local" }.
  */
-export async function ask(text, { onToken, signal } = {}) {
+export async function ask(text, { onToken, signal, assistantSettings, labContext } = {}) {
   try {
     const res = await fetch("/api/vnpt/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: [{ role: "user", content: text }] }),
+      body: JSON.stringify({ messages: [{ role: "user", content: text }], assistantSettings, labContext }),
       signal,
     });
     if (!res.ok) throw new Error(`CHAT_HTTP_${res.status}`);
@@ -162,7 +170,7 @@ export async function ask(text, { onToken, signal } = {}) {
     const out = data.message || data.text || data.answer || "";
     if (out) {
       onToken?.(out);
-      return { text: out, source: "smartbot" };
+      return { text: out, source: data.source || "smartbot", buttons: data.buttons || [] };
     }
     throw new Error("CHAT_EMPTY");
   } catch (e) {
