@@ -11,7 +11,8 @@
     "test:all": "node --no-warnings scripts/test-all.mjs",
     "lint": "eslint",
     "clean": "node -e \"const fs = require('fs'); try { fs.rmSync('.next', {recursive: true, force: true}); } catch(e) { if (e.code !== 'ENOENT') { setTimeout(() => { try { fs.rmSync('.next', {recursive: true, force: true}); console.log('Cleaned successfully on retry.'); } catch(err) { console.error('Clean failed:', err.message); } }, 1500); } }\"",
-    "demo": "node scripts/demo.js"
+    "demo": "node scripts/demo.js",
+    "upload-env": "node scripts/upload-env.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

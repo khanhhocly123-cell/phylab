@@ -33,6 +33,12 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# secrets bundle for Cloudflare upload (VNPT tokens, admin creds) — NEVER commit
+cloudflare-env.txt
+
+# local tooling / preview config
+.claude/
+
 # vercel
 .vercel
 

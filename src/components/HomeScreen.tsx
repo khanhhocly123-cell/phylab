@@ -238,6 +238,9 @@ export default function HomeScreen({
               <img
                 src="/images/prism_light.webp"
                 alt="Prism splitting light spectrum"
+                loading="lazy"
+                decoding="async"
+                draggable={false}
                 className="w-full h-full object-cover select-none transition-transform duration-[1.2s] ease-out group-hover:scale-105"
               />
             </div>
@@ -408,17 +411,23 @@ export default function HomeScreen({
           </h3>
           
           <div className="w-full">
-            <div className="flex lg:grid overflow-x-auto lg:overflow-x-visible lg:grid-cols-2 gap-5 pb-4 lg:pb-0 snap-x snap-mandatory scrollbar-none w-full">
+            <div
+              className="flex lg:grid overflow-x-auto lg:overflow-x-visible lg:grid-cols-2 gap-4 lg:gap-5 pb-4 lg:pb-0 snap-x snap-mandatory scrollbar-none w-full scroll-smooth"
+              style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain" }}
+            >
               {/* Card 1: Ramp experiment (Bài 6) */}
               <div
                 onClick={() => onOpenLab("do-toc-do-vat-chuyen-dong")}
-                className="min-w-[85vw] sm:min-w-0 snap-start bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] hover:border-[#C85A17]/35 shadow-[0_6px_20px_rgba(50,30,18,0.015)] hover:shadow-[0_12px_32px_rgba(50,30,18,0.03)] transition-all duration-300 overflow-hidden flex flex-col justify-between cursor-pointer group relative flex-shrink-0 sm:w-auto"
+                className="min-w-[76vw] sm:min-w-0 snap-start bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] hover:border-[#C85A17]/35 shadow-[0_6px_20px_rgba(50,30,18,0.015)] hover:shadow-[0_12px_32px_rgba(50,30,18,0.03)] transition-all duration-300 overflow-hidden flex flex-col justify-between cursor-pointer group relative flex-shrink-0 sm:w-auto"
               >
                 {/* Visual Thumbnail with Gradient Overlay */}
-                <div className="h-40 md:h-44 overflow-hidden relative bg-[#EAE8E3] border-b border-[#E2DFD8]/70">
+                <div className="h-28 md:h-44 overflow-hidden relative bg-[#EAE8E3] border-b border-[#E2DFD8]/70">
                   <img
                     src="/images/marble_ramp.webp"
                     alt="Đo tốc độ tức thời và tốc độ trung bình"
+                    loading="lazy"
+                    decoding="async"
+                    draggable={false}
                     className="w-full h-full object-cover select-none transition-transform duration-[1.5s] ease-out group-hover:scale-103"
                   />
                   {/* Subtle dark gradient overlay to highlight text */}
@@ -478,13 +487,16 @@ export default function HomeScreen({
               {/* Card 2: Free fall experiment (Bài 11) */}
               <div
                 onClick={() => onOpenLab("do-gia-toc-roi-tu-do")}
-                className="min-w-[85vw] sm:min-w-0 snap-start bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] hover:border-[#C85A17]/35 shadow-[0_6px_20px_rgba(50,30,18,0.015)] hover:shadow-[0_12px_32px_rgba(50,30,18,0.03)] transition-all duration-300 overflow-hidden flex flex-col justify-between cursor-pointer group relative flex-shrink-0 sm:w-auto"
+                className="min-w-[76vw] sm:min-w-0 snap-start bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] hover:border-[#C85A17]/35 shadow-[0_6px_20px_rgba(50,30,18,0.015)] hover:shadow-[0_12px_32px_rgba(50,30,18,0.03)] transition-all duration-300 overflow-hidden flex flex-col justify-between cursor-pointer group relative flex-shrink-0 sm:w-auto"
               >
                 {/* Visual Thumbnail with Gradient Overlay */}
-                <div className="h-40 md:h-44 overflow-hidden relative bg-[#EAE8E3] border-b border-[#E2DFD8]/70">
+                <div className="h-28 md:h-44 overflow-hidden relative bg-[#EAE8E3] border-b border-[#E2DFD8]/70">
                   <img
                     src="/images/free_fall.webp"
                     alt="Xác định gia tốc rơi tự do"
+                    loading="lazy"
+                    decoding="async"
+                    draggable={false}
                     className="w-full h-full object-cover select-none transition-transform duration-[1.5s] ease-out group-hover:scale-103"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
@@ -710,7 +722,7 @@ export default function HomeScreen({
                   {/* Visual Thumbnail container */}
                   <div className="w-16 h-16 rounded-2xl bg-[#FFF2E6] flex-shrink-0 overflow-hidden flex items-center justify-center border border-[#E2DFD8]/60 relative shadow-inner">
                     {lab.image ? (
-                      <img src={lab.image} alt={lab.name} className="w-full h-full object-cover" />
+                      <img src={lab.image} alt={lab.name} loading="lazy" decoding="async" draggable={false} className="w-full h-full object-cover" />
                     ) : (
                       <FlaskConical className="w-7 h-7 text-[#C85A17]" />
                     )}

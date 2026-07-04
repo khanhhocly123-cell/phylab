@@ -7,11 +7,13 @@
  *   node scripts/test-all.mjs http://localhost:3000
  * hoặc: npm run test:all
  *
- * Gồm 4 phần:
+ * Gồm 5 phần:
  *   1) UNIT chấm điểm (grading.ts) — thang khắt khe, dung sai 1%, phạt cân bằng/thiếu lần đo,
  *      tổng 70/30 với đồ thị. Không cần server.
  *   2) UNIT vật lý + API shape — chạy lại scripts/test.mjs (physics engine, RAG, route sống).
  *   3) API fallback — chạy lại scripts/test-smartbot.mjs (4 kiểm tra /api/vnpt/chat).
+ *  3B) API BTC (VNPT) — kiểm thử 6 endpoint /api/vnpt/* (status, chat, problem, tts, ocr, ekyc):
+ *      xác nhận route sống, đúng shape phản hồi, và chặn đầu vào (OCR thiếu ảnh → 400). Cần server.
  *   4) CHẨN ĐOÁN SmartBot trực tiếp (đọc .env.local, gọi thẳng VNPT) — trả lời câu hỏi
  *      "vì sao bot cứ fallback": thử 3 chiến lược (câu hỏi thường / settings prompt /
  *      nhồi prompt vào text) để xem bot có bật "tri thức nâng cao" không và chiến lược
@@ -133,7 +135,9 @@ function runChild(label, scriptRel, extraArgs = []) {
 let serverUp = false;
 if (!NO_API) {
   try {
-    const res = await fetch(`${BASE}/api/vnpt/chat`, { signal: AbortSignal.timeout(5000) });
+    // Probe qua /status (có GET). Trước đây probe /chat bằng GET → route chỉ có POST
+    // trả 405 → serverUp luôn false → phần API bị bỏ qua nhầm.
+    const res = await fetch(`${BASE}/api/vnpt/status`, { signal: AbortSignal.timeout(5000) });
     serverUp = res.ok;
   } catch { serverUp = false; }
 }
@@ -144,6 +148,76 @@ if (serverUp) {
 } else {
   head("3) API fallback /api/vnpt/chat");
   note(NO_API ? "Bỏ qua theo --no-api." : `Server ${BASE} không phản hồi — bỏ qua (bật 'npm run dev' để test đủ).`);
+}
+
+/* ========= 3B) API BAN TỔ CHỨC (VNPT) — status / chat / problem / tts / ocr / ekyc ========= */
+head("3B) API BTC (VNPT) — kiểm thử các endpoint /api/vnpt/*");
+if (!serverUp) {
+  note(NO_API ? "Bỏ qua theo --no-api." : `Server ${BASE} không phản hồi — bỏ qua (bật 'npm run dev').`);
+} else {
+  // 1) STATUS — cổng khai báo cấu hình 4 dịch vụ BTC
+  try {
+    const res = await fetch(`${BASE}/api/vnpt/status`, { signal: AbortSignal.timeout(15000) });
+    const d = await res.json().catch(() => ({}));
+    ok("GET /status → ok:true", res.ok && d?.ok === true, `HTTP ${res.status}`);
+    const hasFlags = !!(d && d.smartbot && d.ekyc && d.tts && d.ocr);
+    ok("/status đủ 4 cờ dịch vụ (smartbot/ekyc/tts/ocr)", hasFlags);
+    if (hasFlags) {
+      const cfg = (n, o) => `${n}:${o?.configured ? `${g}ON${z}` : `${dim}off${z}`}`;
+      console.log(`  ${dim}   cấu hình:${z} ${cfg("smartbot", d.smartbot)} · ${cfg("ekyc", d.ekyc)} · ${cfg("tts", d.tts)} · ${cfg("ocr", d.ocr)}`);
+    }
+  } catch (e) { ok("GET /status", false, e.message); }
+
+  // 2) CHAT (task=chat) — hỏi–đáp; luôn có câu trả lời thật (SmartBot hoặc RAG)
+  try {
+    const res = await fetch(`${BASE}/api/vnpt/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task: "chat", text: "Công thức tính gia tốc rơi tự do là gì?" }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const d = await res.json().catch(() => ({}));
+    ok("POST /chat (task=chat) → message + source",
+      res.ok && typeof d?.message === "string" && d.message.length > 0 && !!d?.source, `source=${d?.source}`);
+  } catch (e) { ok("POST /chat (chat)", false, e.message); }
+
+  // 3) CHAT (task=problem) — Trợ lý diễn đạt đề bài từ mục tiêu số
+  try {
+    const res = await fetch(`${BASE}/api/vnpt/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task: "problem", labKind: "average", targets: [{ theta: 25, sEF: 0.3 }], prompt: "Đo vận tốc trung bình." }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const d = await res.json().catch(() => ({}));
+    ok("POST /chat (task=problem) → message", res.ok && typeof d?.message === "string" && d.message.length > 0);
+  } catch (e) { ok("POST /chat (problem)", false, e.message); }
+
+  // 4) TTS — trả audio thật (isMock:false) hoặc báo isMock để client tự đọc
+  try {
+    const res = await fetch(`${BASE}/api/vnpt/tts`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "Xin chào, đây là bài kiểm thử giọng nói." }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const d = await res.json().catch(() => ({}));
+    ok("POST /tts → audioLink hoặc isMock", res.ok && (typeof d?.audioLink === "string" || d?.isMock === true),
+      d?.isMock ? "isMock (fallback trình duyệt)" : "audio thật");
+    if (res.ok && d?.isMock) note("TTS chưa cấu hình token VNPT Voice → client tự đọc bằng SpeechSynthesis.");
+  } catch (e) { ok("POST /tts", false, e.message); }
+
+  // 5) OCR — thiếu ảnh phải bị chặn 400 (validate đầu vào an toàn)
+  try {
+    const res = await fetch(`${BASE}/api/vnpt/ocr`, { method: "POST", body: new FormData(), signal: AbortSignal.timeout(20000) });
+    ok("POST /ocr (thiếu ảnh) → 400 (chặn đầu vào)", res.status === 400, `HTTP ${res.status}`);
+  } catch (e) { ok("POST /ocr", false, e.message); }
+
+  // 6) eKYC — endpoint sống & trả JSON hợp lệ (mock nếu chưa cấu hình; 400 nếu đã cấu hình mà thiếu ảnh)
+  try {
+    const fd = new FormData(); fd.append("action", "ocr");
+    const res = await fetch(`${BASE}/api/vnpt/ekyc`, { method: "POST", body: fd, signal: AbortSignal.timeout(20000) });
+    const d = await res.json().catch(() => ({}));
+    ok("POST /ekyc → phản hồi JSON hợp lệ",
+      (res.status === 200 && (d?.isMock === true || !!d?.name)) || res.status === 400, `HTTP ${res.status}`);
+  } catch (e) { ok("POST /ekyc", false, e.message); }
 }
 
 /* ================= 4) CHẨN ĐOÁN SmartBot trực tiếp ================= */

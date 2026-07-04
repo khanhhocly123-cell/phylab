@@ -788,18 +788,18 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
             {trials.length > 0 && <button onClick={() => setTrials([])} style={{ ...btnGhost, fontSize: 11 }}>Xóa hết</button>}
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "2px 0 8px" }}>
-            <span style={{ fontSize: 11, color: C.sub }}>số đo</span>
-            <b style={{ fontFamily: "monospace", fontSize: isMobile ? 20 : 24, color: justRolled ? C.orangeDk : C.ink }}>{led}</b>
-            <span style={{ fontSize: 11, color: C.sub }}>s</span>
+            <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub }}>số đo</span>
+            <b style={{ fontFamily: "monospace", fontSize: isMobile ? 28 : 24, color: justRolled ? C.orangeDk : C.ink }}>{led}</b>
+            <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub }}>s</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8, maxHeight: 140, overflow: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: isMobile ? 200 : 140, overflow: "auto" }}>
             {trials.map((t) => (
-              <div key={t.id} style={{ fontSize: isMobile ? 11.5 : 13, color: C.sub, display: "flex", justifyContent: "space-between", padding: "4px 8px", background: C.bg, borderRadius: 6 }}>
+              <div key={t.id} style={{ fontSize: isMobile ? 13.5 : 13, color: C.sub, display: "flex", justifyContent: "space-between", padding: isMobile ? "7px 10px" : "4px 8px", background: C.bg, borderRadius: 6 }}>
                 <span>#{t.id} θ{t.theta}° {t.mode}</span>
                 <span style={{ color: C.ink, fontWeight: 700 }}>{t.t.toFixed(scale === "fine" ? 3 : 2)}s{t.v ? ` · ${t.v.toFixed(2)}` : ""}</span>
               </div>
             ))}
-            {!trials.length && <div style={{ fontSize: isMobile ? 12 : 13, color: C.sub2, fontStyle: "italic" }}>Chưa có lần đo. Reset → thả bi → Ghi số liệu.</div>}
+            {!trials.length && <div style={{ fontSize: isMobile ? 13 : 13, color: C.sub2, fontStyle: "italic" }}>Chưa có lần đo. Reset → thả bi → Ghi số liệu.</div>}
           </div>
           <button onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8 }}>Ghi số liệu</button>
           <button onClick={exportNote} style={{ ...btnBig, width: "100%" }}>Xuất sang Note</button>
@@ -952,53 +952,105 @@ export default function LabBench({ measuredD = 20.0, studentName, onExportNote, 
                 </div>
               </section>
 
-              {!assembled ? (
-                /* Assistant guide card shown only during assembly */
-                <section style={{ 
-                  background: "#fff", 
-                  border: `1px solid ${C.line}`, 
-                  borderRadius: 16, 
-                  padding: 12, 
-                  display: "flex", 
-                  flexDirection: "column", 
-                  gap: 8,
-                  boxShadow: "0 2px 8px rgba(50,30,18,0.03)"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 6, background: C.orange, color: "#fff", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 11 }}>F</div>
-                    <b style={{ color: C.ink, fontSize: 12.5 }}>Trợ lý Phylab</b>
-                    
-                    {speak && (
-                      <button onClick={onToggleMute} title={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-label={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-pressed={muted}
-                        style={{ marginLeft: "auto", border: `1px solid ${muted ? "#C0392B" : C.line}`, background: muted ? "#FDECEA" : "#fff", borderRadius: 8, width: 28, height: 28, cursor: "pointer", display: "grid", placeItems: "center", color: muted ? "#C0392B" : C.orange }}>
-                        {muted ? <VolumeX className="w-4 h-4 text-[#C0392B]" /> : <Volume2 className="w-4 h-4 text-[#C85A17]" />}
-                      </button>
-                    )}
-                  </div>
+              {/* Trợ lý Phylab — LUÔN hiển thị (trước đây bị ẩn sau khi lắp xong). */}
+              <section style={{
+                background: "#fff",
+                border: `1px solid ${C.line}`,
+                borderRadius: 16,
+                padding: 12,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                boxShadow: "0 2px 8px rgba(50,30,18,0.03)"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 7, background: C.orange, color: "#fff", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13 }}>φ</div>
+                  <b style={{ color: C.ink, fontSize: 13.5 }}>Trợ lý Phylab</b>
 
-                  <div style={{ 
-                    padding: "8px 10px", 
-                    borderRadius: 8, 
-                    background: C.bg, 
-                    borderLeft: `3px solid ${tone}`, 
-                    color: C.ink, 
-                    fontSize: 12, 
-                    lineHeight: 1.4,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6
-                  }}>
-                    <span style={{ flex: 1 }}><MathText text={tip.text} /></span>
-                    {speak && tip.text && (
-                      <button type="button" onClick={() => speak(tip.text)} title="Nghe đọc" style={{ border: "none", background: "none", cursor: "pointer", padding: "2px 4px", display: "inline-flex", alignItems: "center" }}>
-                        <Play className="w-3.5 h-3.5 text-[#C85A17] fill-[#C85A17]/10" />
-                      </button>
-                    )}
-                  </div>
-                </section>
-              ) : (
-                /* Data table shown directly in place of space once assembled */
+                  {speak && (
+                    <button onClick={onToggleMute} title={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-label={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-pressed={muted}
+                      style={{ marginLeft: "auto", border: `1px solid ${muted ? "#C0392B" : C.line}`, background: muted ? "#FDECEA" : "#fff", borderRadius: 8, width: 28, height: 28, cursor: "pointer", display: "grid", placeItems: "center", color: muted ? "#C0392B" : C.orange }}>
+                      {muted ? <VolumeX className="w-4 h-4 text-[#C0392B]" /> : <Volume2 className="w-4 h-4 text-[#C85A17]" />}
+                    </button>
+                  )}
+                </div>
+
+                <div style={{
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: C.bg,
+                  borderLeft: `3px solid ${tone}`,
+                  color: C.ink,
+                  fontSize: 13.5,
+                  lineHeight: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}>
+                  <span style={{ flex: 1 }}><MathText text={tip.text} /></span>
+                  {speak && tip.text && (
+                    <button type="button" onClick={() => speak(tip.text)} title="Nghe đọc" style={{ border: "none", background: "none", cursor: "pointer", padding: "2px 4px", display: "inline-flex", alignItems: "center" }}>
+                      <Play className="w-3.5 h-3.5 text-[#C85A17] fill-[#C85A17]/10" />
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 11.5, color: C.sub, textAlign: "center" }}>
+                  Cần hỏi thêm? Mở <b style={{ color: C.orange }}>Trợ lý AI</b> ở thanh dưới cùng để chat.
+                </div>
+              </section>
+
+              {assembled && (
+                /* Sau khi lắp xong: hiện ĐỀ BÀI + bảng ghi số liệu ngay trong luồng chính
+                   (trước đây đề bài bị ẩn trên mobile vì chỉ nằm ở cột tiến trình). */
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* THAO TÁC NHANH — bấm là xong, khỏi phải kéo dây/chạm núm nhỏ trên điện thoại. */}
+                  {!setupDone && (
+                    <section style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 10, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
+                      <div style={{ ...sideTitle, marginBottom: 0, fontSize: 13, color: C.orangeDk }}>Thao tác nhanh — chạm để cài đặt</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {[
+                          { label: "Cân bằng máng", done: balanced, act: () => { setBalanced((v) => !v); flash(balanced ? "Đã bỏ cân bằng" : "Đã cân bằng máng"); } },
+                          { label: "Nối dây tự động", done: wiredOK, act: () => { setFace("back"); if (lab === "average") { setWires({ A: "E", B: "F" }); flash("Đã nối cổng E→A và F→B"); } else { setWires({ A: "E", B: null }); flash("Đã nối cổng E→A"); } } },
+                          { label: "Bật nguồn đồng hồ", done: power, act: () => { setPower((v) => !v); flash(power ? "Đã tắt nguồn" : "Đã bật nguồn đồng hồ"); } },
+                          { label: `Chọn MODE ${lab === "average" ? "A↔B" : "A"}`, done: modeOK, act: () => { setMode(lab === "average" ? "A<->B" : "A"); flash(`Đã chọn MODE ${lab === "average" ? "A↔B" : "A"}`); } },
+                        ].map((q) => (
+                          <button key={q.label} onClick={q.act}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${q.done ? C.good : C.orange}`, background: q.done ? "#F3F8F3" : "#FFF7EF", color: q.done ? C.good : C.orangeDk, fontSize: 12.5, fontWeight: 800, cursor: "pointer", fontFamily: FONT, textAlign: "center", lineHeight: 1.2 }}>
+                            {q.done && <Check className="w-4 h-4 stroke-[3]" />}
+                            {q.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.sub, textAlign: "center" }}>
+                        Hoặc tự thao tác trên bàn: chạm đầu dây rồi chạm ổ cắm ở mặt sau đồng hồ.
+                      </div>
+                    </section>
+                  )}
+                  {setupDone && (
+                    <section style={{ background: "#FFFDF9", border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 9, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
+                      <div style={{ ...sideTitle, marginBottom: 0, fontSize: 13, color: C.orangeDk }}>
+                        Đề bài Trợ lý giao — tự chỉnh θ{lab === "average" ? " và sEF" : ""} rồi đo
+                      </div>
+                      {deBai && (
+                        <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, whiteSpace: "pre-line" }}>
+                          <MathText text={deBai} />
+                        </div>
+                      )}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {(lab === "average" ? suggestedAvg : suggestedInst).map((sg, i) => {
+                          const used = trials.some((t) => t.lab === lab && t.theta === sg.theta && (lab === "instant" || Math.abs(t.sEF - sg.sEF) < 1e-6));
+                          return (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 11px", borderRadius: 9, border: `1px solid ${C.line}`, background: used ? "#F3F8F3" : C.bg, fontSize: 13, color: C.ink }}>
+                              <span>Câu {i + 1}: θ={sg.theta}°{sg.sEF ? `, sEF=${(sg.sEF * 100).toFixed(0)}cm` : ""}</span>
+                              <span style={{ color: used ? C.good : C.sub, display: "inline-flex", alignItems: "center", gap: 3, fontWeight: used ? 800 : 400 }}>
+                                {used ? (<><Check className="w-3.5 h-3.5 stroke-[3] text-[#27AE60]" />đã đo</>) : "chưa đo"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
                   {renderSideContent({ assistant: false, progress: false, data: true })}
                 </div>
               )}
@@ -1128,16 +1180,22 @@ function Workbench(props) {
     }
   };
 
-  const viewBoxStr = 
-    zoomMode === "clock" ? "515 290 330 190" : 
-    zoomMode === "rail" ? "50 60 700 440" : 
-    (props.isMobile ? "60 40 780 420" : `0 0 ${VBW} ${VBH}`);
+  const viewBoxStr =
+    zoomMode === "clock" ? "515 290 330 190" :
+    zoomMode === "rail" ? "50 60 700 440" :
+    (props.isMobile ? "70 55 640 400" : `0 0 ${VBW} ${VBH}`);
+  // Trên mobile: bỏ letterbox — cho SVG tự cao đúng theo tỉ lệ viewBox để khung lab
+  // lấp đầy chiều ngang màn hình (to & rõ nhất có thể), không còn viền trống trên/dưới.
+  const [, , vbW, vbH] = viewBoxStr.split(" ").map(Number);
 
   return (
     <div style={{ position: "relative", width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <svg 
+      <svg
         onPointerDown={onCanvasTap}
-        viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet" style={{ flex: props.isMobile ? "none" : 1, minHeight: 0, width: "100%", height: props.isMobile ? 380 : "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: props.isMobile ? 0 : 1 }}>
+        viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet"
+        style={props.isMobile
+          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "64vh", minHeight: 210, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
+          : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
         <rect x="0" y={FLOOR} width={VBW} height={VBH - FLOOR} fill="#F1E7D3" />
         <line x1="0" y1={FLOOR} x2={VBW} y2={FLOOR} stroke="#E1D3B6" strokeWidth="2" />
 
