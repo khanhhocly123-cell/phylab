@@ -29,15 +29,7 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [result, setResult] = useState<OcrResponse | null>(null);
-  const [showGuideModal, setShowGuideModal] = useState(false);
-
-  useEffect(() => {
-    const hasSeen = localStorage.getItem("phylab_seen_scan_guide");
-    if (!hasSeen) {
-      setShowGuideModal(true);
-      localStorage.setItem("phylab_seen_scan_guide", "true");
-    }
-  }, []);
+  const [showGuideModal, setShowGuideModal] = useState(true);
 
   const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
 
