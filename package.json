@@ -1,0 +1,38 @@
+{
+  "name": "phylab",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node --max-old-space-size=1536 node_modules/next/dist/bin/next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --no-warnings scripts/test.mjs",
+    "test:smartbot": "node scripts/test-smartbot.mjs",
+    "test:all": "node --no-warnings scripts/test-all.mjs",
+    "lint": "eslint",
+    "clean": "node -e \"const fs = require('fs'); try { fs.rmSync('.next', {recursive: true, force: true}); } catch(e) { if (e.code !== 'ENOENT') { setTimeout(() => { try { fs.rmSync('.next', {recursive: true, force: true}); console.log('Cleaned successfully on retry.'); } catch(err) { console.error('Clean failed:', err.message); } }, 1500); } }\"",
+    "demo": "node scripts/demo.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "framer-motion": "^12.42.0",
+    "idb": "^8.0.3",
+    "katex": "^0.17.0",
+    "lucide-react": "^1.22.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "recharts": "^3.9.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

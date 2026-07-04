@@ -1,0 +1,220 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-blue: #3E2718;      /* Deep Mahogany: replaces Navy for dark text/borders */
+  --color-brand-yellow: #D56A17;    /* Orange: replaces positive Teal highlights */
+  --color-brand-orange: #D56A17;    /* Orange: retro accent color */
+  --color-brand-cream: #FBF6EC;     /* Cream background */
+  --color-brand-white: #FCFAF6;     /* Muted off-white for panel cards */
+  
+  --font-nunito: 'Nunito', sans-serif;
+  --font-digital: 'Play', monospace;
+
+  /* Regular modern rounded corners */
+  --radius-3xl: 16px;
+  --radius-2xl: 12px;
+  --radius-xl: 8px;
+  --radius-lg: 6px;
+  --radius-md: 4px;
+  --radius-sm: 2px;
+}
+
+:root {
+  --background: #FBF6EC;
+  --foreground: #3E2718;
+  --border-color: rgba(213, 106, 23, 0.18);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ===== In báo cáo (Xuất PDF): chỉ giữ #phylab-report, khổ A4 =====
+   Phần ẩn khung app (sidebar/header/nav) dùng class Tailwind `print:hidden` trong JSX;
+   ở đây chỉ giữ các rule Lightning CSS xử lý được (không lồng @page, không :not() phức tạp). */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  /* Gỡ khung cuộn/khóa chiều cao của layout app để báo cáo tràn ra nhiều trang */
+  .h-screen { height: auto !important; }
+  .w-screen { width: auto !important; }
+  .overflow-hidden { overflow: visible !important; }
+  .overflow-y-auto { overflow: visible !important; }
+
+  main {
+    padding: 0 !important;
+    background-image: none !important;
+    background-color: #fff !important;
+    overflow: visible !important;
+  }
+
+  /* Không cắt bảng/chữ ký giữa trang */
+  #phylab-report table { break-inside: avoid; }
+  #phylab-report section { break-inside: avoid; }
+
+  /* In đúng màu nền nhạt của các ô bảng/điểm */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Modern Professional Panels (Windows 11 inspired) */
+.comic-border {
+  border: 1px solid var(--border-color);
+}
+
+.comic-border-sm {
+  border: 1px solid var(--border-color);
+}
+
+.comic-shadow {
+  box-shadow: 0 4px 6px -1px rgba(26, 45, 66, 0.05), 0 2px 4px -1px rgba(26, 45, 66, 0.03);
+}
+
+.comic-shadow-sm {
+  box-shadow: 0 2px 4px 0 rgba(26, 45, 66, 0.05);
+}
+
+.comic-shadow-xs {
+  box-shadow: 0 1px 2px 0 rgba(26, 45, 66, 0.05);
+}
+
+.comic-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.comic-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.blueprint-grid {
+  background-size: 20px 20px;
+  background-image: linear-gradient(to right, rgba(59, 46, 42, 0.07) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(59, 46, 42, 0.07) 1px, transparent 1px);
+}
+
+.binder-ring {
+  position: relative;
+}
+
+.binder-ring::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 24px;
+  border: 3px solid var(--color-brand-blue);
+  background-color: var(--color-brand-cream);
+  border-radius: 999px;
+  z-index: 10;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-brand-cream);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-brand-blue);
+  border-radius: 4px;
+}
+
+/* Cable plug-in draw animation */
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.cable-connection-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawPath 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scanner beam animation */
+@keyframes scanBeam {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(280px);
+  }
+}
+
+.animate-scan-beam {
+  animation: scanBeam 2s ease-in-out infinite;
+}
+
+/* Floating animation for modern 3D illustration */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(1.5deg);
+  }
+}
+
+@keyframes floatFast {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(-1deg);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 8s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: floatFast 4s ease-in-out infinite;
+}
+
+/* ===== Mobile safe-area (iPhone X+ notch / home indicator) =====
+   pb-safe dùng ở bottom nav; pt-safe dự phòng cho tương lai. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Bottom nav cần đủ chiều cao kể cả phần safe-area */
+.h-nav-safe {
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+

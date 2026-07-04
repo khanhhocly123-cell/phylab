@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%" height="100%">
+  <!-- Background Card: Cream/Beige -->
+  <rect width="800" height="200" rx="16" fill="#FBF6EC" stroke="rgba(213, 106, 23, 0.25)" stroke-width="1.5" />
+
+  <defs>
+    <!-- Orange Gradient -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D56A17" />
+      <stop offset="100%" stop-color="#E9802B" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    @keyframes waveFlowForward {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: -120; }
+    }
+    @keyframes waveFlowBackward {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: 120; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+    .wave-orange {
+      stroke-dasharray: 8, 16;
+      animation: waveFlowForward 7s linear infinite;
+    }
+    .wave-mahogany {
+      stroke-dasharray: 10, 20;
+      animation: waveFlowBackward 9s linear infinite;
+    }
+    .wave-bg {
+      stroke-dasharray: 6, 12;
+      animation: waveFlowForward 15s linear infinite;
+    }
+    .text-container {
+      animation: float 5s ease-in-out infinite;
+    }
+    .title-text {
+      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      font-weight: 900;
+      font-size: 58px;
+      fill: #3E2718;
+      letter-spacing: 1px;
+    }
+    .subtitle-text {
+      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      fill: #3E2718;
+      opacity: 0.65;
+      letter-spacing: 5px;
+    }
+  </style>
+
+  <!-- Technical Grid overlay in Mahogany with very low opacity -->
+  <g opacity="0.04">
+    <path d="M 0,25 L 800,25 M 0,50 L 800,50 M 0,75 L 800,75 M 0,100 L 800,100 M 0,125 L 800,125 M 0,150 L 800,150 M 0,175 L 800,175" stroke="#3E2718" stroke-width="1"/>
+    <path d="M 100,0 L 100,200 M 200,0 L 200,200 M 300,0 L 300,200 M 400,0 L 400,200 M 500,0 L 500,200 M 600,0 L 600,200 M 700,0 L 700,200" stroke="#3E2718" stroke-width="1"/>
+  </g>
+
+  <!-- Elegant Sine Waves (Terracotta Orange & Mahogany) -->
+  <!-- Subtle Mahogany Background Wave -->
+  <path d="M -50,100 C 150,50 250,150 450,100 C 650,50 750,150 850,100" fill="none" stroke="#3E2718" stroke-width="1.25" class="wave-bg" opacity="0.1" />
+
+  <!-- Mahogany Wave -->
+  <path d="M -50,100 C 150,30 250,170 450,100 C 650,30 750,170 850,100" fill="none" stroke="#3E2718" stroke-width="1.75" class="wave-mahogany" opacity="0.18" />
+
+  <!-- Orange Primary Wave -->
+  <path d="M -50,100 C 150,170 250,30 450,100 C 650,170 750,30 850,100" fill="none" stroke="url(#orangeGrad)" stroke-width="2.5" class="wave-orange" opacity="0.75" />
+
+  <!-- Minimalist Brand Text (Mahogany & Orange) -->
+  <g transform="translate(80, 45)">
+    <g class="text-container">
+      <!-- Brand Title -->
+      <text class="title-text" x="0" y="45">
+        <tspan fill="#D56A17">Phy</tspan><tspan fill="#3E2718">Lab</tspan>
+      </text>
+      <!-- Subtitle -->
+      <text class="subtitle-text" x="3" y="75">PHÒNG THÍ NGHIỆM VẬT LÝ 3D</text>
+      <!-- Mini Tag -->
+      <rect x="3" y="88" width="138" height="18" rx="4" fill="rgba(213, 106, 23, 0.08)" stroke="rgba(213, 106, 23, 0.25)" stroke-width="0.75"/>
+      <text x="72" y="100.5" font-family="'Nunito', sans-serif" font-size="8.5" font-weight="800" fill="#D56A17" letter-spacing="1" text-anchor="middle">SGK KẾT NỐI TRI THỨC</text>
+    </g>
+  </g>
+</svg>

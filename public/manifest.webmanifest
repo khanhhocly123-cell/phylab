@@ -1,0 +1,19 @@
+{
+  "name": "Phylab - Phòng thí nghiệm Vật lý",
+  "short_name": "Phylab",
+  "description": "Mô phỏng phòng thí nghiệm vật lý cho học sinh THPT Việt Nam.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF9F6",
+  "theme_color": "#C85A17",
+  "lang": "vi",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
