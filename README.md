@@ -27,7 +27,7 @@ Dự án hỗ trợ hai bài thực hành chính:
 Để cài đặt các thư viện phụ thuộc và chạy ứng dụng ở máy local, bạn mở terminal tại thư mục dự án và chạy lệnh:
 
 ```bash
-npm install && npm run dev
+git clone https://github.com/khanhhocly123-cell/phylab.git && cd phylab && npm install && npm run dev
 ```
 
 *Ứng dụng sẽ được chạy tại cổng mặc định `3000`. Địa chỉ truy cập: http://localhost:3000*
