@@ -16,9 +16,8 @@ import { sanitizeText, LIMITS } from "@/lib/security";
  */
 
 const SYSTEM_PROMPT =
-  "Bạn là Trợ lý Phylab — trợ giảng vật lí lớp 10 (SGK Kết nối tri thức) cho hai bài thực hành: " +
-  "Bài 6 (đo tốc độ tức thời/trung bình trên máng nghiêng) và Bài 11 (đo gia tốc rơi tự do). " +
-  "Chỉ dùng kiến thức trong phạm vi hai bài này và ngữ cảnh được cung cấp.";
+  "Bạn là Trợ lý Phylab — trợ giảng vật lí phổ thông. " +
+  "Ưu tiên hỗ trợ thao tác trong phòng lab ảo, nhưng vẫn trả lời được các câu hỏi vật lí phổ thông ngoài phạm vi bài đang thí nghiệm.";
 
 type AssistantSettings = {
   pronoun?: "anh" | "chị";
@@ -40,11 +39,8 @@ function normalizeAssistantSettings(input: unknown): Required<AssistantSettings>
 }
 
 function personaPrompt(settings: Required<AssistantSettings>): string {
-  const voice =
-    settings.answerStyle === "detailed"
-      ? "Trả lời chi tiết theo từng bước, nhưng vẫn gọn và có thể thao tác ngay."
-      : "Trả lời ngắn gọn trong 2–3 câu, ưu tiên chỉ ra thao tác tiếp theo.";
-  return ` Xưng '${settings.pronoun}' và gọi học sinh là 'em'. ${voice}`;
+  const voice = settings.answerStyle === "detailed" ? "Trả lời chi tiết." : "Trả lời ngắn gọn trong 2 dòng.";
+  return ` Xưng là ${settings.pronoun}, gọi học sinh là em. ${voice}`;
 }
 
 function applyAssistantPersona(text: string, settings: Required<AssistantSettings>): string {
@@ -73,30 +69,55 @@ function buildLabContext(input: unknown): string {
   return sanitizeText(JSON.stringify(input), 1200);
 }
 
+function hasAny(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
 function quickActionsFor(query: string, labContext: string): QuickAction[] {
   const q = query.toLowerCase();
   const ctx = labContext.toLowerCase();
+  const assembled = ctx.includes('"assembled":true');
+  const labId = ctx.includes('"labid":"b11"') ? "b11" : "b6";
   const actions: QuickAction[] = [];
   const add = (title: string, payload: string) => {
     if (!actions.some((a) => a.payload === payload)) actions.push({ title, payload, type: "lab_action" });
   };
 
-  if (/không lắp|khong lap|khó lắp|kho lap|không kéo|khong keo|kéo không|keo khong|drag|thả không|tha khong/.test(q)) {
-    add("Tự động lắp bước này", "auto_place_next");
-  }
-  if (/dây|day|nối|noi|cắm|cam|jack|ổ/.test(q) || ctx.includes('"wiredok":false')) {
+  const isStuck = hasAny(q, [
+    /không|khong|ko|k\s|chưa|chua|lỗi|loi|khó|kho|kẹt|ket|không được|khong duoc|không biết|khong biet|vướng|vuong|sai|fail|giúp|giup|hỗ trợ|ho tro/,
+  ]);
+  const asksForAutomation = /tự động|tu dong|auto|làm giúp|lam giup|kéo giúp|keo giup|lắp giúp|lap giup|nối giúp|noi giup/.test(q);
+  const needsHelp = isStuck || asksForAutomation;
+
+  if (!needsHelp) return actions;
+
+  const assemblyProblem = /kéo thả|keo tha|kéo|keo|thả|tha|lắp|lap|đặt|dat|bấm|bam|dụng cụ|dung cu|vật nặng|vat nang|bi|trụ|tru|nam châm|nam cham/.test(q);
+  const wireProblem = /dây|day|nối|noi|cắm|cam|jack|ổ|o cam|cổng|cong/.test(q);
+  const screwProblem = /vít|vit|cố định|co dinh|siết|siet|cân bằng|can bang|dây dọi|day doi/.test(q);
+  const powerProblem = /nguồn|nguon|bật|bat|không lên|khong len|đồng hồ|dong ho/.test(q);
+  const modeProblem = /mode|chế độ|che do|a↔b|a<->b/.test(q);
+  const resetProblem = /reset|về 0|ve 0|0\.000|số đo cũ|so do cu/.test(q);
+
+  if (wireProblem) {
     add("Tự động nối dây", "auto_wire");
   }
-  if (/vít|vit|cố định|co dinh|siết|siet|cân bằng|can bang|dây dọi|day doi/.test(q) || ctx.includes('"balanced":false')) {
+  if (screwProblem) {
     add("Tự động cố định vít", "auto_fix_screw");
   }
-  if (/nguồn|nguon|bật|bat|không lên|khong len|đồng hồ|dong ho/.test(q) || ctx.includes('"power":false')) {
+  if (assemblyProblem) {
+    if (assembled) {
+      add(labId === "b11" ? "Tự động gắn lại trụ thép" : "Tự động đặt lại bi", "auto_reset_object");
+    } else {
+      add("Tự động lắp bước này", "auto_place_next");
+    }
+  }
+  if (powerProblem) {
     add("Bật nguồn đồng hồ", "auto_power");
   }
-  if (/mode|chế độ|che do|a↔b|a<->b/.test(q) || ctx.includes('"modeok":false')) {
+  if (modeProblem) {
     add("Chọn đúng MODE", "auto_mode");
   }
-  if (/reset|về 0|ve 0|0.000|số đo cũ|so do cu/.test(q) || ctx.includes('"isreset":false')) {
+  if (resetProblem) {
     add("Reset số đo", "auto_reset");
   }
   return actions.slice(0, 3);
@@ -105,8 +126,44 @@ function quickActionsFor(query: string, labContext: string): QuickAction[] {
 function actionFallbackMessage(settings: Required<AssistantSettings>, actions: QuickAction[]): string {
   const self = settings.pronoun === "anh" ? "Anh" : "Chị";
   if (!actions.length) return "";
-  const first = actions[0].title.toLowerCase();
-  return `${self} thấy đây là lỗi thao tác trong Lab. Em có thể bấm nút "${first}" bên dưới để Trợ lý Phylab tự xử lý bước đó, hoặc tiếp tục tự thao tác trên bàn thí nghiệm.`;
+  const first = actions[0];
+  if (first.payload === "auto_wire") {
+    return `${self} thấy em đang kẹt ở bước nối dây. Em kiểm tra đã lắp đủ đồng hồ và cổng quang/công tắc chưa, rồi chạm vào đầu dây hoặc bấm "${first.title.toLowerCase()}" bên dưới để Trợ lý Phylab nối giúp.`;
+  }
+  if (first.payload === "auto_reset_object") {
+    return `${self} thấy vật thả đang khó kéo về vị trí ban đầu. Em có thể thử chạm/kéo vật về phía nam châm, hoặc bấm "${first.title.toLowerCase()}" để Trợ lý Phylab đặt lại giúp.`;
+  }
+  if (first.payload === "auto_place_next") {
+    return `${self} thấy em đang kẹt ở bước lắp dụng cụ. Em kéo biểu tượng bàn tay của dụng cụ đang sáng vào ô sáng trên bàn, hoặc bấm "${first.title.toLowerCase()}" để Trợ lý Phylab lắp giúp bước này.`;
+  }
+  if (first.payload === "auto_fix_screw") {
+    return `${self} thấy phần cân bằng/cố định vít chưa ổn. Em zoom vùng máng hoặc bấm "${first.title.toLowerCase()}" để Trợ lý Phylab cố định vít giúp.`;
+  }
+  return `${self} thấy đây là lỗi thao tác trong Lab. Em có thể bấm "${first.title.toLowerCase()}" bên dưới để Trợ lý Phylab xử lý bước đó, hoặc tiếp tục tự thao tác trên bàn thí nghiệm.`;
+}
+
+function isPromptEcho(text: string): boolean {
+  const t = text.toLowerCase();
+  return (
+    t.includes("bạn là trợ lý phylab") ||
+    t.includes("câu hỏi của học sinh") ||
+    t.includes("ngữ cảnh thao tác") ||
+    t.includes("dựa vào các tài liệu sau") ||
+    t.includes("system_prompt") ||
+    t.includes("advance_prompt")
+  );
+}
+
+function generalPhysicsFallback(query: string, settings: Required<AssistantSettings>): string {
+  const self = settings.pronoun === "anh" ? "Anh" : "Chị";
+  const q = query.toLowerCase();
+  if (/vận tốc|van toc|velocity/.test(q)) {
+    return `${self} trả lời ngắn nhé: vận tốc là đại lượng cho biết vật chuyển động nhanh hay chậm và theo hướng nào. Công thức thường dùng là v = s/t hoặc v = Δx/Δt tùy bài toán.`;
+  }
+  if (/tốc độ|toc do|speed/.test(q)) {
+    return `${self} trả lời ngắn nhé: tốc độ cho biết mức nhanh chậm của chuyển động, không xét hướng. Công thức cơ bản là tốc độ = quãng đường / thời gian.`;
+  }
+  return `${self} chưa nhận được câu trả lời ổn từ SmartBot. Em hỏi lại cụ thể hơn một chút, ${settings.pronoun} sẽ giải thích theo kiến thức vật lí phổ thông nhé.`;
 }
 
 async function handleChat(userQuery: string, body: Record<string, unknown>) {
@@ -116,24 +173,35 @@ async function handleChat(userQuery: string, body: Record<string, unknown>) {
   const contextLine = labContext ? `\n\nNgữ cảnh thao tác hiện tại trong Lab (JSON): ${labContext}` : "";
   const actionHint =
     "Nếu học sinh gặp lỗi thao tác/kỹ thuật, hãy trả lời lý do ngắn gọn và gợi ý dùng nút thao tác nhanh nếu có.";
+  const styleLine = personaPrompt(settings);
   const advance = ragContext
-    ? `Dựa vào các tài liệu sau để trả lời câu hỏi của học sinh. Nếu tài liệu không đủ, nói em hỏi cụ thể hơn.${contextLine}\n\n${ragContext}\n\n${actionHint}\n\nCâu hỏi: ${userQuery}`
-    : `Câu hỏi của học sinh: ${userQuery}${contextLine}\n\n${actionHint}`;
+    ? `${styleLine}\nDựa vào các tài liệu sau để trả lời câu hỏi của học sinh. Nếu tài liệu không đủ, nói em hỏi cụ thể hơn.${contextLine}\n\n${ragContext}\n\n${actionHint}\n\nCâu hỏi: ${userQuery}`
+    : `${styleLine}\nCâu hỏi của học sinh: ${userQuery}${contextLine}\n\n${actionHint}`;
   const quickActions = quickActionsFor(userQuery, labContext);
+  const requestText = `${styleLine}\n${userQuery}`;
 
-  const bot = await askSmartBotResilient(userQuery, {
+  const bot = await askSmartBotResilient(requestText, {
     systemPrompt: SYSTEM_PROMPT + personaPrompt(settings),
     advancePrompt: advance,
   });
 
   if (bot.ok) {
     const rawMessage =
-      quickActions.length && /không thể|chưa thể|không hỗ trợ|không trả lời|khong the|khong ho tro/i.test(bot.text)
+      quickActions.length
         ? actionFallbackMessage(settings, quickActions)
         : bot.text;
+    if (isPromptEcho(rawMessage)) {
+      const rag = retrieveAnswer(userQuery);
+      return NextResponse.json({
+        message: applyAssistantPersona(rag || generalPhysicsFallback(userQuery, settings), settings),
+        buttons: quickActions,
+        source: rag ? "rag" : "local",
+        warning: "SMARTBOT_PROMPT_ECHO",
+      });
+    }
     return NextResponse.json({
       message: applyAssistantPersona(rawMessage, settings),
-      buttons: quickActions.length ? quickActions : bot.buttons,
+      buttons: quickActions,
       source: "smartbot",
       strategy: bot.strategy,
     });
@@ -145,10 +213,12 @@ async function handleChat(userQuery: string, body: Record<string, unknown>) {
   if (rag) {
     return NextResponse.json({ message: applyAssistantPersona(rag, settings), buttons: quickActions, source: "rag", warning: botError });
   }
+  const fallbackText =
+    "Chị chưa tìm thấy nội dung khớp trong hai bài thực hành. Em thử hỏi cụ thể hơn nhé, ví dụ: " +
+    "cách tính g, vận tốc tức thời/trung bình, chế độ MODE của MC964, cách nối dây, hay cách tính sai số.";
   return NextResponse.json({
     message: applyAssistantPersona(
-      "Chị chưa tìm thấy nội dung khớp trong hai bài thực hành. Em thử hỏi cụ thể hơn nhé, ví dụ: " +
-      "cách tính g, vận tốc tức thời/trung bình, chế độ MODE của MC964, cách nối dây, hay cách tính sai số.",
+      fallbackText,
       settings
     ),
     buttons: quickActions,

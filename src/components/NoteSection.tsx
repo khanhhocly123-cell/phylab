@@ -289,7 +289,13 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
       {/* ---------- TAB: ĐỒ THỊ ---------- */}
       {/* Luôn mount (chỉ ẩn/hiện) để không mất các điểm HS đã vẽ khi chuyển tab. */}
       <div className={tab === "graph" ? "" : "hidden"}>
-        <GraphTab lessonId={activeLesson} trials={trials} onScored={setGraphScore} />
+        <GraphTab
+          lessonId={activeLesson}
+          trials={trials}
+          graphScore={graphScore}
+          onScored={setGraphScore}
+          onBackToData={() => setTab("data")}
+        />
       </div>
 
       {/* ---------- TAB: BÁO CÁO ---------- */}
@@ -448,7 +454,19 @@ function Metric({ label, value, sub, highlight }: { label: string; value: string
   );
 }
 
-function GraphTab({ lessonId, trials, onScored }: { lessonId: string; trials: RichTrial[]; onScored?: (score: number) => void }) {
+function GraphTab({
+  lessonId,
+  trials,
+  graphScore,
+  onScored,
+  onBackToData,
+}: {
+  lessonId: string;
+  trials: RichTrial[];
+  graphScore: number | null;
+  onScored?: (score: number) => void;
+  onBackToData?: () => void;
+}) {
   const isFreeFall = lessonId === "do-gia-toc-roi-tu-do";
 
   // Điểm số liệu để HS tự vẽ lại.
@@ -494,6 +512,20 @@ function GraphTab({ lessonId, trials, onScored }: { lessonId: string; trials: Ri
       ) : (
         <div className="text-center py-10 text-[#605248]/60 text-xs font-bold">
           Cần ít nhất 2 lần đo (Xuất từ phòng Lab) để vẽ đồ thị.
+        </div>
+      )}
+      {graphScore != null && (
+        <div className="bg-[#F3F8F3] border border-emerald-200 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-[11px] font-black text-emerald-700">
+            Đồ thị đã chấm {graphScore}/10. Quay về tab Số liệu để bấm “Chấm điểm & nộp báo cáo”.
+          </p>
+          <button
+            type="button"
+            onClick={onBackToData}
+            className="px-3 py-2 bg-emerald-600 text-white text-[10px] font-black rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
+          >
+            Về Số liệu
+          </button>
         </div>
       )}
     </div>

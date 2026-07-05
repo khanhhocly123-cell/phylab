@@ -165,6 +165,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
   const [isMobile, setIsMobile] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false); // Google Maps bottom sheet
   const [zoomMode, setZoomMode] = useState("full"); // "full", "rail", "clock"
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [aiDeBai, setAiDeBai] = useState("");         // đề bài do Trợ lý (Smartbot) diễn đạt
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
 
@@ -225,6 +226,13 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
       (lab === "instant" || Math.abs(t.sEF - target.sEF) < 1e-6)
     )
   );
+  const currentTaskTrial = currentTask
+    ? trials.find((t) =>
+        t.lab === lab &&
+        t.theta === currentTask.theta &&
+        (lab === "instant" || Math.abs(t.sEF - currentTask.sEF) < 1e-6)
+      )
+    : null;
 
   useEffect(() => {
     setActiveTaskIndex(0);
@@ -314,7 +322,11 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
       const vbx = vbox_x_origin + (clientX - r.left - offset_x) / scale;
       const vby = vbox_y_origin + (clientY - r.top - offset_y) / scale;
       
-      const threshold = isMobile ? 120 : 95;
+      if (isMobile && clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+        flyToPlace(k, vbx, vby);
+        return;
+      }
+      const threshold = 95;
       if (!moved) { flyToPlace(k, tgt.x, tgt.y - 60); return; }        // bấm: bay từ trên xuống
       if (Math.hypot(vbx - tgt.x, vby - tgt.y) < threshold) flyToPlace(k, vbx, vby);
       else flash(`Kéo "${TOOLS.find((t) => t.k === k).name}" vào ô sáng trên bàn để lắp.`);
@@ -362,6 +374,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
 
   useEffect(() => {
     if (!isMobile) return;
+    if (assembled && ["release", "record"].includes(nextStepKey)) return;
     let target = "full";
     if (assembled) {
       if (nextStepKey === "balance") {
@@ -502,6 +515,8 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
       modeOK,
       isReset,
       rolling,
+      magnetOn,
+      ballAtEnd,
       trialsCount: trials.length,
       targetCount,
       currentTask: currentTask ? {
@@ -523,6 +538,15 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
       } else {
         flash("Các dụng cụ chính đã được lắp.");
       }
+      return;
+    }
+    if (payload === "auto_reset_object") {
+      if (!assembled || !placed.has("magnet")) {
+        flash("Cần lắp nam châm và viên bi trước khi đặt lại vật nặng.");
+        return;
+      }
+      magnetHold();
+      flash("Đã đặt viên bi lại vào nam châm.");
       return;
     }
     if (payload === "auto_wire") {
@@ -964,14 +988,14 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
               return (
                 <div key={t.k}
                   onPointerDown={(e) => {
-                    if (!isMobile) startToolDrag(t.k, e);
+                    if (!isMobile || (isMobile && isNext && !done)) startToolDrag(t.k, e);
                   }}
                   onClick={() => {
                     if (isMobile && isNext && !done) {
-                      flash(`Kéo biểu tượng bàn tay của "${t.name}" vào ô sáng trên bàn để lắp.`);
+                      flash(`Kéo ô "${t.name}" vào khung lab để lắp.`);
                     }
                   }}
-                  style={{ display: "flex", alignItems: "center", gap: isMobile ? 9 : 12, padding: isMobile ? "4px 8px" : "11px 13px", borderRadius: 12, marginBottom: isMobile ? 0 : 7, cursor: done ? "default" : (isMobile ? "default" : "grab"), touchAction: isMobile ? "pan-x" : "none", flexShrink: 0, minWidth: isMobile ? 160 : "auto",
+                  style={{ display: "flex", alignItems: "center", gap: isMobile ? 9 : 12, padding: isMobile ? "4px 8px" : "11px 13px", borderRadius: 12, marginBottom: isMobile ? 0 : 7, cursor: done ? "default" : (isMobile && !isNext ? "default" : "grab"), touchAction: isMobile && isNext && !done ? "none" : (isMobile ? "pan-x" : "none"), flexShrink: 0, minWidth: isMobile ? 160 : "auto",
                     border: `1.5px solid ${done ? C.good : isNext ? C.orange : C.line}`, background: done ? "#F3F8F3" : "#fff", opacity: done ? 0.7 : 1, boxShadow: isNext ? `0 0 0 3px ${C.orange}22` : "none" }}>
                   <div style={{ width: isMobile ? 24 : 56, height: isMobile ? 24 : 56, display: "grid", placeItems: "center", background: C.bg, borderRadius: 8, flexShrink: 0 }}>
                     <img src={t.img} alt="" style={{ maxWidth: isMobile ? 18 : 44, maxHeight: isMobile ? 18 : 44, objectFit: "contain" }} />
@@ -1040,23 +1064,59 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
             isMobile={isMobile}
             zoomMode={zoomMode}
             setZoomMode={setZoomMode}
+            highlightStep={nextStepKey}
           />
-          {isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
-              {assembled && (
-                <section style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: 12, display: "flex", flexDirection: "column", gap: 10, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 900, color: C.ink }}>Điều khiển dễ bấm</span>
-                    <button
-                      type="button"
-                      onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng máng."); }}
-                      disabled={!placed.has("standR")}
-                      style={{ border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 10, padding: "7px 9px", fontSize: 11, fontWeight: 900, opacity: placed.has("standR") ? 1 : 0.45 }}
-                    >
-                      Cố định vít
-                    </button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+          {false && isMobile && assembled && (
+            <div style={{ position: "absolute", top: 76, right: 10, zIndex: 36, pointerEvents: "none" }}>
+              {!controlsOpen && (
+                <button
+                  type="button"
+                  onClick={() => setControlsOpen(true)}
+                  style={{ pointerEvents: "auto", width: 34, height: 58, borderRadius: "14px 0 0 14px", border: `1px solid ${C.orange}`, borderRight: "none", background: "#FFF7EF", color: C.orangeDk, fontSize: 20, fontWeight: 900, boxShadow: "0 6px 18px rgba(50,30,18,0.16)", transform: "translateX(10px)" }}
+                  aria-label="Mở điều khiển nhanh"
+                >
+                  &gt;
+                </button>
+              )}
+              <div
+                style={{
+                  pointerEvents: controlsOpen ? "auto" : "none",
+                  width: 286,
+                  maxWidth: "78vw",
+                  background: "#fff",
+                  border: `1px solid ${C.line}`,
+                  borderRadius: 16,
+                  padding: 10,
+                  boxShadow: "0 12px 28px rgba(50,30,18,0.18)",
+                  transform: controlsOpen ? "translateX(0)" : "translateX(112%)",
+                  opacity: controlsOpen ? 1 : 0,
+                  transition: "transform 240ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setControlsOpen(false)}
+                    style={{ width: 30, height: 30, borderRadius: 10, border: `1px solid ${C.orange}`, background: "#FFF7EF", color: C.orangeDk, fontSize: 18, fontWeight: 900 }}
+                    aria-label="Ẩn điều khiển nhanh"
+                  >
+                    &lt;
+                  </button>
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 900, color: C.ink }}>Điều khiển nhanh</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2, scrollSnapType: "x proximity" }}>
+                  <button
+                    type="button"
+                    onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng máng."); }}
+                    disabled={!placed.has("standR")}
+                    style={{ minWidth: 118, border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 12, padding: "9px 10px", fontSize: 11, fontWeight: 900, opacity: placed.has("standR") ? 1 : 0.45 }}
+                  >
+                    Cố định vít
+                  </button>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, minWidth: 240 }}>
                     {[
                       ["full", "Toàn cảnh"],
                       ["rail", "Máng/cổng"],
@@ -1072,7 +1132,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                       </button>
                     ))}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: lab === "average" ? "1fr 1fr" : "1fr", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: lab === "average" ? "1fr 1fr" : "1fr", gap: 8, minWidth: lab === "average" ? 300 : 150 }}>
                     <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg }}>
                       <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Giá đỡ phải · θ={theta}°</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -1090,9 +1150,174 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {isMobile && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+              {assembled && (
+                <section style={{ position: "relative", zIndex: controlsOpen ? 45 : 35, minHeight: 44, marginTop: -2 }}>
+                  {controlsOpen && (
+                    <div
+                      onClick={() => setControlsOpen(false)}
+                      style={{ position: "fixed", inset: 0, zIndex: 44, background: "rgba(50,30,18,0.24)", backdropFilter: "blur(1.5px)", WebkitBackdropFilter: "blur(1.5px)" }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setControlsOpen((v) => !v)}
+                    style={{ position: "absolute", left: 0, top: 0, zIndex: 47, width: 46, height: 44, borderRadius: "0 16px 16px 0", border: `1px solid ${C.orange}`, borderLeft: "none", background: "#FFF7EF", color: C.orangeDk, fontSize: 21, fontWeight: 900, boxShadow: "0 8px 22px rgba(50,30,18,0.16)" }}
+                    aria-label={controlsOpen ? "Ẩn điều khiển nhanh" : "Mở điều khiển nhanh"}
+                  >
+                    {controlsOpen ? "<" : ">"}
+                  </button>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      zIndex: 46,
+                      background: "#fff",
+                      border: `1px solid ${C.line}`,
+                      borderRadius: 18,
+                      padding: "16px 14px 16px 58px",
+                      boxShadow: "0 18px 42px rgba(50,30,18,0.22)",
+                      transform: controlsOpen ? "translateY(0) scale(1)" : "translateY(-10px) scale(0.97)",
+                      opacity: controlsOpen ? 1 : 0,
+                      pointerEvents: controlsOpen ? "auto" : "none",
+                      transition: "transform 240ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 900, color: C.ink, marginBottom: 12 }}>Điều khiển nhanh</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
+                      {[
+                        ["full", "Toàn cảnh"],
+                        ["rail", "Máng/cổng"],
+                        ["clock", "Đồng hồ"],
+                      ].map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setZoomMode(key)}
+                          style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 12, padding: "12px 10px", fontSize: 12, fontWeight: 900 }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: lab === "average" ? "1fr 1fr" : "1fr", gap: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng máng."); }}
+                        disabled={!placed.has("standR")}
+                        style={{ border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 14, padding: "13px 10px", fontSize: 12, fontWeight: 900, opacity: placed.has("standR") ? 1 : 0.45 }}
+                      >
+                        Cố định vít
+                      </button>
+                      <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 10, background: C.bg }}>
+                        <div style={{ fontSize: 11.5, color: C.sub, fontWeight: 900, marginBottom: 8 }}>θ={theta}°</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <button type="button" disabled={!placed.has("standR")} onClick={() => setTheta((v) => clamp(v - 1, LAB6.angle.min, LAB6.angle.max))} style={mobileAdjustBtn}>-1°</button>
+                          <button type="button" disabled={!placed.has("standR")} onClick={() => setTheta((v) => clamp(v + 1, LAB6.angle.min, LAB6.angle.max))} style={mobileAdjustBtn}>+1°</button>
+                        </div>
+                      </div>
+                      {lab === "average" && (
+                        <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 10, background: C.bg, gridColumn: "1 / -1" }}>
+                          <div style={{ fontSize: 11.5, color: C.sub, fontWeight: 900, marginBottom: 8 }}>Cổng F · sEF={(sEF * 100).toFixed(0)}cm</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <button type="button" disabled={!placed.has("gateF")} onClick={() => setSEF((v) => clamp(+(v - 0.01).toFixed(2), LAB6.sEF.min, LAB6.sEF.max))} style={mobileAdjustBtn}>-1cm</button>
+                            <button type="button" disabled={!placed.has("gateF")} onClick={() => setSEF((v) => clamp(+(v + 0.01).toFixed(2), LAB6.sEF.min, LAB6.sEF.max))} style={mobileAdjustBtn}>+1cm</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              )}
+              {false && assembled && (
+                <section style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: controlsOpen ? 12 : "10px 12px", display: "flex", flexDirection: "column", gap: controlsOpen ? 10 : 0, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: C.ink }}>Điều khiển dễ bấm</span>
+                    <button
+                      type="button"
+                      onClick={() => setControlsOpen((v) => !v)}
+                      style={{ border: `1px solid ${C.orange}`, background: controlsOpen ? "#FFF7EF" : "#fff", color: C.orangeDk, borderRadius: 10, padding: "7px 10px", fontSize: 11, fontWeight: 900 }}
+                    >
+                      {controlsOpen ? "Ẩn" : "Mở"}
+                    </button>
+                  </div>
+                  {controlsOpen && (
+                  <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2, scrollSnapType: "x proximity" }}>
+                    <button
+                      type="button"
+                      onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng máng."); }}
+                      disabled={!placed.has("standR")}
+                      style={{ minWidth: 118, border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 12, padding: "9px 10px", fontSize: 11, fontWeight: 900, opacity: placed.has("standR") ? 1 : 0.45 }}
+                    >
+                      Cố định vít
+                    </button>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, minWidth: 240 }}>
+                    {[
+                      ["full", "Toàn cảnh"],
+                      ["rail", "Máng/cổng"],
+                      ["clock", "Đồng hồ"],
+                    ].map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setZoomMode(key)}
+                        style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 10, padding: "8px 6px", fontSize: 11, fontWeight: 900 }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: lab === "average" ? "1fr 1fr" : "1fr", gap: 8, minWidth: lab === "average" ? 300 : 150 }}>
+                    <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg }}>
+                      <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Giá đỡ phải · θ={theta}°</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                        <button type="button" disabled={!placed.has("standR")} onClick={() => setTheta((v) => clamp(v - 1, LAB6.angle.min, LAB6.angle.max))} style={mobileAdjustBtn}>-1°</button>
+                        <button type="button" disabled={!placed.has("standR")} onClick={() => setTheta((v) => clamp(v + 1, LAB6.angle.min, LAB6.angle.max))} style={mobileAdjustBtn}>+1°</button>
+                      </div>
+                    </div>
+                    {lab === "average" && (
+                      <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg }}>
+                        <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Cổng F · sEF={(sEF * 100).toFixed(0)}cm</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                          <button type="button" disabled={!placed.has("gateF")} onClick={() => setSEF((v) => clamp(+(v - 0.01).toFixed(2), LAB6.sEF.min, LAB6.sEF.max))} style={mobileAdjustBtn}>-1cm</button>
+                          <button type="button" disabled={!placed.has("gateF")} onClick={() => setSEF((v) => clamp(+(v + 0.01).toFixed(2), LAB6.sEF.min, LAB6.sEF.max))} style={mobileAdjustBtn}>+1cm</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 7, minWidth: 330 }}>
+                    {[
+                      { title: "Nối dây", body: lab === "average" ? "Chạm chốt tròn E/F trên cổng quang để nối E→A, F→B." : "Chạm chốt tròn E trên cổng quang để nối E→A.", active: !wiredOK },
+                      { title: "Đồng hồ", body: "Zoom Đồng hồ, lật mặt sau để bật nguồn; mặt trước để chọn MODE và Reset.", active: !power || !modeOK || !isReset },
+                      { title: "Thả bi", body: "Khi số đo về 0.000, bấm nam châm ở đầu máng để thả bi.", active: isReset && wiredOK && power && modeOK },
+                    ].map((hint) => (
+                      <button
+                        key={hint.title}
+                        type="button"
+                        onClick={() => setZoomMode(hint.title === "Đồng hồ" ? "clock" : "rail")}
+                        style={{ textAlign: "left", border: `1px solid ${hint.active ? C.orange : C.line}`, background: hint.active ? "#FFF7EF" : "#fff", borderRadius: 12, padding: "9px 8px", color: C.ink, minHeight: 92 }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 999, background: hint.active ? C.orange : C.bg, color: hint.active ? "#fff" : C.sub, fontSize: 10, fontWeight: 900, marginBottom: 6 }}>
+                          {hint.title === "Thả bi" ? <Play className="w-3 h-3" /> : <Hand className="w-3 h-3" />}
+                        </span>
+                        <div style={{ fontSize: 10.5, fontWeight: 900, marginBottom: 3 }}>{hint.title}</div>
+                        <div style={{ fontSize: 9.5, lineHeight: 1.25, color: C.sub }}>{hint.body}</div>
+                      </button>
+                    ))}
+                  </div>
+                  </div>
+                  )}
                 </section>
               )}
               {/* Progress bar and next step indicator */}
+              {!assembled && (
               <section style={{
                 background: "#fff",
                 border: `1px solid ${C.line}`,
@@ -1118,6 +1343,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                   Tiếp theo: {nextStepText}
                 </div>
               </section>
+              )}
 
               {/* Trợ lý Phylab — LUÔN hiển thị (trước đây bị ẩn sau khi lắp xong). */}
               <section style={{
@@ -1186,21 +1412,17 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                                 θ={currentTask.theta}°{currentTask.sEF ? ` · sEF=${(currentTask.sEF * 100).toFixed(0)}cm` : ""}
                               </div>
                             </div>
-                            <span style={{ flexShrink: 0, color: isTargetMeasured(currentTask) ? C.good : C.sub, fontSize: 12, fontWeight: 900 }}>
-                              {isTargetMeasured(currentTask) ? "đã đo" : "chưa đo"}
+                            <span style={{ flexShrink: 0, color: currentTaskTrial ? C.good : (justRolled ? C.orangeDk : C.sub), fontSize: 12, fontWeight: 900, textAlign: "right" }}>
+                              {currentTaskTrial ? `Đã ghi ${currentTaskTrial.t.toFixed(scale === "fine" ? 3 : 2)}s` : `Số đo ${led}s`}
                             </span>
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <button
                               type="button"
-                              onClick={() => {
-                                setTheta(currentTask.theta);
-                                if (currentTask.sEF) setSEF(currentTask.sEF);
-                                flash("Đã áp dụng mục tiêu đo hiện tại");
-                              }}
+                              onClick={recordTrial}
                               style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5 }}
                             >
-                              Áp dụng mục tiêu
+                              Ghi số liệu
                             </button>
                             <button
                               type="button"
@@ -1210,6 +1432,13 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                               Câu tiếp theo
                             </button>
                           </div>
+                          <button
+                            type="button"
+                            onClick={exportNote}
+                            style={{ ...btnBig, width: "100%", padding: "12px 10px", fontSize: 13, borderRadius: 12 }}
+                          >
+                            Xuất sang Sổ Báo Cáo
+                          </button>
                           <div style={{ display: "flex", gap: 5, justifyContent: "center" }}>
                             {currentTargets.map((target, i) => (
                               <button
@@ -1231,7 +1460,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                       )}
                     </section>
                   )}
-                  {renderSideContent({ assistant: false, progress: false, data: true })}
+                  {renderSideContent({ assistant: false, progress: false, data: false })}
                 </div>
               )}
             </div>
@@ -1325,7 +1554,7 @@ function Workbench(props) {
     face, led, mode, scale, power, dropTarget = [], flyTool = null,
     onDragAngle, onDragGateF, onDragBall, onDragWire, onUnplug,
     onReleaseBtn, onToggleMagnet, onToggleBalance, onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onCanvasTap,
-    zoomMode, setZoomMode } = props;
+    zoomMode, setZoomMode, highlightStep } = props;
 
   const zoomClock = zoomMode === "clock";
   const setZoomClock = (val) => setZoomMode(val ? "clock" : "full");
@@ -1367,6 +1596,14 @@ function Workbench(props) {
   // Trên mobile: bỏ letterbox — cho SVG tự cao đúng theo tỉ lệ viewBox để khung lab
   // lấp đầy chiều ngang màn hình (to & rõ nhất có thể), không còn viền trống trên/dưới.
   const [, , vbW, vbH] = viewBoxStr.split(" ").map(Number);
+  const showHint = props.isMobile && dropTarget.length === 0;
+  const HintBox = ({ x, y, w, h, label }) => (
+    <g style={{ pointerEvents: "none" }}>
+      <animate attributeName="opacity" values="0.28;0.52;0.28" dur="1.4s" repeatCount="indefinite" />
+      <rect x={x} y={y} width={w} height={h} rx="9" fill="#27AE6014" stroke="#27AE60" strokeWidth="1.4" strokeDasharray="6 4" />
+      {label && <text x={x + w / 2} y={y - 5} textAnchor="middle" fontSize="10" fontWeight="900" fill="#17864A" fontFamily={FONT}>{label}</text>}
+    </g>
+  );
 
   return (
     <div style={{ position: "relative", width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -1462,6 +1699,19 @@ function Workbench(props) {
         {wireDrag && (() => { const from = wireDrag.gate === "E" ? gEs : gFs; const col = wireDrag.gate === "E" ? C.navy : "#C0392B";
           return <path d={`M ${from.x} ${from.y} C ${from.x} ${from.y + 60}, ${wireDrag.x} ${wireDrag.y - 40}, ${wireDrag.x} ${wireDrag.y}`} fill="none" stroke={col} strokeWidth="2.6" strokeDasharray="5 4" />; })()}
 
+        {showHint && highlightStep === "balance" && has("standR") && <HintBox x={xR - 20} y={YR + 4} w={40} h={34} label="Vặn vít" />}
+        {showHint && highlightStep === "wire" && face === "back" && (
+          <>
+            {has("gateE") && <HintBox x={gEs.x - 19} y={gEs.y - 4} w={38} h={36} label="Dây E" />}
+            {lab === "average" && has("gateF") && <HintBox x={gFs.x - 19} y={gFs.y - 4} w={38} h={36} label="Dây F" />}
+            {has("clock") && <HintBox x={CLK.x + 38} y={CLK.y + 24} w={78} h={42} label="Ổ A/B" />}
+          </>
+        )}
+        {showHint && highlightStep === "power" && face === "back" && has("clock") && <HintBox x={CLK.x + 168} y={CLK.y + 14} w={36} h={48} label="Nguồn" />}
+        {showHint && highlightStep === "mode" && face === "front" && has("clock") && <HintBox x={CLK.x + 108} y={CLK.y + 16} w={50} h={58} label="MODE" />}
+        {showHint && highlightStep === "reset" && face === "front" && has("clock") && <HintBox x={CLK.x + 172} y={CLK.y + 18} w={36} h={40} label="Reset" />}
+        {showHint && highlightStep === "release" && has("magnet") && <HintBox x={pMag.x - 20} y={pMag.y - 32} w={40} h={42} label="Thả bi" />}
+
         {/* Ô ĐẶT (vòng sáng) chỉ chỗ thả cho (các) dụng cụ của bước hiện tại */}
         {dropTarget.map((k) => { const t = targetVB(k); return (
           <g key={"tgt-" + k} style={{ pointerEvents: "none" }}>
@@ -1487,7 +1737,8 @@ function Workbench(props) {
           }}
           style={{
             position: "absolute",
-            top: 12,
+            top: zoomClock ? "auto" : 12,
+            bottom: zoomClock ? 12 : "auto",
             right: 12,
             zIndex: 30,
             background: zoomClock ? C.orange : "#fff",
