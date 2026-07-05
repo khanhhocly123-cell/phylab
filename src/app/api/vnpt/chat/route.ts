@@ -154,6 +154,32 @@ function isPromptEcho(text: string): boolean {
   );
 }
 
+function isBadGradeComment(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  if (t.trim().length < 40) return true;
+  if (t.trim().length > 900) return true;
+  const looksLikePromptOrGuide =
+    t.includes("hãy chia sẻ") ||
+    t.includes("em hãy chia sẻ") ||
+    t.includes("không thể viết") ||
+    t.includes("không đủ dữ liệu") ||
+    t.includes("chưa có dữ liệu") ||
+    t.includes("cung cấp các số liệu") ||
+    t.includes("cấu trúc chung") ||
+    t.includes("rất sẵn lòng giúp") ||
+    t.includes("cần tập trung vào việc") ||
+    t.includes("dựa trên hướng dẫn") ||
+    t.includes("một báo cáo thực hành hoàn chỉnh") ||
+    t.includes("một báo cáo hoàn chỉnh") ||
+    t.includes("có phần nhận xét") ||
+    t.includes("anh hỗ trợ em tìm nguyên nhân") ||
+    t.includes("chị hỗ trợ em tìm nguyên nhân") ||
+    t.includes("em đang gặp khó khăn") ||
+    isPromptEcho(text);
+  const mentionsResult = /\/10|điểm|kết quả|số liệu|sai số|đồ thị|trình tự|lần đo|cân bằng|kết luận/.test(t);
+  return looksLikePromptOrGuide || !mentionsResult;
+}
+
 function generalPhysicsFallback(query: string, settings: Required<AssistantSettings>): string {
   const self = settings.pronoun === "anh" ? "Anh" : "Chị";
   const q = query.toLowerCase();
@@ -275,19 +301,25 @@ async function handleGrade(body: Record<string, unknown>) {
   const settings = normalizeAssistantSettings(body.assistantSettings);
   const summary = sanitizeText(body.summary, LIMITS.chat);
   const advance =
-    "Dưới đây là BẢNG ĐIỂM đã tính bằng máy (deterministic). Hãy viết NHẬN XÉT ngắn gọn 3–4 câu cho " +
-    "học sinh: điểm mạnh, chỗ cần cải thiện (trình tự/sai số), và một lời khuyên. TUYỆT ĐỐI không đổi điểm số.\n\n" +
+    "Dưới đây là BẢNG ĐIỂM đã tính bằng máy. Viết đúng phần NHẬN XÉT & KẾT LUẬN cho báo cáo thực hành, 3-4 câu. " +
+    "Không chào hỏi, không hỏi ngược học sinh, không liệt kê yêu cầu viết báo cáo, không nói 'hãy chia sẻ'. " +
+    "Bắt buộc bám vào điểm, số liệu, sai số/trình tự/đồ thị nếu có. Kết thúc bằng một câu kết luận vật lí ngắn. TUYỆT ĐỐI không đổi điểm số.\n\n" +
     summary;
 
-  const bot = await askSmartBotResilient("Nhận xét bài thực hành giúp em.", {
-    systemPrompt: SYSTEM_PROMPT + personaPrompt(settings) + " Em đóng vai giáo viên chấm bài, nhận xét khách quan.",
-    advancePrompt: advance,
-  });
+  const bot = await Promise.race([
+    askSmartBotResilient("Viết nhận xét và kết luận báo cáo từ bảng điểm.", {
+      systemPrompt: SYSTEM_PROMPT + personaPrompt(settings) + " Đóng vai giáo viên chấm báo cáo. Chỉ trả về đoạn nhận xét cuối báo cáo.",
+      advancePrompt: advance,
+    }),
+    new Promise<{ ok: false; text: ""; error: string; strategy: "timeout" }>((resolve) =>
+      setTimeout(() => resolve({ ok: false, text: "", error: "SMARTBOT_GRADE_TIMEOUT", strategy: "timeout" }), 8000)
+    ),
+  ]);
 
-  if (bot.ok) {
+  if (bot.ok && !isBadGradeComment(bot.text)) {
     return NextResponse.json({ message: applyAssistantPersona(bot.text, settings), source: "smartbot", strategy: bot.strategy });
   }
-  return NextResponse.json({ message: applyAssistantPersona(templateGradeComment(body), settings), source: "template", warning: bot.error || "SMARTBOT_NON_ANSWER" });
+  return NextResponse.json({ message: applyAssistantPersona(templateGradeComment(body), settings), source: "template", warning: bot.error || "SMARTBOT_BAD_GRADE_COMMENT" });
 }
 
 /** Nhận xét mẫu (deterministic) khi chưa có SmartBot — vẫn bám số liệu thật. */
@@ -296,15 +328,18 @@ function templateGradeComment(body: Record<string, unknown>): string {
   const dataC = Number(body.dataCloseness ?? 0);
   const physC = Number(body.physicalCloseness ?? 0);
   const bad = Number(body.badSetupCount ?? 0);
+  const totalLabel = total >= 8 ? "tốt" : total >= 6.5 ? "khá" : "cần cải thiện";
   const lines: string[] = [];
-  lines.push(`Kết quả chung: ${total.toFixed(1)}/10.`);
-  if (dataC >= 90) lines.push("Phần tự tính số liệu của em rất chính xác, áp dụng công thức tốt.");
-  else if (dataC >= 80) lines.push("Phần tự tính số liệu khá ổn nhưng còn vài chỗ lệch, em kiểm tra lại phép tính.");
-  else lines.push("Một số kết quả tự tính chưa khớp công thức — em rà lại cách thay số và làm tròn.");
-  if (physC >= 90) lines.push("Số đo bám sát giá trị lý thuyết, thao tác đo ổn định.");
-  else lines.push("Số đo còn sai lệch so với lý thuyết, nên đo lặp nhiều lần và lấy trung bình.");
-  if (bad > 0) lines.push(`Em có ${bad} lần đo khi máng chưa cân bằng — nhớ căn dây dọi trước khi đo để tránh sai số hệ thống.`);
-  else lines.push("Trình tự thí nghiệm đúng: cân bằng máng trước khi đo. Tốt lắm!");
+  lines.push(`Bài thực hành đạt ${total.toFixed(1)}/10, mức ${totalLabel}.`);
+  if (dataC >= 90) lines.push("Kết quả tính từ số liệu đo khớp công thức tốt, cách thay số và làm tròn nhìn chung chính xác.");
+  else if (dataC >= 80) lines.push("Kết quả tính tương đối đúng, nhưng vẫn nên kiểm tra lại các bước thay số và đơn vị để giảm sai lệch.");
+  else lines.push("Một số kết quả tính còn lệch đáng kể; cần rà lại công thức, đơn vị đo và cách làm tròn trước khi kết luận.");
+  if (physC >= 90) lines.push("Số đo bám sát giá trị lí thuyết, cho thấy thao tác đo và thiết lập thí nghiệm khá ổn định.");
+  else if (physC >= 75) lines.push("Số đo còn lệch nhẹ so với lí thuyết, có thể do đọc khoảng cách, bấm/reset đồng hồ hoặc thao tác thả chưa thật đồng nhất.");
+  else lines.push("Số đo lệch nhiều so với lí thuyết; nguyên nhân có thể đến từ thiết lập dụng cụ, quên reset đồng hồ hoặc vị trí cổng quang chưa đúng yêu cầu.");
+  if (bad > 0) lines.push(`Có ${bad} lần đo khi dụng cụ chưa được cân bằng/cố định tốt, nên thao tác này cần được kiểm tra trước mỗi lần đo.`);
+  else lines.push("Trình tự thực hiện đúng, đặc biệt là bước cân bằng/cố định dụng cụ trước khi đo.");
+  lines.push("Kết luận: kết quả thí nghiệm có thể dùng để kiểm chứng quan hệ giữa quãng đường, thời gian và đại lượng cần đo, nhưng độ tin cậy sẽ tăng khi đo lặp và lấy giá trị trung bình.");
   return lines.join(" ");
 }
 

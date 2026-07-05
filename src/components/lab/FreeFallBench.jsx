@@ -1422,7 +1422,7 @@ function FallScene(props) {
   const viewBoxStr =
     zoomMode === "clock" ? "540 290 330 190" :
     zoomMode === "rail" ? "200 40 500 440" :
-    (props.isMobile ? "55 25 645 450" : `0 0 ${VBW} ${VBH}`);
+    (props.isMobile ? "55 25 645 540" : `0 0 ${VBW} ${VBH}`);
   // Trên mobile: bỏ letterbox — SVG tự cao theo tỉ lệ viewBox để máng đứng cao & rõ.
   const [, , vbW, vbH] = viewBoxStr.split(" ").map(Number);
   const showHint = props.isMobile && dropTarget.length === 0;
@@ -1440,7 +1440,7 @@ function FallScene(props) {
         onPointerDown={onCanvasTap}
         viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet"
         style={props.isMobile
-          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "66vh", minHeight: 260, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
+          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "79vh", minHeight: 312, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
           : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
         <rect x="0" y={FLOOR} width={VBW} height={VBH - FLOOR} fill="#F1E7D3" />
         <line x1="0" y1={FLOOR} x2={VBW} y2={FLOOR} stroke="#E1D3B6" strokeWidth="2" />

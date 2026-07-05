@@ -1592,7 +1592,7 @@ function Workbench(props) {
   const viewBoxStr =
     zoomMode === "clock" ? "515 290 330 190" :
     zoomMode === "rail" ? "50 60 700 440" :
-    (props.isMobile ? "70 55 640 400" : `0 0 ${VBW} ${VBH}`);
+    (props.isMobile ? "70 55 640 480" : `0 0 ${VBW} ${VBH}`);
   // Trên mobile: bỏ letterbox — cho SVG tự cao đúng theo tỉ lệ viewBox để khung lab
   // lấp đầy chiều ngang màn hình (to & rõ nhất có thể), không còn viền trống trên/dưới.
   const [, , vbW, vbH] = viewBoxStr.split(" ").map(Number);
@@ -1611,7 +1611,7 @@ function Workbench(props) {
         onPointerDown={onCanvasTap}
         viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet"
         style={props.isMobile
-          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "64vh", minHeight: 210, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
+          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "77vh", minHeight: 252, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
           : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
         <rect x="0" y={FLOOR} width={VBW} height={VBH - FLOOR} fill="#F1E7D3" />
         <line x1="0" y1={FLOOR} x2={VBW} y2={FLOOR} stroke="#E1D3B6" strokeWidth="2" />
