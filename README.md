@@ -30,6 +30,12 @@ Dự án hỗ trợ hai bài thực hành chính:
 git clone https://github.com/khanhhocly123-cell/phylab.git && cd phylab && npm install
 ```
 
+Nếu muốn chạy Local
+
+```bash
+npm run dev
+```
+
 *Ứng dụng sẽ được chạy tại cổng mặc định `3000`. Địa chỉ truy cập: http://localhost:3000*
 
 ### Chia sẻ đường dẫn truy cập từ xa (Tunnel)
