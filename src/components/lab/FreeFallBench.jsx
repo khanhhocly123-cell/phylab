@@ -114,7 +114,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
   const [chatA, setChatA] = useState(null);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatHistory, setChatHistory] = useState([
-    { role: "assistant", text: "Chào em! Mình là Trợ lý Phylab. Em cần hỗ trợ gì về bài thí nghiệm này?" }
+    { role: "assistant", text: "Cần hỗ trợ thao tác nào? Hỏi mình nhé." }
   ]);
   const chatScrollRef = useRef(null);
   useEffect(() => {
@@ -123,11 +123,11 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     }
   }, [chatHistory]);
   const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false); // Google Maps bottom sheet
   const [zoomMode, setZoomMode] = useState("full"); // "full", "rail", "clock"
   const [controlsOpen, setControlsOpen] = useState(false);
   const [ballDrag, setBallDrag] = useState(null); // {x,y} screen khi kéo bi về
-  const [aiDeBai, setAiDeBai] = useState("");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const rafRef = useRef(null);
   const mainRef = useRef(null);
@@ -135,14 +135,17 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const check = () => setIsMobile(
-      window.innerWidth < 768
-      || window.matchMedia("(pointer: coarse) and (max-width: 1024px)").matches
-      || window.matchMedia("(max-height: 600px) and (max-width: 1024px)").matches
-    );
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    const updateViewport = () => {
+      setIsMobile(
+        window.innerWidth < 768
+        || window.matchMedia("(pointer: coarse) and (max-width: 1024px)").matches
+        || window.matchMedia("(max-height: 600px) and (max-width: 1024px)").matches
+      );
+      setIsPortrait(window.innerHeight >= window.innerWidth);
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
   }, []);
 
   const required = TOOLS.map((t) => t.k);
@@ -159,7 +162,6 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
   const wiredOK = magnetWire && wires.A === "switch" && wires.B === "gate";
   const modeOK = mode === "A<->B";
   const setupDone = assembled && balanced && wiredOK && power && modeOK;
-  const deBai = setupDone ? (aiDeBai || set.prompt) : "";
   const zeroLed = zeroDisplay(scale);
   const isReset = led === zeroLed;
   const currentTargets = set.freefall;
@@ -680,25 +682,6 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     }
   }, [tip.text, speak]);
 
-  // Sau khi lắp/nối xong → Trợ lý (Smartbot) diễn đạt đề bài theo bộ quãng rơi của HS.
-  useEffect(() => {
-    if (!setupDone) {
-      if (aiDeBai !== "") {
-        setTimeout(() => setAiDeBai(""), 0);
-      }
-      return;
-    }
-    let cancel = false;
-    fetch("/api/vnpt/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task: "problem", labKind: "freefall", targets: set.freefall, prompt: set.prompt, assistantSettings }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (!cancel && d?.message) setAiDeBai(d.message); })
-      .catch(() => {});
-    return () => { cancel = true; };
-  }, [setupDone, studentName, aiDeBai, set]);
-
   const renderSideContent = (showParts = { assistant: true, progress: true, data: true }) => (
     <>
       {/* PHẦN 1 — TRỢ LÝ */}
@@ -842,8 +825,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
             ))}
           </div>
           {setupDone && <>
-            <div style={{ ...sideTitle, marginTop: 12 }}>Đề bài Trợ lý giao — tự chỉnh s rồi đo</div>
-            {deBai && <div style={{ fontSize: isMobile ? 11.5 : 13, color: C.sub, lineHeight: 1.5, marginBottom: 6, fontStyle: "italic", whiteSpace: "pre-line" }}><MathText text={deBai} /></div>}
+            <div style={{ ...sideTitle, marginTop: 12 }}>Cấu hình cần đo</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {set.freefall.map((sT, i) => {
                 const used = trials.some((t) => Math.abs(t.s - sT.s) < 1e-6);
@@ -897,95 +879,89 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     </>
   );
 
+  const renderGuidanceContent = () => (
+    <>
+      {renderSideContent({ assistant: false, progress: true, data: true })}
+      {renderSideContent({ assistant: true, progress: false, data: false })}
+    </>
+  );
+
   return (
-    <div className="phy-screen" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
-      <div style={isMobile
-        ? { display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
+    <div className="phy-screen" data-lab-engine="freefall" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
+      <div data-lab-header style={isMobile
+        ? { display: "flex", flexDirection: isPortrait ? "column" : "row", alignItems: isPortrait ? "stretch" : "center", gap: isPortrait ? 3 : 6, padding: "4px 6px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
         : { display: "flex", alignItems: "center", gap: 14, padding: "10px 18px", borderBottom: `1px solid ${C.line}`, background: "#fff" }
       }>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "flex-start" : "space-between", gap: isMobile ? 4 : 0, width: isMobile ? "auto" : "100%", flexShrink: 0 }}>
-          {onBack && <button onClick={handleExit} style={btnGhost}>← Thoát</button>}
-          {onReplayPrelab && <button onClick={() => onReplayPrelab?.()} style={{ ...btnGhost, color: C.navy, fontSize: 12 }}>Xem lại Prelab</button>}
-          <div style={{ fontSize: 12, color: C.sub }}>g lý thuyết = <b style={{ color: C.ink }}>{FREEFALL.g} m/s²</b></div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: isPortrait ? "space-between" : (isMobile ? "flex-start" : "space-between"), gap: isMobile ? 4 : 0, width: isPortrait ? "100%" : (isMobile ? "auto" : "100%"), flexShrink: 0 }}>
+          {onBack && <button onClick={handleExit} style={{ ...btnGhost, padding: isMobile ? "0 5px" : undefined }}>← Thoát</button>}
+          {onReplayPrelab && <button onClick={() => onReplayPrelab?.()} style={{ ...btnGhost, color: C.navy, fontSize: isMobile ? 11 : 12, padding: isMobile ? "0 5px" : undefined }}>{isMobile ? "Prelab" : "Xem lại Prelab"}</button>}
+          <div data-lab-meta style={{ fontSize: 12, color: C.sub }}>g lý thuyết = <b style={{ color: C.ink }}>{FREEFALL.g} m/s²</b></div>
         </div>
         
         <div style={{ textAlign: "center", width: isMobile ? "auto" : "100%", flex: isMobile ? 1 : "initial", minWidth: 0, fontSize: isMobile ? 12 : 13, fontWeight: 800, color: C.ink }}>
-          Bài 11 — Đo gia tốc rơi tự do
+          {isMobile ? "Bài 11 · Rơi tự do" : "Bài 11 — Đo gia tốc rơi tự do"}
         </div>
       </div>
 
-      <div style={isMobile 
-        ? { flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", position: "relative" }
+      <div data-lab-layout data-orientation={isPortrait ? "portrait" : "landscape"} style={isMobile
+        ? { flex: 1, display: "grid", gridTemplateColumns: isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr) minmax(220px, 28vw)", minHeight: 0, overflow: "hidden", position: "relative" }
         : { flex: 1, display: "grid", gridTemplateColumns: "minmax(220px, 14vw) 1fr minmax(360px, 24vw)", minHeight: 0 }
       }>
         {/* TRÁI: dụng cụ */}
-        {(!isMobile || !assembled) && (
-          <aside style={isMobile
-            ? { background: "#fff", borderBottom: `1px solid ${C.line}`, padding: "8px 12px", display: "flex", gap: 8, overflowX: "auto", whiteSpace: "nowrap", flexShrink: 0 }
+          <aside data-lab-tooltray data-lab-scroll style={isMobile
+            ? { background: "#fff", borderRight: `1px solid ${C.line}`, padding: isPortrait ? 4 : 6, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 5, overflowY: "auto", overflowX: "hidden", minWidth: 0 }
             : { borderRight: `1px solid ${C.line}`, background: "#fff", overflow: "auto", padding: 12 }
           }>
+            {isMobile && (
+              <div style={{ flexShrink: 0, borderRadius: 9, background: C.peachLt, color: C.orangeDk, padding: "5px 4px", fontSize: isPortrait ? 9 : 10, fontWeight: 900, lineHeight: 1.15, textAlign: "center" }}>
+                DỤNG CỤ · {placedCount}/{required.length}
+              </div>
+            )}
             {!isMobile && <div style={sideTitle}>Dụng cụ ({placedCount}/{required.length})</div>}
+            {isMobile && assembled && isPortrait && (
+              <div style={{ borderRadius: 10, padding: "8px 4px", background: "#F3F8F3", color: C.good, fontSize: 10, fontWeight: 900, textAlign: "center" }}>✓ Đã lắp đủ</div>
+            )}
             {TOOLS.map((t) => {
               const done = placed.has(t.k), isNext = isNextTool(t.k);
+              if (isMobile && isPortrait && (done || !isNext)) return null;
               return (
-                <div key={t.k}
+                <div key={t.k} data-lab-tool
                   onPointerDown={(e) => {
-                    if (!isMobile || (isMobile && isNext && !done)) startToolDrag(t.k, e);
+                    if (!isMobile) startToolDrag(t.k, e);
                   }}
                   onClick={() => {
                     if (isMobile && isNext && !done) {
-                      flash(`Kéo ô "${t.name}" vào khung lab để lắp.`);
+                      const target = targetVB(t.k);
+                      flyToPlace(t.k, target.x, target.y - 60);
                     }
                   }}
-                  style={{ display: "flex", alignItems: "center", gap: isMobile ? 9 : 12, padding: isMobile ? "4px 8px" : "11px 13px", borderRadius: 12, marginBottom: isMobile ? 0 : 7, cursor: done ? "default" : (isMobile && !isNext ? "default" : "grab"), touchAction: isMobile && isNext && !done ? "none" : (isMobile ? "pan-x" : "none"), flexShrink: 0, minWidth: isMobile ? 160 : "auto",
+                  style={{ display: "flex", flexDirection: isMobile && isPortrait ? "column" : "row", alignItems: "center", gap: isMobile ? (isPortrait ? 2 : 6) : 12, padding: isMobile ? (isPortrait ? "5px 3px" : "4px 5px") : "11px 13px", borderRadius: 10, marginBottom: isMobile ? 0 : 7, cursor: done ? "default" : (isMobile ? "pointer" : "grab"), touchAction: isMobile ? "manipulation" : "none", flexShrink: 0, minWidth: 0, width: "100%",
                     border: `1.5px solid ${done ? C.good : isNext ? C.orange : C.line}`, background: done ? "#F3F8F3" : "#fff", opacity: done ? 0.7 : 1, boxShadow: isNext ? `0 0 0 3px ${C.orange}22` : "none" }}>
                   <div style={{ width: isMobile ? 24 : 56, height: isMobile ? 24 : 56, display: "grid", placeItems: "center", background: C.bg, borderRadius: 8, flexShrink: 0 }}>
                     <img src={t.img} alt="" style={{ maxWidth: isMobile ? 18 : 44, maxHeight: isMobile ? 18 : 44, objectFit: "contain" }} />
                   </div>
-                  <div style={{ minWidth: 0, textAlign: "left", flex: 1 }}>
-                    <div style={{ fontSize: isMobile ? 11 : 13.5, fontWeight: 700, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.name}</div>
-                    <div style={{ fontSize: isMobile ? 9 : 10.5, color: done ? C.good : isNext ? C.orangeDk : C.sub }}>
+                  <div style={{ minWidth: 0, textAlign: isPortrait ? "center" : "left", flex: 1, width: isPortrait ? "100%" : "auto" }}>
+                    <div style={{ fontSize: isMobile ? (isPortrait ? 9.5 : 10.5) : 13.5, fontWeight: 700, color: C.ink, whiteSpace: isPortrait ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.15 }}>{t.name}</div>
+                    <div style={{ fontSize: isMobile ? 8.5 : 10.5, color: done ? C.good : isNext ? C.orangeDk : C.sub }}>
                       {done ? (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><Check className="w-2.5 h-2.5 stroke-[3]" /> Đã lắp</span>
                       ) : isNext ? (
-                        isMobile ? "Kéo tay cầm" : "Kéo vào bàn"
+                        isMobile ? "Chạm để lắp" : "Kéo vào bàn"
                       ) : (
                         t.sub
                       )}
                     </div>
                   </div>
                   {isMobile && isNext && !done && (
-                    <div
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        startToolDrag(t.k, e);
-                      }}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 8,
-                        background: C.orange,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "grab",
-                        touchAction: "none",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
-                        flexShrink: 0
-                      }}
-                      title="Kéo dụng cụ vào bàn"
-                    >
-                      <Hand className="w-4 h-4 text-white" />
-                    </div>
+                    <div style={{ width: isPortrait ? 24 : 28, height: isPortrait ? 24 : 28, borderRadius: 8, background: C.orange, color: "#fff", display: "grid", placeItems: "center", fontSize: isPortrait ? 17 : 20, fontWeight: 900, flexShrink: 0 }}>+</div>
                   )}
                 </div>
               );
             })}
           </aside>
-        )}
 
         {/* GIỮA: workbench */}
-        <main ref={mainRef} data-lab-stage style={{ position: "relative", overflow: "hidden", overscrollBehavior: "none", touchAction: "manipulation", padding: isMobile ? 6 : 10, display: "flex", flexDirection: "column", minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: 0, paddingBottom: isMobile ? 58 : 10 }}>
+        <main ref={mainRef} data-lab-stage style={{ position: "relative", overflow: "hidden", overscrollBehavior: "none", touchAction: "manipulation", padding: isMobile ? 4 : 10, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: 0, paddingBottom: isMobile ? 4 : 10 }}>
 
 
           <FallScene
@@ -1003,12 +979,13 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
               if (isMobile && sheetOpen) setSheetOpen(false);
             }}
             isMobile={isMobile}
+            isPortrait={isPortrait}
             zoomMode={zoomMode}
             setZoomMode={setZoomMode}
             highlightStep={nextStepKey}
           />
           {isMobile && assembled && (
-            <div style={{ position: "absolute", top: 76, right: 10, zIndex: 36, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: 8, right: 8, zIndex: 36, pointerEvents: "none" }}>
               {!controlsOpen && (
                 <button
                   type="button"
@@ -1035,6 +1012,8 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
                   display: "flex",
                   flexDirection: "column",
                   gap: 10,
+                  maxHeight: "calc(100dvh - 104px)",
+                  overflowY: "auto",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -1362,12 +1341,6 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
                           </div>
                         </>
                       )}
-                      {deBai && (
-                        <details style={{ fontSize: 12, color: C.sub }}>
-                          <summary style={{ cursor: "pointer", fontWeight: 900, color: C.orangeDk }}>Xem toàn bộ đề bài</summary>
-                          <div style={{ marginTop: 8, lineHeight: 1.5, whiteSpace: "pre-line" }}><MathText text={deBai} /></div>
-                        </details>
-                      )}
                     </section>
                   )}
                   {renderSideContent({ assistant: false, progress: false, data: false })}
@@ -1399,19 +1372,19 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
         ))}
 
         {/* PHẢI / BOTTOM SHEET: Trợ lý / Tiến trình / Điều kiện / Ghi số liệu */}
-        {isMobile ? (
+        {isMobile && isPortrait ? (
           <motion.div
-            animate={{ height: sheetOpen ? "78%" : 48 }}
+            animate={{ height: sheetOpen ? "82%" : 40 }}
             transition={{ type: "spring", damping: 20, stiffness: 180 }}
             style={{
               position: "absolute",
-              bottom: sheetOpen ? 0 : 12,
-              left: sheetOpen ? 0 : "auto",
-              right: sheetOpen ? 0 : 12,
-              width: sheetOpen ? "auto" : "min(220px, calc(100% - 24px))",
+              bottom: 6,
+              left: sheetOpen ? 6 : "auto",
+              right: 6,
+              width: sheetOpen ? "auto" : "min(190px, calc(100% - 12px))",
               background: "#FFFBF7",
-              border: `2px solid ${C.line}`,
-              borderRadius: sheetOpen ? "24px 24px 0 0" : 18,
+              border: `1.5px solid ${C.line}`,
+              borderRadius: sheetOpen ? 18 : 14,
               boxShadow: sheetOpen ? "0 -8px 24px rgba(50,30,18,0.12)" : "0 8px 24px rgba(50,30,18,0.14)",
               zIndex: 40,
               display: "flex",
@@ -1422,7 +1395,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
             {/* Click-to-toggle handle */}
             <div 
               onClick={() => setSheetOpen(!sheetOpen)}
-              style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "none", padding: "0 14px" }}
+              style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "manipulation", padding: "0 12px" }}
             >
               <span style={{ fontSize: 11, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 {sheetOpen ? "Bảng điều khiển Lab" : assembled ? (justRolled ? "Ghi số liệu" : "Bảng Lab") : "Hướng dẫn"}
@@ -1436,12 +1409,12 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
             
             {/* Sheet body */}
             <div data-lab-scroll style={{ flex: 1, overflow: "auto", overscrollBehavior: "contain", padding: "0 12px calc(16px + env(safe-area-inset-bottom, 0px))", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
-              {renderSideContent()}
+              {renderGuidanceContent()}
             </div>
           </motion.div>
         ) : (
-          <aside style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, overflow: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-            {renderSideContent()}
+          <aside data-lab-guide data-lab-scroll style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, overflow: "auto", padding: isMobile ? 6 : 12, display: "flex", flexDirection: "column", gap: isMobile ? 8 : 12, minWidth: 0 }}>
+            {renderGuidanceContent()}
           </aside>
         )}
       </div>
@@ -1463,10 +1436,13 @@ function FallScene(props) {
   const cylY = magnetOn && !rolling ? Y0 : fallY;
   const cylGrab = !magnetOn && !rolling;                 // trụ đã rơi -> HS kéo lên gắn lại
 
-  const viewBoxStr =
-    zoomMode === "clock" ? "540 290 330 190" :
-    zoomMode === "rail" ? "200 40 500 440" :
-    (props.isMobile ? "55 25 645 540" : `0 0 ${VBW} ${VBH}`);
+  const viewBoxStr = props.isMobile
+    ? (zoomMode === "clock" ? "540 290 330 190" :
+       zoomMode === "rail" ? "200 40 500 440" :
+       "55 25 645 540")
+    : (zoomMode === "clock" ? "540 290 330 190" :
+       zoomMode === "rail" ? "200 40 500 440" :
+       `0 0 ${VBW} ${VBH}`);
   // Trên mobile: bỏ letterbox — SVG tự cao theo tỉ lệ viewBox để máng đứng cao & rõ.
   const showHint = props.isMobile && dropTarget.length === 0;
   const HintBox = ({ x, y, w, h, label }) => (
@@ -1481,7 +1457,7 @@ function FallScene(props) {
     <div style={{ position: "relative", width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <svg
         onPointerDown={onCanvasTap}
-        viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet"
+        viewBox={viewBoxStr} preserveAspectRatio={props.isPortrait ? "xMidYMin meet" : "xMidYMid meet"}
         style={props.isMobile
           ? { flex: 1, flexShrink: 1, width: "100%", height: "100%", minHeight: 0, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 12, border: `1px solid ${C.line}`, touchAction: "none" }
           : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
