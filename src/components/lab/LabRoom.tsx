@@ -7,6 +7,7 @@ import { useTTS } from "./useTTS";
 // Engine tương tác port từ bản Vite của φLab (inline-style, "use client").
 import LabBench from "./LabBench.jsx";
 import FreeFallBench from "./FreeFallBench.jsx";
+import ElectricalBench from "./ElectricalBench";
 
 export interface LabExportPayload {
   lab: string;                 // "average" | "instant" | "freefall"
@@ -38,6 +39,8 @@ interface LabRoomProps {
 export default function LabRoom({ spec, measuredD, studentName, assistantSettings, assignedSets, onExportNote, onReplayPrelab, onExitLab }: LabRoomProps) {
   const { speak, stop, muted, toggleMute } = useTTS();
   const isFreeFall = spec.id === "do-gia-toc-roi-tu-do";
+  const isElectrical = spec.id === "do-dien-tro-dinh-luat-ohm"
+    || spec.id === "do-suat-dien-dong-pin-dien-hoa";
 
   // Rời lab (unmount) -> tắt hẳn voice, tránh trợ lý còn đọc chồng khi sang màn khác.
   useEffect(() => () => stop(), [stop]);
@@ -80,7 +83,20 @@ export default function LabRoom({ spec, measuredD, studentName, assistantSetting
 
   return (
     <div className="lab-session relative w-full flex flex-col overflow-hidden bg-white h-full min-h-0">
-      {isFreeFall ? (
+      {isElectrical ? (
+        <ElectricalBench
+          key={spec.id}
+          lessonId={spec.id}
+          studentName={studentName}
+          assignedSets={assignedSets}
+          speak={speak}
+          muted={muted}
+          onToggleMute={toggleMute}
+          onExportNote={onExportNote}
+          onReplayPrelab={onReplayPrelab}
+          onBack={onExitLab}
+        />
+      ) : isFreeFall ? (
         <FreeFallBench
           studentName={studentName}
           assignedSets={assignedSets}

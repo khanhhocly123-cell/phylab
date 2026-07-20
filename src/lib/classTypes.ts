@@ -8,7 +8,7 @@
  *  - kind "personal_quiz" → PersonalQuizPayload (đề sinh từ số liệu của chính HS)
  */
 
-import type { AvgTarget, InstTarget, FallTarget } from "./problemGen";
+import type { AvgTarget, InstTarget, FallTarget, OhmTarget, EmfTarget } from "./problemGen";
 import type { RichTrial } from "./types";
 
 /** Giới hạn số lớp giáo viên demo được tạo (chống spam / lạm dụng bộ nhớ). */
@@ -43,6 +43,9 @@ export interface LabAssignmentPayload {
     average?: AvgTarget[];
     instant?: InstTarget[];
     freefall?: FallTarget[];
+    "ohm-x"?: OhmTarget[];
+    "ohm-y"?: OhmTarget[];
+    emf?: EmfTarget[];
   };
 }
 

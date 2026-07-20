@@ -20,7 +20,7 @@
 import { LAB6, accel, velAt } from "@/engine/physics.js";
 import { FREEFALL } from "@/engine/physicsFreeFall.js";
 
-export type LabKind = "average" | "instant" | "freefall";
+export type LabKind = "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf";
 
 export interface ExpectedAvgTarget { theta: number; sEF: number }
 export interface ExpectedInstTarget { theta: number }
@@ -29,6 +29,9 @@ export interface ExpectedLabTargets {
   average?: ExpectedAvgTarget[];
   instant?: ExpectedInstTarget[];
   freefall?: ExpectedFallTarget[];
+  "ohm-x"?: Array<{ voltage: number }>;
+  "ohm-y"?: Array<{ voltage: number }>;
+  emf?: Array<{ resistance: number; voltage?: number }>;
 }
 
 /** Một lần đo do engine lab xuất ra. */
@@ -37,6 +40,14 @@ export interface Trial {
   t: number;              // thời gian đo (s)
   theta?: number;         // góc nghiêng (Bài 6)
   balanced?: boolean;     // máng đã cân bằng khi đo chưa (trình tự)
+  expected?: number;      // ground truth riêng của mẫu điện
+  config?: number;        // biến cấu hình độc lập (điện áp nguồn/dây)
+  voltage?: number;
+  current?: number;
+  resistance?: number;
+  material?: "X" | "Y";
+  length?: number;
+  emf?: number;
   studentResult?: number | null; // kết quả HS tự tính (điền ở Notes)
 }
 
@@ -45,6 +56,13 @@ export interface RowEval {
   s: number;
   t: number;
   theta?: number;
+  config?: number;
+  expected?: number;
+  voltage?: number;
+  current?: number;
+  resistance?: number;
+  length?: number;
+  material?: "X" | "Y";
   correctResult: number;   // kết quả đúng theo công thức từ (s,t) HS đo
   theoretical: number;     // giá trị lý thuyết mong đợi (g hoặc v)
   studentResult: number | null;
@@ -122,7 +140,10 @@ export function correctResultOf(labKind: LabKind, s: number, t: number): number 
 }
 
 /** Giá trị lý thuyết mong đợi (ground truth từ engine). */
-export function theoreticalOf(labKind: LabKind, s: number, theta?: number): number {
+export function theoreticalOf(labKind: LabKind, s: number, theta?: number, expected?: number): number {
+  if (labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf") {
+    return expected ?? (labKind === "ohm-x" ? 120 : labKind === "ohm-y" ? 220 : 1.5);
+  }
   if (labKind === "freefall") return FREEFALL.g; // g thật engine dùng (9.8)
   const th = theta ?? LAB6.angle.default;
   if (labKind === "instant") return velAt(th, LAB6.sE); // vận tốc tức thời tại cổng E
@@ -136,6 +157,9 @@ const LABELS: Record<LabKind, { label: string; unit: string }> = {
   average: { label: "Vận tốc trung bình", unit: "m/s" },
   instant: { label: "Vận tốc tức thời", unit: "m/s" },
   freefall: { label: "Gia tốc rơi tự do", unit: "m/s²" },
+  "ohm-x": { label: "Điện trở vật dẫn X", unit: "Ω" },
+  "ohm-y": { label: "Điện trở vật dẫn Y", unit: "Ω" },
+  emf: { label: "Suất điện động pin", unit: "V" },
 };
 
 /**
@@ -147,8 +171,14 @@ const LABELS: Record<LabKind, { label: string; unit: string }> = {
  */
 function configurationKey(
   labKind: LabKind,
-  value: { s?: number; sEF?: number; theta?: number }
+  value: { s?: number; sEF?: number; theta?: number; config?: number; voltage?: number; resistance?: number }
 ): string {
+  if (labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf") {
+    const config = labKind === "emf"
+      ? value.config ?? value.resistance ?? value.voltage ?? value.s ?? 0
+      : value.config ?? value.voltage ?? value.s ?? 0;
+    return `config:${Math.round(config * 100)}`;
+  }
   const distance = value.sEF ?? value.s ?? 0;
   const sBucket = Math.round(distance / 0.005);       // 5 mm
   const thetaBucket = Math.round((value.theta ?? LAB6.angle.default) / 0.5); // 0.5°
@@ -175,7 +205,7 @@ export function gradeSample(
   const assignmentConstrained = targetKeys.size > 0;
   const rows: RowEval[] = trials.map((tr, i) => {
     const correct = correctResultOf(labKind, tr.s, tr.t);
-    const theo = theoreticalOf(labKind, tr.s, tr.theta);
+    const theo = theoreticalOf(labKind, tr.s, tr.theta, tr.expected);
     const hasStudent = tr.studentResult != null && !Number.isNaN(tr.studentResult);
     const calcAccuracy = hasStudent && correct > 0
       ? clamp(100 - (Math.abs((tr.studentResult as number) - correct) / correct) * 100, 0, 100)
@@ -187,6 +217,8 @@ export function gradeSample(
       && Math.abs((tr.studentResult as number) - correct) <= correct * RESULT_TOLERANCE;
     return {
       index: i + 1, s: tr.s, t: tr.t, theta: tr.theta,
+      config: tr.config, expected: tr.expected, voltage: tr.voltage,
+      current: tr.current, resistance: tr.resistance, length: tr.length, material: tr.material,
       correctResult: correct, theoretical: theo,
       studentResult: hasStudent ? (tr.studentResult as number) : null,
       calcAccuracy, physCloseness, correct: isCorrect,
@@ -212,7 +244,8 @@ export function gradeSample(
   const uniqueConfigurationCount = groupedRows.length;
   const duplicateTrialCount = Math.max(0, rows.length - uniqueConfigurationCount);
   const matchedConfigurationCount = assignmentConstrained ? scoringGroups.length : uniqueConfigurationCount;
-  const expectedConfigurationCount = assignmentConstrained ? targetKeys.size : MIN_TRIALS;
+  const requiredTrials = labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf" ? 5 : MIN_TRIALS;
+  const expectedConfigurationCount = assignmentConstrained ? targetKeys.size : requiredTrials;
   const unexpectedConfigurationCount = assignmentConstrained
     ? groupedEntries.filter(([key]) => !targetKeys.has(key)).length
     : 0;

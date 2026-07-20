@@ -85,11 +85,14 @@ export default function StudentDrilldown({ token, classId, studentId, studentNam
     const sub = data.submissions[0].submission;
     const trials = (sub.payload?.trials ?? []) as RichTrial[];
     if (trials.length === 0) return null;
-    const unit = trials[0].lab === "freefall" ? "g (m/s²)" : "v (m/s)";
+    const firstKind = trials[0].lab;
+    const unit = firstKind === "freefall" ? "g (m/s²)"
+      : firstKind === "ohm-x" || firstKind === "ohm-y" ? "R (Ω)"
+      : firstKind === "emf" ? "E (V)" : "v (m/s)";
     const points = trials.map((tr, i) => ({
       lan: `Lần ${i + 1}`,
       doDuoc: +correctResultOf(tr.lab, tr.s, tr.t).toFixed(3),
-      lyThuyet: +theoreticalOf(tr.lab, tr.s, tr.theta).toFixed(3),
+      lyThuyet: +theoreticalOf(tr.lab, tr.s, tr.theta, tr.expected).toFixed(3),
     }));
     return { points, unit, title: data.submissions[0].assignment.title };
   }, [data]);
@@ -219,7 +222,11 @@ export default function StudentDrilldown({ token, classId, studentId, studentNam
                               <tr key={i} className="border-b border-[#E2DFD8]/40">
                                 <td className="py-2 pr-2 font-black text-[#321E12]">{i + 1}</td>
                                 <td className="py-2 pr-2">
-                                  {tr.lab === "freefall" ? "Rơi tự do" : tr.lab === "average" ? "V. trung bình" : "V. tức thời"}
+                                  {tr.lab === "freefall" ? "Rơi tự do"
+                                    : tr.lab === "average" ? "V. trung bình"
+                                    : tr.lab === "instant" ? "V. tức thời"
+                                    : tr.lab === "ohm-x" ? "Điện trở X"
+                                    : tr.lab === "ohm-y" ? "Điện trở Y" : "Suất điện động"}
                                 </td>
                                 <td className="py-2 pr-2">{tr.s?.toFixed(3)}</td>
                                 <td className="py-2 pr-2">{tr.t?.toFixed(3)}</td>
@@ -228,7 +235,7 @@ export default function StudentDrilldown({ token, classId, studentId, studentNam
                                   {correctResultOf(tr.lab, tr.s, tr.t).toFixed(3)}
                                 </td>
                                 <td className="py-2 pr-2 text-[#137333]">
-                                  {theoreticalOf(tr.lab, tr.s, tr.theta).toFixed(3)}
+                                  {theoreticalOf(tr.lab, tr.s, tr.theta, tr.expected).toFixed(3)}
                                 </td>
                                 <td className="py-2">
                                   {tr.balanced === false ? (

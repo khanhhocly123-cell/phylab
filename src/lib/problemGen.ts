@@ -9,11 +9,13 @@
 
 import { makeRng, distinctValues, randRange } from "./seededRandom";
 
-export type LabKind = "average" | "instant" | "freefall";
+export type LabKind = "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf";
 
 export interface AvgTarget { theta: number; sEF: number }
 export interface InstTarget { theta: number }
 export interface FallTarget { s: number }
+export interface OhmTarget { voltage: number }
+export interface EmfTarget { resistance: number; voltage?: number }
 
 export interface ProblemSet {
   labKind: LabKind;
@@ -22,6 +24,9 @@ export interface ProblemSet {
   average?: AvgTarget[];
   instant?: InstTarget[];
   freefall?: FallTarget[];
+  "ohm-x"?: OhmTarget[];
+  "ohm-y"?: OhmTarget[];
+  emf?: EmfTarget[];
   /** Câu chữ đề bài (mặc định do template; có thể được Smartbot ghi đè). */
   prompt: string;
 }
@@ -34,6 +39,17 @@ export function generateProblemSet(
 ): ProblemSet {
   const seed = `${studentName}::${lessonId}::${labKind}`;
   const rng = makeRng(seed);
+
+  if (labKind === "ohm-x" || labKind === "ohm-y") {
+    const voltage = distinctValues(rng, 5, 1, 10, 1).sort((a, b) => a - b);
+    const data = voltage.map((v) => ({ voltage: v }));
+    return { labKind, seed, [labKind]: data, prompt: buildPrompt(labKind, { [labKind]: data }) };
+  }
+
+  if (labKind === "emf") {
+    const emf = [20, 40, 60, 80, 100].map((resistance) => ({ resistance }));
+    return { labKind, seed, emf, prompt: buildPrompt("emf", { emf }) };
+  }
 
   if (labKind === "freefall") {
     // 5 quãng rơi phân biệt trong [0.20, 0.75] m, bước 0.05 m.
@@ -71,12 +87,15 @@ export function generateProblemSet(
  */
 export function buildAssignedSet(
   labKind: LabKind,
-  targets: { average?: AvgTarget[]; instant?: InstTarget[]; freefall?: FallTarget[] }
+  targets: { average?: AvgTarget[]; instant?: InstTarget[]; freefall?: FallTarget[]; "ohm-x"?: OhmTarget[]; "ohm-y"?: OhmTarget[]; emf?: EmfTarget[] }
 ): ProblemSet {
   const data = {
     average: labKind === "average" ? targets.average : undefined,
     instant: labKind === "instant" ? targets.instant : undefined,
     freefall: labKind === "freefall" ? targets.freefall : undefined,
+    "ohm-x": labKind === "ohm-x" ? targets["ohm-x"] : undefined,
+    "ohm-y": labKind === "ohm-y" ? targets["ohm-y"] : undefined,
+    emf: labKind === "emf" ? targets.emf : undefined,
   };
   return {
     labKind,
@@ -89,8 +108,16 @@ export function buildAssignedSet(
 /** Câu chữ đề bài mặc định (template) — Smartbot có thể thay bằng văn phong tự nhiên hơn. */
 export function buildPrompt(
   labKind: LabKind,
-  data: { average?: AvgTarget[]; instant?: InstTarget[]; freefall?: FallTarget[] }
+  data: { average?: AvgTarget[]; instant?: InstTarget[]; freefall?: FallTarget[]; "ohm-x"?: OhmTarget[]; "ohm-y"?: OhmTarget[]; emf?: EmfTarget[] }
 ): string {
+  if (labKind === "ohm-x" || labKind === "ohm-y") {
+    const list = (data[labKind] || []).map((v, i) => `Lần ${i + 1}: U = ${v.voltage.toFixed(1)} V`).join("; ");
+    return `Hãy đo vật dẫn ${labKind === "ohm-x" ? "X" : "Y"} ở các điện áp sau, ghi I và tính R = U/I. ${list}.`;
+  }
+  if (labKind === "emf") {
+    const list = (data.emf || []).map((v, i) => `Lần ${i + 1}: R = ${v.resistance.toFixed(0)} Ω`).join("; ");
+    return `Hãy đặt biến trở ở các giá trị sau, ghi U và I rồi vẽ U theo I để suy ra E và r. ${list}.`;
+  }
   if (labKind === "freefall") {
     const list = (data.freefall || []).map((f, i) => `Câu ${i + 1}: s = ${(f.s * 100).toFixed(0)} cm`).join("; ");
     return `Trợ lý Phylab giao đề: hãy trượt cổng quang tới từng quãng rơi sau, thả trụ thép và đo thời gian t để tính g = 2s/t². ${list}. Mỗi câu đo ít nhất 1 lần rồi ghi số liệu.`;

@@ -576,11 +576,20 @@ export async function POST(
             const tr = t as Partial<RichTrial>;
             return {
               lab: (tr.lab === "average" || tr.lab === "instant" || tr.lab === "freefall"
+                || tr.lab === "ohm-x" || tr.lab === "ohm-y" || tr.lab === "emf"
                 ? tr.lab
                 : "freefall") as RichTrial["lab"],
               s: Number(tr.s) || 0,
               t: Number(tr.t) || 0,
               theta: tr.theta != null ? Number(tr.theta) : undefined,
+              expected: tr.expected != null ? Number(tr.expected) : undefined,
+              config: tr.config != null ? Number(tr.config) : undefined,
+              voltage: tr.voltage != null ? Number(tr.voltage) : undefined,
+              current: tr.current != null ? Number(tr.current) : undefined,
+              resistance: tr.resistance != null ? Number(tr.resistance) : undefined,
+              length: tr.length != null ? Number(tr.length) : undefined,
+              emf: tr.emf != null ? Number(tr.emf) : undefined,
+              material: tr.material === "X" || tr.material === "Y" ? tr.material : undefined,
               balanced: tr.balanced !== false,
               studentResult:
                 tr.studentResult != null && Number.isFinite(Number(tr.studentResult))

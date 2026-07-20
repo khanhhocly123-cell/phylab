@@ -6,7 +6,11 @@
  * ("không nhận diện được"), đúng yêu cầu bỏ fallback giả.
  */
 
-export type MatchLessonId = "do-toc-do-vat-chuyen-dong" | "do-gia-toc-roi-tu-do";
+export type MatchLessonId =
+  | "do-toc-do-vat-chuyen-dong"
+  | "do-gia-toc-roi-tu-do"
+  | "do-dien-tro-dinh-luat-ohm"
+  | "do-suat-dien-dong-pin-dien-hoa";
 
 export interface MatchResult {
   recognized: boolean;
@@ -19,6 +23,8 @@ export interface MatchResult {
 const TITLES: Record<MatchLessonId, string> = {
   "do-gia-toc-roi-tu-do": "Bài 11: Đo gia tốc rơi tự do (SGK Vật lí 10 KNTT)",
   "do-toc-do-vat-chuyen-dong": "Bài 6: Đo tốc độ tức thời của vật chuyển động (SGK Vật lí 10 KNTT)",
+  "do-dien-tro-dinh-luat-ohm": "Bài 23: Điện trở — Định luật Ohm (SGK Vật lí 11 KNTT)",
+  "do-suat-dien-dong-pin-dien-hoa": "Bài 26: Thực hành đo suất điện động pin điện hóa (SGK Vật lí 11 KNTT)",
 };
 
 // Từ khoá có trọng số: cụm đặc trưng (3) > cụm chung (2) > tín hiệu yếu (1).
@@ -34,6 +40,17 @@ const KEYWORDS: Record<MatchLessonId, Array<[string, number]>> = {
     ["máng nghiêng", 3], ["mang nghieng", 3], ["tốc độ trung bình", 2], ["toc do trung binh", 2],
     ["cổng quang", 2], ["cong quang", 2], ["thước cặp", 2], ["thuoc cap", 2],
     ["viên bi", 2], ["vien bi", 2], ["bài 6", 2], ["bai 6", 2], ["ramp", 1], ["6", 0.5],
+  ],
+  "do-dien-tro-dinh-luat-ohm": [
+    ["định luật ohm", 3], ["dinh luat ohm", 3], ["đo điện trở", 3], ["do dien tro", 3],
+    ["vật dẫn x", 2], ["vat dan x", 2], ["vật dẫn y", 2], ["vat dan y", 2],
+    ["ampe kế", 2], ["ampe ke", 2], ["vôn kế", 2], ["von ke", 2], ["u/i", 2],
+    ["bài 23", 2], ["bai 23", 2],
+  ],
+  "do-suat-dien-dong-pin-dien-hoa": [
+    ["suất điện động", 3], ["suat dien dong", 3], ["pin điện hóa", 3], ["pin dien hoa", 3],
+    ["galvanometer", 2], ["dây điện trở", 2], ["day dien tro", 2], ["con chạy", 2], ["con chay", 2],
+    ["phương pháp bù", 3], ["phuong phap bu", 3], ["bài 26", 2], ["bai 26", 2],
   ],
 };
 
@@ -66,11 +83,12 @@ export function classifyLesson(rawText: string, apiConfidence?: number): MatchRe
     return { recognized: false, lessonId: null, title: "", confidence: 0, reason: "empty_text" };
   }
 
-  const sFree = scoreLesson(norm, KEYWORDS["do-gia-toc-roi-tu-do"]);
-  const sInc = scoreLesson(norm, KEYWORDS["do-toc-do-vat-chuyen-dong"]);
-  const winnerScore = Math.max(sFree, sInc);
-  const loserScore = Math.min(sFree, sInc);
-  const lessonId: MatchLessonId = sFree >= sInc ? "do-gia-toc-roi-tu-do" : "do-toc-do-vat-chuyen-dong";
+  const ranked = (Object.keys(KEYWORDS) as MatchLessonId[])
+    .map((id) => ({ id, score: scoreLesson(norm, KEYWORDS[id]) }))
+    .sort((a, b) => b.score - a.score);
+  const winnerScore = ranked[0]?.score ?? 0;
+  const loserScore = ranked[1]?.score ?? 0;
+  const lessonId: MatchLessonId = ranked[0]?.id ?? "do-gia-toc-roi-tu-do";
 
   // Cần tối thiểu tín hiệu để nhận diện.
   if (winnerScore < 3) {

@@ -18,12 +18,18 @@ const LAB_NAME: Record<RichTrial["lab"], string> = {
   freefall: "gia tốc rơi tự do $g$",
   average: "vận tốc trung bình $v_{tb}$",
   instant: "vận tốc tức thời $v$",
+  "ohm-x": "điện trở vật dẫn X $R_X$",
+  "ohm-y": "điện trở vật dẫn Y $R_Y$",
+  emf: "suất điện động pin $\\mathcal{E}_x$",
 };
 
 const UNIT: Record<RichTrial["lab"], string> = {
   freefall: "m/s²",
   average: "m/s",
   instant: "m/s",
+  "ohm-x": "Ω",
+  "ohm-y": "Ω",
+  emf: "V",
 };
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -31,6 +37,12 @@ const round3 = (x: number) => Math.round(x * 1000) / 1000;
 
 /** Mô tả 1 lần đo trong lời văn câu hỏi. */
 function trialDesc(tr: RichTrial): string {
+  if (tr.lab === "ohm-x" || tr.lab === "ohm-y") {
+    return `U = ${round2(tr.voltage ?? tr.s)} V, I = ${round3(tr.current ?? tr.t)} A`;
+  }
+  if (tr.lab === "emf") {
+    return `R = ${round2(tr.resistance ?? tr.config ?? 0)} Ω, U = ${round2(tr.voltage ?? 0)} V, I = ${round2((tr.current ?? 0) * 1000)} mA`;
+  }
   const parts = [`s = ${round3(tr.s)} m`, `t = ${round3(tr.t)} s`];
   if (tr.theta != null) parts.push(`θ = ${tr.theta}°`);
   return parts.join(", ");
@@ -69,7 +81,7 @@ export function generatePersonalQuiz(trials: RichTrial[], seed: string): MoeQuiz
   /* ── Phần I: lần đo lệch lý thuyết nhiều nhất (nếu ≥ 2 lần đo) ── */
   if (usable.length >= 2) {
     const devs = usable.map((tr, i) => {
-      const theo = theoreticalOf(tr.lab, tr.s, tr.theta);
+      const theo = theoreticalOf(tr.lab, tr.s, tr.theta, tr.expected);
       const val = correctResultOf(tr.lab, tr.s, tr.t);
       return { i, dev: theo > 0 ? Math.abs(val - theo) / theo : 0 };
     });
@@ -97,6 +109,22 @@ export function generatePersonalQuiz(trials: RichTrial[], seed: string): MoeQuiz
       answer: 0,
       explain: "Vì $s = \\frac{1}{2}gt^2$ nên $t \\propto \\sqrt{s}$ — s gấp 4 thì t gấp 2.",
     });
+  } else if (tr0.lab === "ohm-x" || tr0.lab === "ohm-y") {
+    part1.push({
+      kind: "mcq",
+      q: "Với vật dẫn kim loại tuân theo định luật Ohm, khi tăng hiệu điện thế hai đầu vật dẫn thì tỉ số U/I sẽ:",
+      options: ["Gần như không đổi", "Tăng gấp đôi", "Giảm một nửa", "Bằng 0"],
+      answer: 0,
+      explain: "Ở nhiệt độ ổn định, $R=U/I$ là đặc trưng của vật dẫn và gần như không đổi.",
+    });
+  } else if (tr0.lab === "emf") {
+    part1.push({
+      kind: "mcq",
+      q: "Trên đồ thị U theo I của pin, tung độ gốc biểu diễn đại lượng nào?",
+      options: ["Suất điện động của pin", "Điện trở ngoài", "Cường độ dòng điện", "Công suất nguồn"],
+      answer: 0,
+      explain: "Từ U = E − Ir, khi I = 0 thì U = E.",
+    });
   } else {
     part1.push({
       kind: "mcq",
@@ -110,7 +138,7 @@ export function generatePersonalQuiz(trials: RichTrial[], seed: string): MoeQuiz
   /* ── Phần II: Đúng/Sai 4 ý về chính dữ liệu của em ── */
   const mean =
     usable.reduce((a, tr) => a + correctResultOf(tr.lab, tr.s, tr.t), 0) / usable.length;
-  const theo0 = theoreticalOf(usable[0].lab, usable[0].s, usable[0].theta);
+  const theo0 = theoreticalOf(usable[0].lab, usable[0].s, usable[0].theta, usable[0].expected);
   const allBalanced = usable.every((tr) => tr.balanced !== false);
   const trMax = usable.reduce((a, b) => (b.t > a.t ? b : a));
   const trMin = usable.reduce((a, b) => (b.t < a.t ? b : a));

@@ -3,7 +3,7 @@
  *
  * Dùng cho ô "Hỏi trợ lý về thí nghiệm": route /api/vnpt/chat gọi retrieveAnswer()
  * làm câu trả lời khi VNPT SmartBot không sẵn sàng, để trợ lý luôn trả lời được
- * đúng kiến thức 2 bài thực hành (đo tốc độ — Bài 6, rơi tự do — Bài 11).
+ * đúng kiến thức các bài thực hành cơ học và điện đang có trong ứng dụng.
  *
  * Cơ chế RAG gọn nhẹ, chạy offline: mỗi tài liệu có `keywords` + `answer`.
  * retrieveAnswer() chuẩn hoá câu hỏi (bỏ dấu), chấm điểm trùng khớp từ khoá,
@@ -139,6 +139,21 @@ export const KNOWLEDGE_BASE: KBDoc[] = [
     keywords: ["tru thep", "tai sao dung tru", "vat nang", "suc can khong khi", "khong dung giay", "bong nhua"],
     answer:
       "Dùng trụ thép (vật nặng, nhỏ gọn) để lực cản không khí không đáng kể so với trọng lực, nên chuyển động rất gần rơi tự do lý tưởng. Vật nhẹ như giấy hay bóng nhựa chịu sức cản không khí lớn, sẽ không rơi tự do đúng nghĩa và cho g sai nhiều.",
+  },
+  {
+    id: "ohm-law-resistance",
+    keywords: ["dinh luat ohm", "do dien tro", "r = u/i", "u/i", "vat dan x", "vat dan y"],
+    answer: "Định luật Ohm cho vật dẫn kim loại ở nhiệt độ ổn định: I = U/R, nên R = U/I. Trong Lab 23, em đo 5 cặp (U,I) cho X và 5 cặp cho Y. Nếu vật dẫn tuân theo định luật Ohm, đồ thị I–U gần là đường thẳng qua gốc và U/I gần như không đổi cho từng mẫu.",
+  },
+  {
+    id: "digital-meter-wiring",
+    keywords: ["ampe ke", "von ke", "dong ho so", "mode ma", "mode v", "noi tiep", "song song"],
+    answer: "Đồng hồ đo dòng phải đặt mode mA/A, dây đen vào COM, dây đỏ vào cổng mA/A và mắc nối tiếp. Đồng hồ đo áp đặt mode V DC, dây đen vào COM, dây đỏ vào VΩ và mắc song song hai đầu vật dẫn. Luôn mở khóa K khi đổi dây hoặc đổi mode.",
+  },
+  {
+    id: "emf-compensation",
+    keywords: ["suat dien dong", "pin dien hoa", "dien tro trong", "do thi u i", "bien tro", "ampe ke", "von ke"],
+    answer: "Đo nhiều cặp hiệu điện thế U và dòng điện I khi thay đổi biến trở, rồi dùng phương trình U = E − Ir. Trên đồ thị U theo I, tung độ gốc là suất điện động E và độ lớn hệ số góc là điện trở trong r. Ampe kế mắc nối tiếp, vôn kế mắc song song với hai cực pin.",
   },
 ];
 

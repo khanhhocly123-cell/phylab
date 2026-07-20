@@ -37,10 +37,13 @@ interface NoteSectionProps {
 
 type TabKey = "data" | "graph" | "report" | "review";
 
-const LAB_META: Record<LabKind, { title: string; formula: string; sLabel: string; unit: string }> = {
-  average: { title: "Mẫu 1 — Vận tốc trung bình", formula: "v = \\dfrac{s_{EF}}{t}", sLabel: "sEF (m)", unit: "m/s" },
-  instant: { title: "Mẫu 2 — Vận tốc tức thời", formula: "v = \\dfrac{d}{t}", sLabel: "d (m)", unit: "m/s" },
-  freefall: { title: "Số liệu — Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", sLabel: "s (m)", unit: "m/s²" },
+const LAB_META: Record<LabKind, { title: string; formula: string; sLabel: string; tLabel: string; unit: string }> = {
+  average: { title: "Mẫu 1 — Vận tốc trung bình", formula: "v = \\dfrac{s_{EF}}{t}", sLabel: "sEF (m)", tLabel: "t (s)", unit: "m/s" },
+  instant: { title: "Mẫu 2 — Vận tốc tức thời", formula: "v = \\dfrac{d}{t}", sLabel: "d (m)", tLabel: "t (s)", unit: "m/s" },
+  freefall: { title: "Số liệu — Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", sLabel: "s (m)", tLabel: "t (s)", unit: "m/s²" },
+  "ohm-x": { title: "Mẫu X — Điện trở theo định luật Ohm", formula: "R_X = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω" },
+  "ohm-y": { title: "Mẫu Y — Điện trở theo định luật Ohm", formula: "R_Y = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω" },
+  emf: { title: "Số liệu — Suất điện động pin", formula: "U = \\mathcal{E} - Ir", sLabel: "I (A)", tLabel: "U (V)", unit: "V" },
 };
 
 const DEMO_TRIALS: Record<string, RichTrial[]> = {
@@ -128,7 +131,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
       map[lab] = (samples[lab] || []).map((tr, i) => {
         const raw = results[`${lab}-${i}`];
         const sr = raw != null && raw.trim() !== "" ? parseFloat(raw) : null;
-        return { s: tr.s, t: tr.t, theta: tr.theta, balanced: tr.balanced, studentResult: sr };
+        return { ...tr, s: tr.s, t: tr.t, theta: tr.theta, balanced: tr.balanced, studentResult: sr };
       });
     });
     return map;
@@ -187,7 +190,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
     const richTrials: RichTrial[] = [];
     (Object.keys(map) as LabKind[]).forEach((lab) => {
       (map[lab] || []).forEach((r) =>
-        richTrials.push({ lab, s: r.s, t: r.t, theta: r.theta, balanced: r.balanced, studentResult: r.studentResult })
+        richTrials.push({ ...(r as RichTrial), lab, s: r.s, t: r.t, theta: r.theta, balanced: r.balanced, studentResult: r.studentResult })
       );
     });
     const report: ExperimentReport = {
@@ -353,6 +356,9 @@ function SampleTable({
   grade: LessonGrade | null;
 }) {
   const meta = LAB_META[lab];
+  const showTheta = lab === "average" || lab === "instant";
+  const displayFirst = (r: RichTrial) => lab === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s);
+  const displaySecond = (r: RichTrial) => lab === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t);
   return (
     <div className="bg-white rounded-2xl border border-[#E2DFD8] p-4">
       <div className="flex items-center justify-between mb-2">
@@ -367,9 +373,9 @@ function SampleTable({
             <tr className="bg-[#FAF6F0] border-b border-[#E2DFD8] font-black text-[#321E12]">
               <th className="p-2 text-center w-8">#</th>
               <th className="p-2 text-center">{meta.sLabel}</th>
-              <th className="p-2 text-center">t (s)</th>
-              {lab !== "freefall" && <th className="p-2 text-center">θ</th>}
-              <th className="p-2 text-center">Cân bằng</th>
+              <th className="p-2 text-center">{meta.tLabel}</th>
+              {showTheta && <th className="p-2 text-center">θ</th>}
+              <th className="p-2 text-center">Thiết lập</th>
               <th className="p-2 text-center w-28">Kết quả tính ({meta.unit})</th>
               <th className="p-2 text-center w-16">Đánh giá</th>
             </tr>
@@ -386,13 +392,13 @@ function SampleTable({
               return (
                 <tr key={i} className={`border-b border-[#E2DFD8]/60 font-semibold text-[#605248] ${matchesExpectedTarget ? "" : "bg-rose-50"}`}>
                   <td className="p-2 text-center text-[#605248]/40 font-black">{i + 1}</td>
-                  <td className="p-2 text-center font-mono">{r.s.toFixed(3)}</td>
-                  <td className="p-2 text-center font-mono">{r.t.toFixed(3)}</td>
-                  {lab !== "freefall" && <td className="p-2 text-center">{r.theta ?? "—"}°</td>}
+                  <td className="p-2 text-center font-mono">{displayFirst(r).toFixed(lab === "emf" ? 4 : 3)}</td>
+                  <td className="p-2 text-center font-mono">{displaySecond(r).toFixed(lab === "emf" ? 3 : 4)}</td>
+                  {showTheta && <td className="p-2 text-center">{r.theta ?? "—"}°</td>}
                   <td className="p-2 text-center">
-                    {r.balanced === false
-                      ? <span className="text-[8px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-black">Chưa</span>
-                      : <span className="text-[8px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">Rồi</span>}
+                    {lab === "emf" ? <span className="text-[8px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-black">R={r.config ?? r.resistance ?? 0} Ω</span> : r.balanced === false
+                      ? <span className="text-[8px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-black">Sai</span>
+                      : <span className="text-[8px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">Đúng</span>}
                   </td>
                   <td className="p-2">
                     <input
@@ -480,11 +486,25 @@ function GraphTab({
   onBackToData?: () => void;
 }) {
   const isFreeFall = lessonId === "do-gia-toc-roi-tu-do";
+  const isOhm = lessonId === "do-dien-tro-dinh-luat-ohm";
+  const isEmf = lessonId === "do-suat-dien-dong-pin-dien-hoa";
 
   // Điểm số liệu để HS tự vẽ lại.
   let data: DataPoint[] = [];
   let xLabel = "", yLabel = "", relation = "";
-  if (isFreeFall) {
+  if (isOhm) {
+    // Đặc tuyến I-U của vật dẫn X (Y vẫn được so sánh đầy đủ trong bảng/báo cáo).
+    data = trials.filter((t) => t.lab === "ohm-x" && (t.current ?? t.t) > 0)
+      .map((t) => ({ x: +(t.voltage ?? t.s).toFixed(2), y: +(t.current ?? t.t).toFixed(5) }))
+      .sort((a, b) => a.x - b.x);
+    xLabel = "U (V) — vật dẫn X"; yLabel = "I (A)"; relation = "$I = U/R_X$";
+  } else if (isEmf) {
+    // U = E - Ir: tung độ gốc là E, độ lớn hệ số góc là r.
+    data = trials.filter((t) => t.lab === "emf" && (t.current ?? 0) > 0 && (t.voltage ?? 0) > 0)
+      .map((t) => ({ x: +(t.current ?? 0).toFixed(5), y: +(t.voltage ?? 0).toFixed(4) }))
+      .sort((a, b) => a.x - b.x);
+    xLabel = "I (A)"; yLabel = "U (V)"; relation = "$U = \\mathcal{E} - Ir$";
+  } else if (isFreeFall) {
     // s theo t² (độ dốc = g/2, đường thẳng qua gốc).
     data = trials.filter((t) => t.lab === "freefall" && t.t > 0)
       .map((t) => ({ x: +(t.t * t.t).toFixed(4), y: +t.s.toFixed(3) }));
@@ -577,6 +597,7 @@ function ReportTab({
   }
 
   const today = report?.date || new Date().toLocaleDateString("vi-VN");
+  const isGrade11 = spec?.id === "do-dien-tro-dinh-luat-ohm" || spec?.id === "do-suat-dien-dong-pin-dien-hoa";
 
   return (
     <div className="space-y-3">
@@ -604,7 +625,7 @@ function ReportTab({
         {/* ===== Thông tin học sinh ===== */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs font-bold text-[#321E12] print:grid-cols-2">
           <p>Họ và tên: <b className="border-b border-dotted border-[#605248]">{studentName?.split(" (")[0] || "—"}</b></p>
-          <p>Lớp: <b>10A1</b> · Mã HS: <b>PH-2026-09</b></p>
+          <p>Lớp: <b>{isGrade11 ? "11A1" : "10A1"}</b> · Mã HS: <b>PH-2026-09</b></p>
           <p>Ngày thực hành: <b>{today}</b></p>
           <p>Lần nộp: <b>{report?.attempt ?? 1}</b></p>
         </section>
@@ -627,8 +648,8 @@ function ReportTab({
                   <tr className="bg-[#FAF6F0] font-black text-[#321E12]">
                     <th className="border border-[#C9C2B6] p-1.5 w-8">Lần</th>
                     <th className="border border-[#C9C2B6] p-1.5">{LAB_META[s.labKind].sLabel}</th>
-                    <th className="border border-[#C9C2B6] p-1.5">t (s)</th>
-                    {s.labKind !== "freefall" && <th className="border border-[#C9C2B6] p-1.5">θ (°)</th>}
+                    <th className="border border-[#C9C2B6] p-1.5">{LAB_META[s.labKind].tLabel}</th>
+                    {(s.labKind === "average" || s.labKind === "instant") && <th className="border border-[#C9C2B6] p-1.5">θ (°)</th>}
                     <th className="border border-[#C9C2B6] p-1.5">HS tính ({s.unit})</th>
                     <th className="border border-[#C9C2B6] p-1.5">Theo công thức ({s.unit})</th>
                     <th className="border border-[#C9C2B6] p-1.5">Sát lý thuyết</th>
@@ -639,9 +660,9 @@ function ReportTab({
                   {s.perRow.map((r) => (
                     <tr key={r.index} className="text-center">
                       <td className="border border-[#C9C2B6] p-1.5 font-black">{r.index}</td>
-                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.s.toFixed(3)}</td>
-                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.t.toFixed(3)}</td>
-                      {s.labKind !== "freefall" && <td className="border border-[#C9C2B6] p-1.5">{r.theta ?? "—"}</td>}
+                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{(s.labKind === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s)).toFixed(s.labKind === "emf" ? 4 : 3)}</td>
+                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{(s.labKind === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t)).toFixed(s.labKind === "emf" ? 3 : 4)}</td>
+                      {(s.labKind === "average" || s.labKind === "instant") && <td className="border border-[#C9C2B6] p-1.5">{r.theta ?? "—"}</td>}
                       <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.studentResult != null ? r.studentResult.toFixed(3) : "(bỏ trống)"}</td>
                       <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.correctResult.toFixed(3)}</td>
                       <td className="border border-[#C9C2B6] p-1.5">{Math.round(r.physCloseness)}%</td>

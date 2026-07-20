@@ -1,0 +1,1034 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="994" height="684" viewBox="0 0 994 684"
+     role="img"
+     aria-labelledby="svg-title svg-description">
+  <title id="svg-title">Bảng lắp mạch điện gồm 216 nút</title>
+  <desc id="svg-description">
+    Bảng gồm 24 cụm, mỗi cụm có 9 nút bố trí dạng lưới 3 hàng 3 cột.
+    Mỗi nút được gán mã node-001 đến node-216 trong mã SVG nhưng số không hiển thị trên hình.
+  </desc>
+  <metadata id="node-metadata">
+<![CDATA[{"description":"Electrical circuit mounting board with 24 modules. Each module contains a 3 by 3 node grid.","numbering_order":"module row top-to-bottom, module column left-to-right, then local row top-to-bottom and local column left-to-right","node_count":216,"nodes":[{"id":"node-001","number":1,"module_row":1,"module_col":1,"local_row":1,"local_col":1,"x":43.0,"y":61.0},{"id":"node-002","number":2,"module_row":1,"module_col":1,"local_row":1,"local_col":2,"x":91.4,"y":61.0},{"id":"node-003","number":3,"module_row":1,"module_col":1,"local_row":1,"local_col":3,"x":140.0,"y":61.0},{"id":"node-004","number":4,"module_row":1,"module_col":1,"local_row":2,"local_col":1,"x":43.0,"y":107.4},{"id":"node-005","number":5,"module_row":1,"module_col":1,"local_row":2,"local_col":2,"x":91.4,"y":107.4},{"id":"node-006","number":6,"module_row":1,"module_col":1,"local_row":2,"local_col":3,"x":140.0,"y":107.4},{"id":"node-007","number":7,"module_row":1,"module_col":1,"local_row":3,"local_col":1,"x":43.0,"y":154.6},{"id":"node-008","number":8,"module_row":1,"module_col":1,"local_row":3,"local_col":2,"x":91.4,"y":154.6},{"id":"node-009","number":9,"module_row":1,"module_col":1,"local_row":3,"local_col":3,"x":140.0,"y":154.6},{"id":"node-010","number":10,"module_row":1,"module_col":2,"local_row":1,"local_col":1,"x":199.4,"y":61.0},{"id":"node-011","number":11,"module_row":1,"module_col":2,"local_row":1,"local_col":2,"x":247.6,"y":61.0},{"id":"node-012","number":12,"module_row":1,"module_col":2,"local_row":1,"local_col":3,"x":296.0,"y":61.0},{"id":"node-013","number":13,"module_row":1,"module_col":2,"local_row":2,"local_col":1,"x":199.4,"y":107.4},{"id":"node-014","number":14,"module_row":1,"module_col":2,"local_row":2,"local_col":2,"x":247.6,"y":107.4},{"id":"node-015","number":15,"module_row":1,"module_col":2,"local_row":2,"local_col":3,"x":296.0,"y":107.4},{"id":"node-016","number":16,"module_row":1,"module_col":2,"local_row":3,"local_col":1,"x":199.4,"y":154.6},{"id":"node-017","number":17,"module_row":1,"module_col":2,"local_row":3,"local_col":2,"x":247.6,"y":154.6},{"id":"node-018","number":18,"module_row":1,"module_col":2,"local_row":3,"local_col":3,"x":296.0,"y":154.6},{"id":"node-019","number":19,"module_row":1,"module_col":3,"local_row":1,"local_col":1,"x":355.2,"y":61.0},{"id":"node-020","number":20,"module_row":1,"module_col":3,"local_row":1,"local_col":2,"x":403.8,"y":61.0},{"id":"node-021","number":21,"module_row":1,"module_col":3,"local_row":1,"local_col":3,"x":452.0,"y":61.0},{"id":"node-022","number":22,"module_row":1,"module_col":3,"local_row":2,"local_col":1,"x":355.2,"y":107.4},{"id":"node-023","number":23,"module_row":1,"module_col":3,"local_row":2,"local_col":2,"x":403.8,"y":107.4},{"id":"node-024","number":24,"module_row":1,"module_col":3,"local_row":2,"local_col":3,"x":452.0,"y":107.4},{"id":"node-025","number":25,"module_row":1,"module_col":3,"local_row":3,"local_col":1,"x":355.2,"y":154.6},{"id":"node-026","number":26,"module_row":1,"module_col":3,"local_row":3,"local_col":2,"x":403.8,"y":154.6},{"id":"node-027","number":27,"module_row":1,"module_col":3,"local_row":3,"local_col":3,"x":452.0,"y":154.6},{"id":"node-028","number":28,"module_row":1,"module_col":4,"local_row":1,"local_col":1,"x":511.8,"y":61.0},{"id":"node-029","number":29,"module_row":1,"module_col":4,"local_row":1,"local_col":2,"x":560.6,"y":61.0},{"id":"node-030","number":30,"module_row":1,"module_col":4,"local_row":1,"local_col":3,"x":609.2,"y":61.0},{"id":"node-031","number":31,"module_row":1,"module_col":4,"local_row":2,"local_col":1,"x":511.8,"y":107.4},{"id":"node-032","number":32,"module_row":1,"module_col":4,"local_row":2,"local_col":2,"x":560.6,"y":107.4},{"id":"node-033","number":33,"module_row":1,"module_col":4,"local_row":2,"local_col":3,"x":609.2,"y":107.4},{"id":"node-034","number":34,"module_row":1,"module_col":4,"local_row":3,"local_col":1,"x":511.8,"y":154.6},{"id":"node-035","number":35,"module_row":1,"module_col":4,"local_row":3,"local_col":2,"x":560.6,"y":154.6},{"id":"node-036","number":36,"module_row":1,"module_col":4,"local_row":3,"local_col":3,"x":609.2,"y":154.6},{"id":"node-037","number":37,"module_row":1,"module_col":5,"local_row":1,"local_col":1,"x":669.4,"y":61.0},{"id":"node-038","number":38,"module_row":1,"module_col":5,"local_row":1,"local_col":2,"x":718.4,"y":61.0},{"id":"node-039","number":39,"module_row":1,"module_col":5,"local_row":1,"local_col":3,"x":767.8,"y":61.0},{"id":"node-040","number":40,"module_row":1,"module_col":5,"local_row":2,"local_col":1,"x":669.4,"y":107.4},{"id":"node-041","number":41,"module_row":1,"module_col":5,"local_row":2,"local_col":2,"x":718.4,"y":107.4},{"id":"node-042","number":42,"module_row":1,"module_col":5,"local_row":2,"local_col":3,"x":767.8,"y":107.4},{"id":"node-043","number":43,"module_row":1,"module_col":5,"local_row":3,"local_col":1,"x":669.4,"y":154.6},{"id":"node-044","number":44,"module_row":1,"module_col":5,"local_row":3,"local_col":2,"x":718.4,"y":154.6},{"id":"node-045","number":45,"module_row":1,"module_col":5,"local_row":3,"local_col":3,"x":767.8,"y":154.6},{"id":"node-046","number":46,"module_row":1,"module_col":6,"local_row":1,"local_col":1,"x":828.8,"y":61.0},{"id":"node-047","number":47,"module_row":1,"module_col":6,"local_row":1,"local_col":2,"x":878.8,"y":61.0},{"id":"node-048","number":48,"module_row":1,"module_col":6,"local_row":1,"local_col":3,"x":928.6,"y":61.0},{"id":"node-049","number":49,"module_row":1,"module_col":6,"local_row":2,"local_col":1,"x":828.8,"y":107.4},{"id":"node-050","number":50,"module_row":1,"module_col":6,"local_row":2,"local_col":2,"x":878.8,"y":107.4},{"id":"node-051","number":51,"module_row":1,"module_col":6,"local_row":2,"local_col":3,"x":928.6,"y":107.4},{"id":"node-052","number":52,"module_row":1,"module_col":6,"local_row":3,"local_col":1,"x":828.8,"y":154.6},{"id":"node-053","number":53,"module_row":1,"module_col":6,"local_row":3,"local_col":2,"x":878.8,"y":154.6},{"id":"node-054","number":54,"module_row":1,"module_col":6,"local_row":3,"local_col":3,"x":928.6,"y":154.6},{"id":"node-055","number":55,"module_row":2,"module_col":1,"local_row":1,"local_col":1,"x":43.0,"y":212.2},{"id":"node-056","number":56,"module_row":2,"module_col":1,"local_row":1,"local_col":2,"x":91.4,"y":212.2},{"id":"node-057","number":57,"module_row":2,"module_col":1,"local_row":1,"local_col":3,"x":140.0,"y":212.2},{"id":"node-058","number":58,"module_row":2,"module_col":1,"local_row":2,"local_col":1,"x":43.0,"y":259.6},{"id":"node-059","number":59,"module_row":2,"module_col":1,"local_row":2,"local_col":2,"x":91.4,"y":259.6},{"id":"node-060","number":60,"module_row":2,"module_col":1,"local_row":2,"local_col":3,"x":140.0,"y":259.6},{"id":"node-061","number":61,"module_row":2,"module_col":1,"local_row":3,"local_col":1,"x":43.0,"y":307.2},{"id":"node-062","number":62,"module_row":2,"module_col":1,"local_row":3,"local_col":2,"x":91.4,"y":307.2},{"id":"node-063","number":63,"module_row":2,"module_col":1,"local_row":3,"local_col":3,"x":140.0,"y":307.2},{"id":"node-064","number":64,"module_row":2,"module_col":2,"local_row":1,"local_col":1,"x":199.4,"y":212.2},{"id":"node-065","number":65,"module_row":2,"module_col":2,"local_row":1,"local_col":2,"x":247.6,"y":212.2},{"id":"node-066","number":66,"module_row":2,"module_col":2,"local_row":1,"local_col":3,"x":296.0,"y":212.2},{"id":"node-067","number":67,"module_row":2,"module_col":2,"local_row":2,"local_col":1,"x":199.4,"y":259.6},{"id":"node-068","number":68,"module_row":2,"module_col":2,"local_row":2,"local_col":2,"x":247.6,"y":259.6},{"id":"node-069","number":69,"module_row":2,"module_col":2,"local_row":2,"local_col":3,"x":296.0,"y":259.6},{"id":"node-070","number":70,"module_row":2,"module_col":2,"local_row":3,"local_col":1,"x":199.4,"y":307.2},{"id":"node-071","number":71,"module_row":2,"module_col":2,"local_row":3,"local_col":2,"x":247.6,"y":307.2},{"id":"node-072","number":72,"module_row":2,"module_col":2,"local_row":3,"local_col":3,"x":296.0,"y":307.2},{"id":"node-073","number":73,"module_row":2,"module_col":3,"local_row":1,"local_col":1,"x":355.2,"y":212.2},{"id":"node-074","number":74,"module_row":2,"module_col":3,"local_row":1,"local_col":2,"x":403.8,"y":212.2},{"id":"node-075","number":75,"module_row":2,"module_col":3,"local_row":1,"local_col":3,"x":452.0,"y":212.2},{"id":"node-076","number":76,"module_row":2,"module_col":3,"local_row":2,"local_col":1,"x":355.2,"y":259.6},{"id":"node-077","number":77,"module_row":2,"module_col":3,"local_row":2,"local_col":2,"x":403.8,"y":259.6},{"id":"node-078","number":78,"module_row":2,"module_col":3,"local_row":2,"local_col":3,"x":452.0,"y":259.6},{"id":"node-079","number":79,"module_row":2,"module_col":3,"local_row":3,"local_col":1,"x":355.2,"y":307.2},{"id":"node-080","number":80,"module_row":2,"module_col":3,"local_row":3,"local_col":2,"x":403.8,"y":307.2},{"id":"node-081","number":81,"module_row":2,"module_col":3,"local_row":3,"local_col":3,"x":452.0,"y":307.2},{"id":"node-082","number":82,"module_row":2,"module_col":4,"local_row":1,"local_col":1,"x":511.8,"y":212.2},{"id":"node-083","number":83,"module_row":2,"module_col":4,"local_row":1,"local_col":2,"x":560.6,"y":212.2},{"id":"node-084","number":84,"module_row":2,"module_col":4,"local_row":1,"local_col":3,"x":609.2,"y":212.2},{"id":"node-085","number":85,"module_row":2,"module_col":4,"local_row":2,"local_col":1,"x":511.8,"y":259.6},{"id":"node-086","number":86,"module_row":2,"module_col":4,"local_row":2,"local_col":2,"x":560.6,"y":259.6},{"id":"node-087","number":87,"module_row":2,"module_col":4,"local_row":2,"local_col":3,"x":609.2,"y":259.6},{"id":"node-088","number":88,"module_row":2,"module_col":4,"local_row":3,"local_col":1,"x":511.8,"y":307.2},{"id":"node-089","number":89,"module_row":2,"module_col":4,"local_row":3,"local_col":2,"x":560.6,"y":307.2},{"id":"node-090","number":90,"module_row":2,"module_col":4,"local_row":3,"local_col":3,"x":609.2,"y":307.2},{"id":"node-091","number":91,"module_row":2,"module_col":5,"local_row":1,"local_col":1,"x":669.4,"y":212.2},{"id":"node-092","number":92,"module_row":2,"module_col":5,"local_row":1,"local_col":2,"x":718.4,"y":212.2},{"id":"node-093","number":93,"module_row":2,"module_col":5,"local_row":1,"local_col":3,"x":767.8,"y":212.2},{"id":"node-094","number":94,"module_row":2,"module_col":5,"local_row":2,"local_col":1,"x":669.4,"y":259.6},{"id":"node-095","number":95,"module_row":2,"module_col":5,"local_row":2,"local_col":2,"x":718.4,"y":259.6},{"id":"node-096","number":96,"module_row":2,"module_col":5,"local_row":2,"local_col":3,"x":767.8,"y":259.6},{"id":"node-097","number":97,"module_row":2,"module_col":5,"local_row":3,"local_col":1,"x":669.4,"y":307.2},{"id":"node-098","number":98,"module_row":2,"module_col":5,"local_row":3,"local_col":2,"x":718.4,"y":307.2},{"id":"node-099","number":99,"module_row":2,"module_col":5,"local_row":3,"local_col":3,"x":767.8,"y":307.2},{"id":"node-100","number":100,"module_row":2,"module_col":6,"local_row":1,"local_col":1,"x":828.8,"y":212.2},{"id":"node-101","number":101,"module_row":2,"module_col":6,"local_row":1,"local_col":2,"x":878.8,"y":212.2},{"id":"node-102","number":102,"module_row":2,"module_col":6,"local_row":1,"local_col":3,"x":928.6,"y":212.2},{"id":"node-103","number":103,"module_row":2,"module_col":6,"local_row":2,"local_col":1,"x":828.8,"y":259.6},{"id":"node-104","number":104,"module_row":2,"module_col":6,"local_row":2,"local_col":2,"x":878.8,"y":259.6},{"id":"node-105","number":105,"module_row":2,"module_col":6,"local_row":2,"local_col":3,"x":928.6,"y":259.6},{"id":"node-106","number":106,"module_row":2,"module_col":6,"local_row":3,"local_col":1,"x":828.8,"y":307.2},{"id":"node-107","number":107,"module_row":2,"module_col":6,"local_row":3,"local_col":2,"x":878.8,"y":307.2},{"id":"node-108","number":108,"module_row":2,"module_col":6,"local_row":3,"local_col":3,"x":928.6,"y":307.2},{"id":"node-109","number":109,"module_row":3,"module_col":1,"local_row":1,"local_col":1,"x":43.0,"y":364.8},{"id":"node-110","number":110,"module_row":3,"module_col":1,"local_row":1,"local_col":2,"x":91.4,"y":364.8},{"id":"node-111","number":111,"module_row":3,"module_col":1,"local_row":1,"local_col":3,"x":140.0,"y":364.8},{"id":"node-112","number":112,"module_row":3,"module_col":1,"local_row":2,"local_col":1,"x":43.0,"y":413.2},{"id":"node-113","number":113,"module_row":3,"module_col":1,"local_row":2,"local_col":2,"x":91.4,"y":413.2},{"id":"node-114","number":114,"module_row":3,"module_col":1,"local_row":2,"local_col":3,"x":140.0,"y":413.2},{"id":"node-115","number":115,"module_row":3,"module_col":1,"local_row":3,"local_col":1,"x":43.0,"y":460.8},{"id":"node-116","number":116,"module_row":3,"module_col":1,"local_row":3,"local_col":2,"x":91.4,"y":460.8},{"id":"node-117","number":117,"module_row":3,"module_col":1,"local_row":3,"local_col":3,"x":140.0,"y":460.8},{"id":"node-118","number":118,"module_row":3,"module_col":2,"local_row":1,"local_col":1,"x":199.4,"y":364.8},{"id":"node-119","number":119,"module_row":3,"module_col":2,"local_row":1,"local_col":2,"x":247.6,"y":364.8},{"id":"node-120","number":120,"module_row":3,"module_col":2,"local_row":1,"local_col":3,"x":296.0,"y":364.8},{"id":"node-121","number":121,"module_row":3,"module_col":2,"local_row":2,"local_col":1,"x":199.4,"y":413.2},{"id":"node-122","number":122,"module_row":3,"module_col":2,"local_row":2,"local_col":2,"x":247.6,"y":413.2},{"id":"node-123","number":123,"module_row":3,"module_col":2,"local_row":2,"local_col":3,"x":296.0,"y":413.2},{"id":"node-124","number":124,"module_row":3,"module_col":2,"local_row":3,"local_col":1,"x":199.4,"y":460.8},{"id":"node-125","number":125,"module_row":3,"module_col":2,"local_row":3,"local_col":2,"x":247.6,"y":460.8},{"id":"node-126","number":126,"module_row":3,"module_col":2,"local_row":3,"local_col":3,"x":296.0,"y":460.8},{"id":"node-127","number":127,"module_row":3,"module_col":3,"local_row":1,"local_col":1,"x":355.2,"y":364.8},{"id":"node-128","number":128,"module_row":3,"module_col":3,"local_row":1,"local_col":2,"x":403.8,"y":364.8},{"id":"node-129","number":129,"module_row":3,"module_col":3,"local_row":1,"local_col":3,"x":452.0,"y":364.8},{"id":"node-130","number":130,"module_row":3,"module_col":3,"local_row":2,"local_col":1,"x":355.2,"y":413.2},{"id":"node-131","number":131,"module_row":3,"module_col":3,"local_row":2,"local_col":2,"x":403.8,"y":413.2},{"id":"node-132","number":132,"module_row":3,"module_col":3,"local_row":2,"local_col":3,"x":452.0,"y":413.2},{"id":"node-133","number":133,"module_row":3,"module_col":3,"local_row":3,"local_col":1,"x":355.2,"y":460.8},{"id":"node-134","number":134,"module_row":3,"module_col":3,"local_row":3,"local_col":2,"x":403.8,"y":460.8},{"id":"node-135","number":135,"module_row":3,"module_col":3,"local_row":3,"local_col":3,"x":452.0,"y":460.8},{"id":"node-136","number":136,"module_row":3,"module_col":4,"local_row":1,"local_col":1,"x":511.8,"y":364.8},{"id":"node-137","number":137,"module_row":3,"module_col":4,"local_row":1,"local_col":2,"x":560.6,"y":364.8},{"id":"node-138","number":138,"module_row":3,"module_col":4,"local_row":1,"local_col":3,"x":609.2,"y":364.8},{"id":"node-139","number":139,"module_row":3,"module_col":4,"local_row":2,"local_col":1,"x":511.8,"y":413.2},{"id":"node-140","number":140,"module_row":3,"module_col":4,"local_row":2,"local_col":2,"x":560.6,"y":413.2},{"id":"node-141","number":141,"module_row":3,"module_col":4,"local_row":2,"local_col":3,"x":609.2,"y":413.2},{"id":"node-142","number":142,"module_row":3,"module_col":4,"local_row":3,"local_col":1,"x":511.8,"y":460.8},{"id":"node-143","number":143,"module_row":3,"module_col":4,"local_row":3,"local_col":2,"x":560.6,"y":460.8},{"id":"node-144","number":144,"module_row":3,"module_col":4,"local_row":3,"local_col":3,"x":609.2,"y":460.8},{"id":"node-145","number":145,"module_row":3,"module_col":5,"local_row":1,"local_col":1,"x":669.4,"y":364.8},{"id":"node-146","number":146,"module_row":3,"module_col":5,"local_row":1,"local_col":2,"x":718.4,"y":364.8},{"id":"node-147","number":147,"module_row":3,"module_col":5,"local_row":1,"local_col":3,"x":767.8,"y":364.8},{"id":"node-148","number":148,"module_row":3,"module_col":5,"local_row":2,"local_col":1,"x":669.4,"y":413.2},{"id":"node-149","number":149,"module_row":3,"module_col":5,"local_row":2,"local_col":2,"x":718.4,"y":413.2},{"id":"node-150","number":150,"module_row":3,"module_col":5,"local_row":2,"local_col":3,"x":767.8,"y":413.2},{"id":"node-151","number":151,"module_row":3,"module_col":5,"local_row":3,"local_col":1,"x":669.4,"y":460.8},{"id":"node-152","number":152,"module_row":3,"module_col":5,"local_row":3,"local_col":2,"x":718.4,"y":460.8},{"id":"node-153","number":153,"module_row":3,"module_col":5,"local_row":3,"local_col":3,"x":767.8,"y":460.8},{"id":"node-154","number":154,"module_row":3,"module_col":6,"local_row":1,"local_col":1,"x":828.8,"y":364.8},{"id":"node-155","number":155,"module_row":3,"module_col":6,"local_row":1,"local_col":2,"x":878.8,"y":364.8},{"id":"node-156","number":156,"module_row":3,"module_col":6,"local_row":1,"local_col":3,"x":928.6,"y":364.8},{"id":"node-157","number":157,"module_row":3,"module_col":6,"local_row":2,"local_col":1,"x":828.8,"y":413.2},{"id":"node-158","number":158,"module_row":3,"module_col":6,"local_row":2,"local_col":2,"x":878.8,"y":413.2},{"id":"node-159","number":159,"module_row":3,"module_col":6,"local_row":2,"local_col":3,"x":928.6,"y":413.2},{"id":"node-160","number":160,"module_row":3,"module_col":6,"local_row":3,"local_col":1,"x":828.8,"y":460.8},{"id":"node-161","number":161,"module_row":3,"module_col":6,"local_row":3,"local_col":2,"x":878.8,"y":460.8},{"id":"node-162","number":162,"module_row":3,"module_col":6,"local_row":3,"local_col":3,"x":928.6,"y":460.8},{"id":"node-163","number":163,"module_row":4,"module_col":1,"local_row":1,"local_col":1,"x":43.0,"y":519.6},{"id":"node-164","number":164,"module_row":4,"module_col":1,"local_row":1,"local_col":2,"x":91.4,"y":519.6},{"id":"node-165","number":165,"module_row":4,"module_col":1,"local_row":1,"local_col":3,"x":140.0,"y":519.6},{"id":"node-166","number":166,"module_row":4,"module_col":1,"local_row":2,"local_col":1,"x":43.0,"y":568.4},{"id":"node-167","number":167,"module_row":4,"module_col":1,"local_row":2,"local_col":2,"x":91.4,"y":568.4},{"id":"node-168","number":168,"module_row":4,"module_col":1,"local_row":2,"local_col":3,"x":140.0,"y":568.4},{"id":"node-169","number":169,"module_row":4,"module_col":1,"local_row":3,"local_col":1,"x":43.0,"y":617.0},{"id":"node-170","number":170,"module_row":4,"module_col":1,"local_row":3,"local_col":2,"x":91.4,"y":617.0},{"id":"node-171","number":171,"module_row":4,"module_col":1,"local_row":3,"local_col":3,"x":140.0,"y":617.0},{"id":"node-172","number":172,"module_row":4,"module_col":2,"local_row":1,"local_col":1,"x":199.4,"y":519.6},{"id":"node-173","number":173,"module_row":4,"module_col":2,"local_row":1,"local_col":2,"x":247.6,"y":519.6},{"id":"node-174","number":174,"module_row":4,"module_col":2,"local_row":1,"local_col":3,"x":296.0,"y":519.6},{"id":"node-175","number":175,"module_row":4,"module_col":2,"local_row":2,"local_col":1,"x":199.4,"y":568.4},{"id":"node-176","number":176,"module_row":4,"module_col":2,"local_row":2,"local_col":2,"x":247.6,"y":568.4},{"id":"node-177","number":177,"module_row":4,"module_col":2,"local_row":2,"local_col":3,"x":296.0,"y":568.4},{"id":"node-178","number":178,"module_row":4,"module_col":2,"local_row":3,"local_col":1,"x":199.4,"y":617.0},{"id":"node-179","number":179,"module_row":4,"module_col":2,"local_row":3,"local_col":2,"x":247.6,"y":617.0},{"id":"node-180","number":180,"module_row":4,"module_col":2,"local_row":3,"local_col":3,"x":296.0,"y":617.0},{"id":"node-181","number":181,"module_row":4,"module_col":3,"local_row":1,"local_col":1,"x":355.2,"y":519.6},{"id":"node-182","number":182,"module_row":4,"module_col":3,"local_row":1,"local_col":2,"x":403.8,"y":519.6},{"id":"node-183","number":183,"module_row":4,"module_col":3,"local_row":1,"local_col":3,"x":452.0,"y":519.6},{"id":"node-184","number":184,"module_row":4,"module_col":3,"local_row":2,"local_col":1,"x":355.2,"y":568.4},{"id":"node-185","number":185,"module_row":4,"module_col":3,"local_row":2,"local_col":2,"x":403.8,"y":568.4},{"id":"node-186","number":186,"module_row":4,"module_col":3,"local_row":2,"local_col":3,"x":452.0,"y":568.4},{"id":"node-187","number":187,"module_row":4,"module_col":3,"local_row":3,"local_col":1,"x":355.2,"y":617.0},{"id":"node-188","number":188,"module_row":4,"module_col":3,"local_row":3,"local_col":2,"x":403.8,"y":617.0},{"id":"node-189","number":189,"module_row":4,"module_col":3,"local_row":3,"local_col":3,"x":452.0,"y":617.0},{"id":"node-190","number":190,"module_row":4,"module_col":4,"local_row":1,"local_col":1,"x":511.8,"y":519.6},{"id":"node-191","number":191,"module_row":4,"module_col":4,"local_row":1,"local_col":2,"x":560.6,"y":519.6},{"id":"node-192","number":192,"module_row":4,"module_col":4,"local_row":1,"local_col":3,"x":609.2,"y":519.6},{"id":"node-193","number":193,"module_row":4,"module_col":4,"local_row":2,"local_col":1,"x":511.8,"y":568.4},{"id":"node-194","number":194,"module_row":4,"module_col":4,"local_row":2,"local_col":2,"x":560.6,"y":568.4},{"id":"node-195","number":195,"module_row":4,"module_col":4,"local_row":2,"local_col":3,"x":609.2,"y":568.4},{"id":"node-196","number":196,"module_row":4,"module_col":4,"local_row":3,"local_col":1,"x":511.8,"y":617.0},{"id":"node-197","number":197,"module_row":4,"module_col":4,"local_row":3,"local_col":2,"x":560.6,"y":617.0},{"id":"node-198","number":198,"module_row":4,"module_col":4,"local_row":3,"local_col":3,"x":609.2,"y":617.0},{"id":"node-199","number":199,"module_row":4,"module_col":5,"local_row":1,"local_col":1,"x":669.4,"y":519.6},{"id":"node-200","number":200,"module_row":4,"module_col":5,"local_row":1,"local_col":2,"x":718.4,"y":519.6},{"id":"node-201","number":201,"module_row":4,"module_col":5,"local_row":1,"local_col":3,"x":767.8,"y":519.6},{"id":"node-202","number":202,"module_row":4,"module_col":5,"local_row":2,"local_col":1,"x":669.4,"y":568.4},{"id":"node-203","number":203,"module_row":4,"module_col":5,"local_row":2,"local_col":2,"x":718.4,"y":568.4},{"id":"node-204","number":204,"module_row":4,"module_col":5,"local_row":2,"local_col":3,"x":767.8,"y":568.4},{"id":"node-205","number":205,"module_row":4,"module_col":5,"local_row":3,"local_col":1,"x":669.4,"y":617.0},{"id":"node-206","number":206,"module_row":4,"module_col":5,"local_row":3,"local_col":2,"x":718.4,"y":617.0},{"id":"node-207","number":207,"module_row":4,"module_col":5,"local_row":3,"local_col":3,"x":767.8,"y":617.0},{"id":"node-208","number":208,"module_row":4,"module_col":6,"local_row":1,"local_col":1,"x":828.8,"y":519.6},{"id":"node-209","number":209,"module_row":4,"module_col":6,"local_row":1,"local_col":2,"x":878.8,"y":519.6},{"id":"node-210","number":210,"module_row":4,"module_col":6,"local_row":1,"local_col":3,"x":928.6,"y":519.6},{"id":"node-211","number":211,"module_row":4,"module_col":6,"local_row":2,"local_col":1,"x":828.8,"y":568.4},{"id":"node-212","number":212,"module_row":4,"module_col":6,"local_row":2,"local_col":2,"x":878.8,"y":568.4},{"id":"node-213","number":213,"module_row":4,"module_col":6,"local_row":2,"local_col":3,"x":928.6,"y":568.4},{"id":"node-214","number":214,"module_row":4,"module_col":6,"local_row":3,"local_col":1,"x":828.8,"y":617.0},{"id":"node-215","number":215,"module_row":4,"module_col":6,"local_row":3,"local_col":2,"x":878.8,"y":617.0},{"id":"node-216","number":216,"module_row":4,"module_col":6,"local_row":3,"local_col":3,"x":928.6,"y":617.0}]}]]>
+</metadata>
+
+  <defs>
+    <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7"
+                    flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+    <filter id="node-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.4"
+                    flood-color="#000000" flood-opacity="0.22"/>
+    </filter>
+    <linearGradient id="node-gradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a3a3a"/>
+      <stop offset="100%" stop-color="#181818"/>
+    </linearGradient>
+  </defs>
+
+  <rect id="background"
+        x="0" y="0" width="994" height="684"
+        fill="#ffffff"/>
+
+  <rect id="board"
+        x="24" y="24"
+        width="946" height="636"
+        rx="20" ry="20"
+        fill="#ffffff"
+        stroke="#d9d9d9"
+        stroke-width="3.2"
+        filter="url(#card-shadow)"/>
+
+  <rect id="board-inner-border"
+        x="29" y="29"
+        width="936" height="626"
+        rx="16" ry="16"
+        fill="none"
+        stroke="#eeeeee"
+        stroke-width="1.8"/>
+<g id="module-r1-c1" class="circuit-module" data-module-row="1" data-module-column="1">
+<line id="module-r1-c1-h1" class="connection horizontal" data-local-row="1" x1="43" y1="61" x2="91.4" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-h2" class="connection horizontal" data-local-row="1" x1="91.4" y1="61" x2="140" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-h3" class="connection horizontal" data-local-row="2" x1="43" y1="107.4" x2="91.4" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-h4" class="connection horizontal" data-local-row="2" x1="91.4" y1="107.4" x2="140" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-h5" class="connection horizontal" data-local-row="3" x1="43" y1="154.6" x2="91.4" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-h6" class="connection horizontal" data-local-row="3" x1="91.4" y1="154.6" x2="140" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-v1" class="connection vertical" data-local-column="1" x1="43" y1="61" x2="43" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-v2" class="connection vertical" data-local-column="1" x1="43" y1="107.4" x2="43" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-v3" class="connection vertical" data-local-column="2" x1="91.4" y1="61" x2="91.4" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-v4" class="connection vertical" data-local-column="2" x1="91.4" y1="107.4" x2="91.4" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-v5" class="connection vertical" data-local-column="3" x1="140" y1="61" x2="140" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c1-v6" class="connection vertical" data-local-column="3" x1="140" y1="107.4" x2="140" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-001" class="circuit-node" data-node-number="1" data-module-row="1" data-module-column="1" data-local-row="1" data-local-column="1" aria-label="Nút 1" cx="43" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 1</title>
+</circle>
+<circle id="node-002" class="circuit-node" data-node-number="2" data-module-row="1" data-module-column="1" data-local-row="1" data-local-column="2" aria-label="Nút 2" cx="91.4" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 2</title>
+</circle>
+<circle id="node-003" class="circuit-node" data-node-number="3" data-module-row="1" data-module-column="1" data-local-row="1" data-local-column="3" aria-label="Nút 3" cx="140" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 3</title>
+</circle>
+<circle id="node-004" class="circuit-node" data-node-number="4" data-module-row="1" data-module-column="1" data-local-row="2" data-local-column="1" aria-label="Nút 4" cx="43" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 4</title>
+</circle>
+<circle id="node-005" class="circuit-node" data-node-number="5" data-module-row="1" data-module-column="1" data-local-row="2" data-local-column="2" aria-label="Nút 5" cx="91.4" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 5</title>
+</circle>
+<circle id="node-006" class="circuit-node" data-node-number="6" data-module-row="1" data-module-column="1" data-local-row="2" data-local-column="3" aria-label="Nút 6" cx="140" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 6</title>
+</circle>
+<circle id="node-007" class="circuit-node" data-node-number="7" data-module-row="1" data-module-column="1" data-local-row="3" data-local-column="1" aria-label="Nút 7" cx="43" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 7</title>
+</circle>
+<circle id="node-008" class="circuit-node" data-node-number="8" data-module-row="1" data-module-column="1" data-local-row="3" data-local-column="2" aria-label="Nút 8" cx="91.4" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 8</title>
+</circle>
+<circle id="node-009" class="circuit-node" data-node-number="9" data-module-row="1" data-module-column="1" data-local-row="3" data-local-column="3" aria-label="Nút 9" cx="140" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 9</title>
+</circle>
+</g>
+<g id="module-r1-c2" class="circuit-module" data-module-row="1" data-module-column="2">
+<line id="module-r1-c2-h1" class="connection horizontal" data-local-row="1" x1="199.4" y1="61" x2="247.6" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-h2" class="connection horizontal" data-local-row="1" x1="247.6" y1="61" x2="296" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-h3" class="connection horizontal" data-local-row="2" x1="199.4" y1="107.4" x2="247.6" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-h4" class="connection horizontal" data-local-row="2" x1="247.6" y1="107.4" x2="296" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-h5" class="connection horizontal" data-local-row="3" x1="199.4" y1="154.6" x2="247.6" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-h6" class="connection horizontal" data-local-row="3" x1="247.6" y1="154.6" x2="296" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-v1" class="connection vertical" data-local-column="1" x1="199.4" y1="61" x2="199.4" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-v2" class="connection vertical" data-local-column="1" x1="199.4" y1="107.4" x2="199.4" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-v3" class="connection vertical" data-local-column="2" x1="247.6" y1="61" x2="247.6" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-v4" class="connection vertical" data-local-column="2" x1="247.6" y1="107.4" x2="247.6" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-v5" class="connection vertical" data-local-column="3" x1="296" y1="61" x2="296" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c2-v6" class="connection vertical" data-local-column="3" x1="296" y1="107.4" x2="296" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-010" class="circuit-node" data-node-number="10" data-module-row="1" data-module-column="2" data-local-row="1" data-local-column="1" aria-label="Nút 10" cx="199.4" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 10</title>
+</circle>
+<circle id="node-011" class="circuit-node" data-node-number="11" data-module-row="1" data-module-column="2" data-local-row="1" data-local-column="2" aria-label="Nút 11" cx="247.6" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 11</title>
+</circle>
+<circle id="node-012" class="circuit-node" data-node-number="12" data-module-row="1" data-module-column="2" data-local-row="1" data-local-column="3" aria-label="Nút 12" cx="296" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 12</title>
+</circle>
+<circle id="node-013" class="circuit-node" data-node-number="13" data-module-row="1" data-module-column="2" data-local-row="2" data-local-column="1" aria-label="Nút 13" cx="199.4" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 13</title>
+</circle>
+<circle id="node-014" class="circuit-node" data-node-number="14" data-module-row="1" data-module-column="2" data-local-row="2" data-local-column="2" aria-label="Nút 14" cx="247.6" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 14</title>
+</circle>
+<circle id="node-015" class="circuit-node" data-node-number="15" data-module-row="1" data-module-column="2" data-local-row="2" data-local-column="3" aria-label="Nút 15" cx="296" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 15</title>
+</circle>
+<circle id="node-016" class="circuit-node" data-node-number="16" data-module-row="1" data-module-column="2" data-local-row="3" data-local-column="1" aria-label="Nút 16" cx="199.4" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 16</title>
+</circle>
+<circle id="node-017" class="circuit-node" data-node-number="17" data-module-row="1" data-module-column="2" data-local-row="3" data-local-column="2" aria-label="Nút 17" cx="247.6" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 17</title>
+</circle>
+<circle id="node-018" class="circuit-node" data-node-number="18" data-module-row="1" data-module-column="2" data-local-row="3" data-local-column="3" aria-label="Nút 18" cx="296" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 18</title>
+</circle>
+</g>
+<g id="module-r1-c3" class="circuit-module" data-module-row="1" data-module-column="3">
+<line id="module-r1-c3-h1" class="connection horizontal" data-local-row="1" x1="355.2" y1="61" x2="403.8" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-h2" class="connection horizontal" data-local-row="1" x1="403.8" y1="61" x2="452" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-h3" class="connection horizontal" data-local-row="2" x1="355.2" y1="107.4" x2="403.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-h4" class="connection horizontal" data-local-row="2" x1="403.8" y1="107.4" x2="452" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-h5" class="connection horizontal" data-local-row="3" x1="355.2" y1="154.6" x2="403.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-h6" class="connection horizontal" data-local-row="3" x1="403.8" y1="154.6" x2="452" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-v1" class="connection vertical" data-local-column="1" x1="355.2" y1="61" x2="355.2" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-v2" class="connection vertical" data-local-column="1" x1="355.2" y1="107.4" x2="355.2" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-v3" class="connection vertical" data-local-column="2" x1="403.8" y1="61" x2="403.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-v4" class="connection vertical" data-local-column="2" x1="403.8" y1="107.4" x2="403.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-v5" class="connection vertical" data-local-column="3" x1="452" y1="61" x2="452" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c3-v6" class="connection vertical" data-local-column="3" x1="452" y1="107.4" x2="452" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-019" class="circuit-node" data-node-number="19" data-module-row="1" data-module-column="3" data-local-row="1" data-local-column="1" aria-label="Nút 19" cx="355.2" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 19</title>
+</circle>
+<circle id="node-020" class="circuit-node" data-node-number="20" data-module-row="1" data-module-column="3" data-local-row="1" data-local-column="2" aria-label="Nút 20" cx="403.8" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 20</title>
+</circle>
+<circle id="node-021" class="circuit-node" data-node-number="21" data-module-row="1" data-module-column="3" data-local-row="1" data-local-column="3" aria-label="Nút 21" cx="452" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 21</title>
+</circle>
+<circle id="node-022" class="circuit-node" data-node-number="22" data-module-row="1" data-module-column="3" data-local-row="2" data-local-column="1" aria-label="Nút 22" cx="355.2" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 22</title>
+</circle>
+<circle id="node-023" class="circuit-node" data-node-number="23" data-module-row="1" data-module-column="3" data-local-row="2" data-local-column="2" aria-label="Nút 23" cx="403.8" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 23</title>
+</circle>
+<circle id="node-024" class="circuit-node" data-node-number="24" data-module-row="1" data-module-column="3" data-local-row="2" data-local-column="3" aria-label="Nút 24" cx="452" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 24</title>
+</circle>
+<circle id="node-025" class="circuit-node" data-node-number="25" data-module-row="1" data-module-column="3" data-local-row="3" data-local-column="1" aria-label="Nút 25" cx="355.2" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 25</title>
+</circle>
+<circle id="node-026" class="circuit-node" data-node-number="26" data-module-row="1" data-module-column="3" data-local-row="3" data-local-column="2" aria-label="Nút 26" cx="403.8" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 26</title>
+</circle>
+<circle id="node-027" class="circuit-node" data-node-number="27" data-module-row="1" data-module-column="3" data-local-row="3" data-local-column="3" aria-label="Nút 27" cx="452" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 27</title>
+</circle>
+</g>
+<g id="module-r1-c4" class="circuit-module" data-module-row="1" data-module-column="4">
+<line id="module-r1-c4-h1" class="connection horizontal" data-local-row="1" x1="511.8" y1="61" x2="560.6" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-h2" class="connection horizontal" data-local-row="1" x1="560.6" y1="61" x2="609.2" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-h3" class="connection horizontal" data-local-row="2" x1="511.8" y1="107.4" x2="560.6" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-h4" class="connection horizontal" data-local-row="2" x1="560.6" y1="107.4" x2="609.2" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-h5" class="connection horizontal" data-local-row="3" x1="511.8" y1="154.6" x2="560.6" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-h6" class="connection horizontal" data-local-row="3" x1="560.6" y1="154.6" x2="609.2" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-v1" class="connection vertical" data-local-column="1" x1="511.8" y1="61" x2="511.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-v2" class="connection vertical" data-local-column="1" x1="511.8" y1="107.4" x2="511.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-v3" class="connection vertical" data-local-column="2" x1="560.6" y1="61" x2="560.6" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-v4" class="connection vertical" data-local-column="2" x1="560.6" y1="107.4" x2="560.6" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-v5" class="connection vertical" data-local-column="3" x1="609.2" y1="61" x2="609.2" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c4-v6" class="connection vertical" data-local-column="3" x1="609.2" y1="107.4" x2="609.2" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-028" class="circuit-node" data-node-number="28" data-module-row="1" data-module-column="4" data-local-row="1" data-local-column="1" aria-label="Nút 28" cx="511.8" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 28</title>
+</circle>
+<circle id="node-029" class="circuit-node" data-node-number="29" data-module-row="1" data-module-column="4" data-local-row="1" data-local-column="2" aria-label="Nút 29" cx="560.6" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 29</title>
+</circle>
+<circle id="node-030" class="circuit-node" data-node-number="30" data-module-row="1" data-module-column="4" data-local-row="1" data-local-column="3" aria-label="Nút 30" cx="609.2" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 30</title>
+</circle>
+<circle id="node-031" class="circuit-node" data-node-number="31" data-module-row="1" data-module-column="4" data-local-row="2" data-local-column="1" aria-label="Nút 31" cx="511.8" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 31</title>
+</circle>
+<circle id="node-032" class="circuit-node" data-node-number="32" data-module-row="1" data-module-column="4" data-local-row="2" data-local-column="2" aria-label="Nút 32" cx="560.6" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 32</title>
+</circle>
+<circle id="node-033" class="circuit-node" data-node-number="33" data-module-row="1" data-module-column="4" data-local-row="2" data-local-column="3" aria-label="Nút 33" cx="609.2" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 33</title>
+</circle>
+<circle id="node-034" class="circuit-node" data-node-number="34" data-module-row="1" data-module-column="4" data-local-row="3" data-local-column="1" aria-label="Nút 34" cx="511.8" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 34</title>
+</circle>
+<circle id="node-035" class="circuit-node" data-node-number="35" data-module-row="1" data-module-column="4" data-local-row="3" data-local-column="2" aria-label="Nút 35" cx="560.6" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 35</title>
+</circle>
+<circle id="node-036" class="circuit-node" data-node-number="36" data-module-row="1" data-module-column="4" data-local-row="3" data-local-column="3" aria-label="Nút 36" cx="609.2" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 36</title>
+</circle>
+</g>
+<g id="module-r1-c5" class="circuit-module" data-module-row="1" data-module-column="5">
+<line id="module-r1-c5-h1" class="connection horizontal" data-local-row="1" x1="669.4" y1="61" x2="718.4" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-h2" class="connection horizontal" data-local-row="1" x1="718.4" y1="61" x2="767.8" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-h3" class="connection horizontal" data-local-row="2" x1="669.4" y1="107.4" x2="718.4" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-h4" class="connection horizontal" data-local-row="2" x1="718.4" y1="107.4" x2="767.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-h5" class="connection horizontal" data-local-row="3" x1="669.4" y1="154.6" x2="718.4" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-h6" class="connection horizontal" data-local-row="3" x1="718.4" y1="154.6" x2="767.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-v1" class="connection vertical" data-local-column="1" x1="669.4" y1="61" x2="669.4" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-v2" class="connection vertical" data-local-column="1" x1="669.4" y1="107.4" x2="669.4" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-v3" class="connection vertical" data-local-column="2" x1="718.4" y1="61" x2="718.4" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-v4" class="connection vertical" data-local-column="2" x1="718.4" y1="107.4" x2="718.4" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-v5" class="connection vertical" data-local-column="3" x1="767.8" y1="61" x2="767.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c5-v6" class="connection vertical" data-local-column="3" x1="767.8" y1="107.4" x2="767.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-037" class="circuit-node" data-node-number="37" data-module-row="1" data-module-column="5" data-local-row="1" data-local-column="1" aria-label="Nút 37" cx="669.4" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 37</title>
+</circle>
+<circle id="node-038" class="circuit-node" data-node-number="38" data-module-row="1" data-module-column="5" data-local-row="1" data-local-column="2" aria-label="Nút 38" cx="718.4" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 38</title>
+</circle>
+<circle id="node-039" class="circuit-node" data-node-number="39" data-module-row="1" data-module-column="5" data-local-row="1" data-local-column="3" aria-label="Nút 39" cx="767.8" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 39</title>
+</circle>
+<circle id="node-040" class="circuit-node" data-node-number="40" data-module-row="1" data-module-column="5" data-local-row="2" data-local-column="1" aria-label="Nút 40" cx="669.4" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 40</title>
+</circle>
+<circle id="node-041" class="circuit-node" data-node-number="41" data-module-row="1" data-module-column="5" data-local-row="2" data-local-column="2" aria-label="Nút 41" cx="718.4" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 41</title>
+</circle>
+<circle id="node-042" class="circuit-node" data-node-number="42" data-module-row="1" data-module-column="5" data-local-row="2" data-local-column="3" aria-label="Nút 42" cx="767.8" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 42</title>
+</circle>
+<circle id="node-043" class="circuit-node" data-node-number="43" data-module-row="1" data-module-column="5" data-local-row="3" data-local-column="1" aria-label="Nút 43" cx="669.4" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 43</title>
+</circle>
+<circle id="node-044" class="circuit-node" data-node-number="44" data-module-row="1" data-module-column="5" data-local-row="3" data-local-column="2" aria-label="Nút 44" cx="718.4" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 44</title>
+</circle>
+<circle id="node-045" class="circuit-node" data-node-number="45" data-module-row="1" data-module-column="5" data-local-row="3" data-local-column="3" aria-label="Nút 45" cx="767.8" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 45</title>
+</circle>
+</g>
+<g id="module-r1-c6" class="circuit-module" data-module-row="1" data-module-column="6">
+<line id="module-r1-c6-h1" class="connection horizontal" data-local-row="1" x1="828.8" y1="61" x2="878.8" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-h2" class="connection horizontal" data-local-row="1" x1="878.8" y1="61" x2="928.6" y2="61" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-h3" class="connection horizontal" data-local-row="2" x1="828.8" y1="107.4" x2="878.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-h4" class="connection horizontal" data-local-row="2" x1="878.8" y1="107.4" x2="928.6" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-h5" class="connection horizontal" data-local-row="3" x1="828.8" y1="154.6" x2="878.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-h6" class="connection horizontal" data-local-row="3" x1="878.8" y1="154.6" x2="928.6" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-v1" class="connection vertical" data-local-column="1" x1="828.8" y1="61" x2="828.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-v2" class="connection vertical" data-local-column="1" x1="828.8" y1="107.4" x2="828.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-v3" class="connection vertical" data-local-column="2" x1="878.8" y1="61" x2="878.8" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-v4" class="connection vertical" data-local-column="2" x1="878.8" y1="107.4" x2="878.8" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-v5" class="connection vertical" data-local-column="3" x1="928.6" y1="61" x2="928.6" y2="107.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r1-c6-v6" class="connection vertical" data-local-column="3" x1="928.6" y1="107.4" x2="928.6" y2="154.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-046" class="circuit-node" data-node-number="46" data-module-row="1" data-module-column="6" data-local-row="1" data-local-column="1" aria-label="Nút 46" cx="828.8" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 46</title>
+</circle>
+<circle id="node-047" class="circuit-node" data-node-number="47" data-module-row="1" data-module-column="6" data-local-row="1" data-local-column="2" aria-label="Nút 47" cx="878.8" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 47</title>
+</circle>
+<circle id="node-048" class="circuit-node" data-node-number="48" data-module-row="1" data-module-column="6" data-local-row="1" data-local-column="3" aria-label="Nút 48" cx="928.6" cy="61" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 48</title>
+</circle>
+<circle id="node-049" class="circuit-node" data-node-number="49" data-module-row="1" data-module-column="6" data-local-row="2" data-local-column="1" aria-label="Nút 49" cx="828.8" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 49</title>
+</circle>
+<circle id="node-050" class="circuit-node" data-node-number="50" data-module-row="1" data-module-column="6" data-local-row="2" data-local-column="2" aria-label="Nút 50" cx="878.8" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 50</title>
+</circle>
+<circle id="node-051" class="circuit-node" data-node-number="51" data-module-row="1" data-module-column="6" data-local-row="2" data-local-column="3" aria-label="Nút 51" cx="928.6" cy="107.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 51</title>
+</circle>
+<circle id="node-052" class="circuit-node" data-node-number="52" data-module-row="1" data-module-column="6" data-local-row="3" data-local-column="1" aria-label="Nút 52" cx="828.8" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 52</title>
+</circle>
+<circle id="node-053" class="circuit-node" data-node-number="53" data-module-row="1" data-module-column="6" data-local-row="3" data-local-column="2" aria-label="Nút 53" cx="878.8" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 53</title>
+</circle>
+<circle id="node-054" class="circuit-node" data-node-number="54" data-module-row="1" data-module-column="6" data-local-row="3" data-local-column="3" aria-label="Nút 54" cx="928.6" cy="154.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 54</title>
+</circle>
+</g>
+<g id="module-r2-c1" class="circuit-module" data-module-row="2" data-module-column="1">
+<line id="module-r2-c1-h1" class="connection horizontal" data-local-row="1" x1="43" y1="212.2" x2="91.4" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-h2" class="connection horizontal" data-local-row="1" x1="91.4" y1="212.2" x2="140" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-h3" class="connection horizontal" data-local-row="2" x1="43" y1="259.6" x2="91.4" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-h4" class="connection horizontal" data-local-row="2" x1="91.4" y1="259.6" x2="140" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-h5" class="connection horizontal" data-local-row="3" x1="43" y1="307.2" x2="91.4" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-h6" class="connection horizontal" data-local-row="3" x1="91.4" y1="307.2" x2="140" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-v1" class="connection vertical" data-local-column="1" x1="43" y1="212.2" x2="43" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-v2" class="connection vertical" data-local-column="1" x1="43" y1="259.6" x2="43" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-v3" class="connection vertical" data-local-column="2" x1="91.4" y1="212.2" x2="91.4" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-v4" class="connection vertical" data-local-column="2" x1="91.4" y1="259.6" x2="91.4" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-v5" class="connection vertical" data-local-column="3" x1="140" y1="212.2" x2="140" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c1-v6" class="connection vertical" data-local-column="3" x1="140" y1="259.6" x2="140" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-055" class="circuit-node" data-node-number="55" data-module-row="2" data-module-column="1" data-local-row="1" data-local-column="1" aria-label="Nút 55" cx="43" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 55</title>
+</circle>
+<circle id="node-056" class="circuit-node" data-node-number="56" data-module-row="2" data-module-column="1" data-local-row="1" data-local-column="2" aria-label="Nút 56" cx="91.4" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 56</title>
+</circle>
+<circle id="node-057" class="circuit-node" data-node-number="57" data-module-row="2" data-module-column="1" data-local-row="1" data-local-column="3" aria-label="Nút 57" cx="140" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 57</title>
+</circle>
+<circle id="node-058" class="circuit-node" data-node-number="58" data-module-row="2" data-module-column="1" data-local-row="2" data-local-column="1" aria-label="Nút 58" cx="43" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 58</title>
+</circle>
+<circle id="node-059" class="circuit-node" data-node-number="59" data-module-row="2" data-module-column="1" data-local-row="2" data-local-column="2" aria-label="Nút 59" cx="91.4" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 59</title>
+</circle>
+<circle id="node-060" class="circuit-node" data-node-number="60" data-module-row="2" data-module-column="1" data-local-row="2" data-local-column="3" aria-label="Nút 60" cx="140" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 60</title>
+</circle>
+<circle id="node-061" class="circuit-node" data-node-number="61" data-module-row="2" data-module-column="1" data-local-row="3" data-local-column="1" aria-label="Nút 61" cx="43" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 61</title>
+</circle>
+<circle id="node-062" class="circuit-node" data-node-number="62" data-module-row="2" data-module-column="1" data-local-row="3" data-local-column="2" aria-label="Nút 62" cx="91.4" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 62</title>
+</circle>
+<circle id="node-063" class="circuit-node" data-node-number="63" data-module-row="2" data-module-column="1" data-local-row="3" data-local-column="3" aria-label="Nút 63" cx="140" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 63</title>
+</circle>
+</g>
+<g id="module-r2-c2" class="circuit-module" data-module-row="2" data-module-column="2">
+<line id="module-r2-c2-h1" class="connection horizontal" data-local-row="1" x1="199.4" y1="212.2" x2="247.6" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-h2" class="connection horizontal" data-local-row="1" x1="247.6" y1="212.2" x2="296" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-h3" class="connection horizontal" data-local-row="2" x1="199.4" y1="259.6" x2="247.6" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-h4" class="connection horizontal" data-local-row="2" x1="247.6" y1="259.6" x2="296" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-h5" class="connection horizontal" data-local-row="3" x1="199.4" y1="307.2" x2="247.6" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-h6" class="connection horizontal" data-local-row="3" x1="247.6" y1="307.2" x2="296" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-v1" class="connection vertical" data-local-column="1" x1="199.4" y1="212.2" x2="199.4" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-v2" class="connection vertical" data-local-column="1" x1="199.4" y1="259.6" x2="199.4" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-v3" class="connection vertical" data-local-column="2" x1="247.6" y1="212.2" x2="247.6" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-v4" class="connection vertical" data-local-column="2" x1="247.6" y1="259.6" x2="247.6" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-v5" class="connection vertical" data-local-column="3" x1="296" y1="212.2" x2="296" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c2-v6" class="connection vertical" data-local-column="3" x1="296" y1="259.6" x2="296" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-064" class="circuit-node" data-node-number="64" data-module-row="2" data-module-column="2" data-local-row="1" data-local-column="1" aria-label="Nút 64" cx="199.4" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 64</title>
+</circle>
+<circle id="node-065" class="circuit-node" data-node-number="65" data-module-row="2" data-module-column="2" data-local-row="1" data-local-column="2" aria-label="Nút 65" cx="247.6" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 65</title>
+</circle>
+<circle id="node-066" class="circuit-node" data-node-number="66" data-module-row="2" data-module-column="2" data-local-row="1" data-local-column="3" aria-label="Nút 66" cx="296" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 66</title>
+</circle>
+<circle id="node-067" class="circuit-node" data-node-number="67" data-module-row="2" data-module-column="2" data-local-row="2" data-local-column="1" aria-label="Nút 67" cx="199.4" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 67</title>
+</circle>
+<circle id="node-068" class="circuit-node" data-node-number="68" data-module-row="2" data-module-column="2" data-local-row="2" data-local-column="2" aria-label="Nút 68" cx="247.6" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 68</title>
+</circle>
+<circle id="node-069" class="circuit-node" data-node-number="69" data-module-row="2" data-module-column="2" data-local-row="2" data-local-column="3" aria-label="Nút 69" cx="296" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 69</title>
+</circle>
+<circle id="node-070" class="circuit-node" data-node-number="70" data-module-row="2" data-module-column="2" data-local-row="3" data-local-column="1" aria-label="Nút 70" cx="199.4" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 70</title>
+</circle>
+<circle id="node-071" class="circuit-node" data-node-number="71" data-module-row="2" data-module-column="2" data-local-row="3" data-local-column="2" aria-label="Nút 71" cx="247.6" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 71</title>
+</circle>
+<circle id="node-072" class="circuit-node" data-node-number="72" data-module-row="2" data-module-column="2" data-local-row="3" data-local-column="3" aria-label="Nút 72" cx="296" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 72</title>
+</circle>
+</g>
+<g id="module-r2-c3" class="circuit-module" data-module-row="2" data-module-column="3">
+<line id="module-r2-c3-h1" class="connection horizontal" data-local-row="1" x1="355.2" y1="212.2" x2="403.8" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-h2" class="connection horizontal" data-local-row="1" x1="403.8" y1="212.2" x2="452" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-h3" class="connection horizontal" data-local-row="2" x1="355.2" y1="259.6" x2="403.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-h4" class="connection horizontal" data-local-row="2" x1="403.8" y1="259.6" x2="452" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-h5" class="connection horizontal" data-local-row="3" x1="355.2" y1="307.2" x2="403.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-h6" class="connection horizontal" data-local-row="3" x1="403.8" y1="307.2" x2="452" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-v1" class="connection vertical" data-local-column="1" x1="355.2" y1="212.2" x2="355.2" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-v2" class="connection vertical" data-local-column="1" x1="355.2" y1="259.6" x2="355.2" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-v3" class="connection vertical" data-local-column="2" x1="403.8" y1="212.2" x2="403.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-v4" class="connection vertical" data-local-column="2" x1="403.8" y1="259.6" x2="403.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-v5" class="connection vertical" data-local-column="3" x1="452" y1="212.2" x2="452" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c3-v6" class="connection vertical" data-local-column="3" x1="452" y1="259.6" x2="452" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-073" class="circuit-node" data-node-number="73" data-module-row="2" data-module-column="3" data-local-row="1" data-local-column="1" aria-label="Nút 73" cx="355.2" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 73</title>
+</circle>
+<circle id="node-074" class="circuit-node" data-node-number="74" data-module-row="2" data-module-column="3" data-local-row="1" data-local-column="2" aria-label="Nút 74" cx="403.8" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 74</title>
+</circle>
+<circle id="node-075" class="circuit-node" data-node-number="75" data-module-row="2" data-module-column="3" data-local-row="1" data-local-column="3" aria-label="Nút 75" cx="452" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 75</title>
+</circle>
+<circle id="node-076" class="circuit-node" data-node-number="76" data-module-row="2" data-module-column="3" data-local-row="2" data-local-column="1" aria-label="Nút 76" cx="355.2" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 76</title>
+</circle>
+<circle id="node-077" class="circuit-node" data-node-number="77" data-module-row="2" data-module-column="3" data-local-row="2" data-local-column="2" aria-label="Nút 77" cx="403.8" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 77</title>
+</circle>
+<circle id="node-078" class="circuit-node" data-node-number="78" data-module-row="2" data-module-column="3" data-local-row="2" data-local-column="3" aria-label="Nút 78" cx="452" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 78</title>
+</circle>
+<circle id="node-079" class="circuit-node" data-node-number="79" data-module-row="2" data-module-column="3" data-local-row="3" data-local-column="1" aria-label="Nút 79" cx="355.2" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 79</title>
+</circle>
+<circle id="node-080" class="circuit-node" data-node-number="80" data-module-row="2" data-module-column="3" data-local-row="3" data-local-column="2" aria-label="Nút 80" cx="403.8" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 80</title>
+</circle>
+<circle id="node-081" class="circuit-node" data-node-number="81" data-module-row="2" data-module-column="3" data-local-row="3" data-local-column="3" aria-label="Nút 81" cx="452" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 81</title>
+</circle>
+</g>
+<g id="module-r2-c4" class="circuit-module" data-module-row="2" data-module-column="4">
+<line id="module-r2-c4-h1" class="connection horizontal" data-local-row="1" x1="511.8" y1="212.2" x2="560.6" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-h2" class="connection horizontal" data-local-row="1" x1="560.6" y1="212.2" x2="609.2" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-h3" class="connection horizontal" data-local-row="2" x1="511.8" y1="259.6" x2="560.6" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-h4" class="connection horizontal" data-local-row="2" x1="560.6" y1="259.6" x2="609.2" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-h5" class="connection horizontal" data-local-row="3" x1="511.8" y1="307.2" x2="560.6" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-h6" class="connection horizontal" data-local-row="3" x1="560.6" y1="307.2" x2="609.2" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-v1" class="connection vertical" data-local-column="1" x1="511.8" y1="212.2" x2="511.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-v2" class="connection vertical" data-local-column="1" x1="511.8" y1="259.6" x2="511.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-v3" class="connection vertical" data-local-column="2" x1="560.6" y1="212.2" x2="560.6" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-v4" class="connection vertical" data-local-column="2" x1="560.6" y1="259.6" x2="560.6" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-v5" class="connection vertical" data-local-column="3" x1="609.2" y1="212.2" x2="609.2" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c4-v6" class="connection vertical" data-local-column="3" x1="609.2" y1="259.6" x2="609.2" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-082" class="circuit-node" data-node-number="82" data-module-row="2" data-module-column="4" data-local-row="1" data-local-column="1" aria-label="Nút 82" cx="511.8" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 82</title>
+</circle>
+<circle id="node-083" class="circuit-node" data-node-number="83" data-module-row="2" data-module-column="4" data-local-row="1" data-local-column="2" aria-label="Nút 83" cx="560.6" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 83</title>
+</circle>
+<circle id="node-084" class="circuit-node" data-node-number="84" data-module-row="2" data-module-column="4" data-local-row="1" data-local-column="3" aria-label="Nút 84" cx="609.2" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 84</title>
+</circle>
+<circle id="node-085" class="circuit-node" data-node-number="85" data-module-row="2" data-module-column="4" data-local-row="2" data-local-column="1" aria-label="Nút 85" cx="511.8" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 85</title>
+</circle>
+<circle id="node-086" class="circuit-node" data-node-number="86" data-module-row="2" data-module-column="4" data-local-row="2" data-local-column="2" aria-label="Nút 86" cx="560.6" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 86</title>
+</circle>
+<circle id="node-087" class="circuit-node" data-node-number="87" data-module-row="2" data-module-column="4" data-local-row="2" data-local-column="3" aria-label="Nút 87" cx="609.2" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 87</title>
+</circle>
+<circle id="node-088" class="circuit-node" data-node-number="88" data-module-row="2" data-module-column="4" data-local-row="3" data-local-column="1" aria-label="Nút 88" cx="511.8" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 88</title>
+</circle>
+<circle id="node-089" class="circuit-node" data-node-number="89" data-module-row="2" data-module-column="4" data-local-row="3" data-local-column="2" aria-label="Nút 89" cx="560.6" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 89</title>
+</circle>
+<circle id="node-090" class="circuit-node" data-node-number="90" data-module-row="2" data-module-column="4" data-local-row="3" data-local-column="3" aria-label="Nút 90" cx="609.2" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 90</title>
+</circle>
+</g>
+<g id="module-r2-c5" class="circuit-module" data-module-row="2" data-module-column="5">
+<line id="module-r2-c5-h1" class="connection horizontal" data-local-row="1" x1="669.4" y1="212.2" x2="718.4" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-h2" class="connection horizontal" data-local-row="1" x1="718.4" y1="212.2" x2="767.8" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-h3" class="connection horizontal" data-local-row="2" x1="669.4" y1="259.6" x2="718.4" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-h4" class="connection horizontal" data-local-row="2" x1="718.4" y1="259.6" x2="767.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-h5" class="connection horizontal" data-local-row="3" x1="669.4" y1="307.2" x2="718.4" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-h6" class="connection horizontal" data-local-row="3" x1="718.4" y1="307.2" x2="767.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-v1" class="connection vertical" data-local-column="1" x1="669.4" y1="212.2" x2="669.4" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-v2" class="connection vertical" data-local-column="1" x1="669.4" y1="259.6" x2="669.4" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-v3" class="connection vertical" data-local-column="2" x1="718.4" y1="212.2" x2="718.4" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-v4" class="connection vertical" data-local-column="2" x1="718.4" y1="259.6" x2="718.4" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-v5" class="connection vertical" data-local-column="3" x1="767.8" y1="212.2" x2="767.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c5-v6" class="connection vertical" data-local-column="3" x1="767.8" y1="259.6" x2="767.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-091" class="circuit-node" data-node-number="91" data-module-row="2" data-module-column="5" data-local-row="1" data-local-column="1" aria-label="Nút 91" cx="669.4" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 91</title>
+</circle>
+<circle id="node-092" class="circuit-node" data-node-number="92" data-module-row="2" data-module-column="5" data-local-row="1" data-local-column="2" aria-label="Nút 92" cx="718.4" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 92</title>
+</circle>
+<circle id="node-093" class="circuit-node" data-node-number="93" data-module-row="2" data-module-column="5" data-local-row="1" data-local-column="3" aria-label="Nút 93" cx="767.8" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 93</title>
+</circle>
+<circle id="node-094" class="circuit-node" data-node-number="94" data-module-row="2" data-module-column="5" data-local-row="2" data-local-column="1" aria-label="Nút 94" cx="669.4" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 94</title>
+</circle>
+<circle id="node-095" class="circuit-node" data-node-number="95" data-module-row="2" data-module-column="5" data-local-row="2" data-local-column="2" aria-label="Nút 95" cx="718.4" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 95</title>
+</circle>
+<circle id="node-096" class="circuit-node" data-node-number="96" data-module-row="2" data-module-column="5" data-local-row="2" data-local-column="3" aria-label="Nút 96" cx="767.8" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 96</title>
+</circle>
+<circle id="node-097" class="circuit-node" data-node-number="97" data-module-row="2" data-module-column="5" data-local-row="3" data-local-column="1" aria-label="Nút 97" cx="669.4" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 97</title>
+</circle>
+<circle id="node-098" class="circuit-node" data-node-number="98" data-module-row="2" data-module-column="5" data-local-row="3" data-local-column="2" aria-label="Nút 98" cx="718.4" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 98</title>
+</circle>
+<circle id="node-099" class="circuit-node" data-node-number="99" data-module-row="2" data-module-column="5" data-local-row="3" data-local-column="3" aria-label="Nút 99" cx="767.8" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 99</title>
+</circle>
+</g>
+<g id="module-r2-c6" class="circuit-module" data-module-row="2" data-module-column="6">
+<line id="module-r2-c6-h1" class="connection horizontal" data-local-row="1" x1="828.8" y1="212.2" x2="878.8" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-h2" class="connection horizontal" data-local-row="1" x1="878.8" y1="212.2" x2="928.6" y2="212.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-h3" class="connection horizontal" data-local-row="2" x1="828.8" y1="259.6" x2="878.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-h4" class="connection horizontal" data-local-row="2" x1="878.8" y1="259.6" x2="928.6" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-h5" class="connection horizontal" data-local-row="3" x1="828.8" y1="307.2" x2="878.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-h6" class="connection horizontal" data-local-row="3" x1="878.8" y1="307.2" x2="928.6" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-v1" class="connection vertical" data-local-column="1" x1="828.8" y1="212.2" x2="828.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-v2" class="connection vertical" data-local-column="1" x1="828.8" y1="259.6" x2="828.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-v3" class="connection vertical" data-local-column="2" x1="878.8" y1="212.2" x2="878.8" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-v4" class="connection vertical" data-local-column="2" x1="878.8" y1="259.6" x2="878.8" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-v5" class="connection vertical" data-local-column="3" x1="928.6" y1="212.2" x2="928.6" y2="259.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r2-c6-v6" class="connection vertical" data-local-column="3" x1="928.6" y1="259.6" x2="928.6" y2="307.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-100" class="circuit-node" data-node-number="100" data-module-row="2" data-module-column="6" data-local-row="1" data-local-column="1" aria-label="Nút 100" cx="828.8" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 100</title>
+</circle>
+<circle id="node-101" class="circuit-node" data-node-number="101" data-module-row="2" data-module-column="6" data-local-row="1" data-local-column="2" aria-label="Nút 101" cx="878.8" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 101</title>
+</circle>
+<circle id="node-102" class="circuit-node" data-node-number="102" data-module-row="2" data-module-column="6" data-local-row="1" data-local-column="3" aria-label="Nút 102" cx="928.6" cy="212.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 102</title>
+</circle>
+<circle id="node-103" class="circuit-node" data-node-number="103" data-module-row="2" data-module-column="6" data-local-row="2" data-local-column="1" aria-label="Nút 103" cx="828.8" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 103</title>
+</circle>
+<circle id="node-104" class="circuit-node" data-node-number="104" data-module-row="2" data-module-column="6" data-local-row="2" data-local-column="2" aria-label="Nút 104" cx="878.8" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 104</title>
+</circle>
+<circle id="node-105" class="circuit-node" data-node-number="105" data-module-row="2" data-module-column="6" data-local-row="2" data-local-column="3" aria-label="Nút 105" cx="928.6" cy="259.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 105</title>
+</circle>
+<circle id="node-106" class="circuit-node" data-node-number="106" data-module-row="2" data-module-column="6" data-local-row="3" data-local-column="1" aria-label="Nút 106" cx="828.8" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 106</title>
+</circle>
+<circle id="node-107" class="circuit-node" data-node-number="107" data-module-row="2" data-module-column="6" data-local-row="3" data-local-column="2" aria-label="Nút 107" cx="878.8" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 107</title>
+</circle>
+<circle id="node-108" class="circuit-node" data-node-number="108" data-module-row="2" data-module-column="6" data-local-row="3" data-local-column="3" aria-label="Nút 108" cx="928.6" cy="307.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 108</title>
+</circle>
+</g>
+<g id="module-r3-c1" class="circuit-module" data-module-row="3" data-module-column="1">
+<line id="module-r3-c1-h1" class="connection horizontal" data-local-row="1" x1="43" y1="364.8" x2="91.4" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-h2" class="connection horizontal" data-local-row="1" x1="91.4" y1="364.8" x2="140" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-h3" class="connection horizontal" data-local-row="2" x1="43" y1="413.2" x2="91.4" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-h4" class="connection horizontal" data-local-row="2" x1="91.4" y1="413.2" x2="140" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-h5" class="connection horizontal" data-local-row="3" x1="43" y1="460.8" x2="91.4" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-h6" class="connection horizontal" data-local-row="3" x1="91.4" y1="460.8" x2="140" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-v1" class="connection vertical" data-local-column="1" x1="43" y1="364.8" x2="43" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-v2" class="connection vertical" data-local-column="1" x1="43" y1="413.2" x2="43" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-v3" class="connection vertical" data-local-column="2" x1="91.4" y1="364.8" x2="91.4" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-v4" class="connection vertical" data-local-column="2" x1="91.4" y1="413.2" x2="91.4" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-v5" class="connection vertical" data-local-column="3" x1="140" y1="364.8" x2="140" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c1-v6" class="connection vertical" data-local-column="3" x1="140" y1="413.2" x2="140" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-109" class="circuit-node" data-node-number="109" data-module-row="3" data-module-column="1" data-local-row="1" data-local-column="1" aria-label="Nút 109" cx="43" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 109</title>
+</circle>
+<circle id="node-110" class="circuit-node" data-node-number="110" data-module-row="3" data-module-column="1" data-local-row="1" data-local-column="2" aria-label="Nút 110" cx="91.4" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 110</title>
+</circle>
+<circle id="node-111" class="circuit-node" data-node-number="111" data-module-row="3" data-module-column="1" data-local-row="1" data-local-column="3" aria-label="Nút 111" cx="140" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 111</title>
+</circle>
+<circle id="node-112" class="circuit-node" data-node-number="112" data-module-row="3" data-module-column="1" data-local-row="2" data-local-column="1" aria-label="Nút 112" cx="43" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 112</title>
+</circle>
+<circle id="node-113" class="circuit-node" data-node-number="113" data-module-row="3" data-module-column="1" data-local-row="2" data-local-column="2" aria-label="Nút 113" cx="91.4" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 113</title>
+</circle>
+<circle id="node-114" class="circuit-node" data-node-number="114" data-module-row="3" data-module-column="1" data-local-row="2" data-local-column="3" aria-label="Nút 114" cx="140" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 114</title>
+</circle>
+<circle id="node-115" class="circuit-node" data-node-number="115" data-module-row="3" data-module-column="1" data-local-row="3" data-local-column="1" aria-label="Nút 115" cx="43" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 115</title>
+</circle>
+<circle id="node-116" class="circuit-node" data-node-number="116" data-module-row="3" data-module-column="1" data-local-row="3" data-local-column="2" aria-label="Nút 116" cx="91.4" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 116</title>
+</circle>
+<circle id="node-117" class="circuit-node" data-node-number="117" data-module-row="3" data-module-column="1" data-local-row="3" data-local-column="3" aria-label="Nút 117" cx="140" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 117</title>
+</circle>
+</g>
+<g id="module-r3-c2" class="circuit-module" data-module-row="3" data-module-column="2">
+<line id="module-r3-c2-h1" class="connection horizontal" data-local-row="1" x1="199.4" y1="364.8" x2="247.6" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-h2" class="connection horizontal" data-local-row="1" x1="247.6" y1="364.8" x2="296" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-h3" class="connection horizontal" data-local-row="2" x1="199.4" y1="413.2" x2="247.6" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-h4" class="connection horizontal" data-local-row="2" x1="247.6" y1="413.2" x2="296" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-h5" class="connection horizontal" data-local-row="3" x1="199.4" y1="460.8" x2="247.6" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-h6" class="connection horizontal" data-local-row="3" x1="247.6" y1="460.8" x2="296" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-v1" class="connection vertical" data-local-column="1" x1="199.4" y1="364.8" x2="199.4" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-v2" class="connection vertical" data-local-column="1" x1="199.4" y1="413.2" x2="199.4" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-v3" class="connection vertical" data-local-column="2" x1="247.6" y1="364.8" x2="247.6" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-v4" class="connection vertical" data-local-column="2" x1="247.6" y1="413.2" x2="247.6" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-v5" class="connection vertical" data-local-column="3" x1="296" y1="364.8" x2="296" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c2-v6" class="connection vertical" data-local-column="3" x1="296" y1="413.2" x2="296" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-118" class="circuit-node" data-node-number="118" data-module-row="3" data-module-column="2" data-local-row="1" data-local-column="1" aria-label="Nút 118" cx="199.4" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 118</title>
+</circle>
+<circle id="node-119" class="circuit-node" data-node-number="119" data-module-row="3" data-module-column="2" data-local-row="1" data-local-column="2" aria-label="Nút 119" cx="247.6" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 119</title>
+</circle>
+<circle id="node-120" class="circuit-node" data-node-number="120" data-module-row="3" data-module-column="2" data-local-row="1" data-local-column="3" aria-label="Nút 120" cx="296" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 120</title>
+</circle>
+<circle id="node-121" class="circuit-node" data-node-number="121" data-module-row="3" data-module-column="2" data-local-row="2" data-local-column="1" aria-label="Nút 121" cx="199.4" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 121</title>
+</circle>
+<circle id="node-122" class="circuit-node" data-node-number="122" data-module-row="3" data-module-column="2" data-local-row="2" data-local-column="2" aria-label="Nút 122" cx="247.6" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 122</title>
+</circle>
+<circle id="node-123" class="circuit-node" data-node-number="123" data-module-row="3" data-module-column="2" data-local-row="2" data-local-column="3" aria-label="Nút 123" cx="296" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 123</title>
+</circle>
+<circle id="node-124" class="circuit-node" data-node-number="124" data-module-row="3" data-module-column="2" data-local-row="3" data-local-column="1" aria-label="Nút 124" cx="199.4" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 124</title>
+</circle>
+<circle id="node-125" class="circuit-node" data-node-number="125" data-module-row="3" data-module-column="2" data-local-row="3" data-local-column="2" aria-label="Nút 125" cx="247.6" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 125</title>
+</circle>
+<circle id="node-126" class="circuit-node" data-node-number="126" data-module-row="3" data-module-column="2" data-local-row="3" data-local-column="3" aria-label="Nút 126" cx="296" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 126</title>
+</circle>
+</g>
+<g id="module-r3-c3" class="circuit-module" data-module-row="3" data-module-column="3">
+<line id="module-r3-c3-h1" class="connection horizontal" data-local-row="1" x1="355.2" y1="364.8" x2="403.8" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-h2" class="connection horizontal" data-local-row="1" x1="403.8" y1="364.8" x2="452" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-h3" class="connection horizontal" data-local-row="2" x1="355.2" y1="413.2" x2="403.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-h4" class="connection horizontal" data-local-row="2" x1="403.8" y1="413.2" x2="452" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-h5" class="connection horizontal" data-local-row="3" x1="355.2" y1="460.8" x2="403.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-h6" class="connection horizontal" data-local-row="3" x1="403.8" y1="460.8" x2="452" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-v1" class="connection vertical" data-local-column="1" x1="355.2" y1="364.8" x2="355.2" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-v2" class="connection vertical" data-local-column="1" x1="355.2" y1="413.2" x2="355.2" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-v3" class="connection vertical" data-local-column="2" x1="403.8" y1="364.8" x2="403.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-v4" class="connection vertical" data-local-column="2" x1="403.8" y1="413.2" x2="403.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-v5" class="connection vertical" data-local-column="3" x1="452" y1="364.8" x2="452" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c3-v6" class="connection vertical" data-local-column="3" x1="452" y1="413.2" x2="452" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-127" class="circuit-node" data-node-number="127" data-module-row="3" data-module-column="3" data-local-row="1" data-local-column="1" aria-label="Nút 127" cx="355.2" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 127</title>
+</circle>
+<circle id="node-128" class="circuit-node" data-node-number="128" data-module-row="3" data-module-column="3" data-local-row="1" data-local-column="2" aria-label="Nút 128" cx="403.8" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 128</title>
+</circle>
+<circle id="node-129" class="circuit-node" data-node-number="129" data-module-row="3" data-module-column="3" data-local-row="1" data-local-column="3" aria-label="Nút 129" cx="452" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 129</title>
+</circle>
+<circle id="node-130" class="circuit-node" data-node-number="130" data-module-row="3" data-module-column="3" data-local-row="2" data-local-column="1" aria-label="Nút 130" cx="355.2" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 130</title>
+</circle>
+<circle id="node-131" class="circuit-node" data-node-number="131" data-module-row="3" data-module-column="3" data-local-row="2" data-local-column="2" aria-label="Nút 131" cx="403.8" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 131</title>
+</circle>
+<circle id="node-132" class="circuit-node" data-node-number="132" data-module-row="3" data-module-column="3" data-local-row="2" data-local-column="3" aria-label="Nút 132" cx="452" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 132</title>
+</circle>
+<circle id="node-133" class="circuit-node" data-node-number="133" data-module-row="3" data-module-column="3" data-local-row="3" data-local-column="1" aria-label="Nút 133" cx="355.2" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 133</title>
+</circle>
+<circle id="node-134" class="circuit-node" data-node-number="134" data-module-row="3" data-module-column="3" data-local-row="3" data-local-column="2" aria-label="Nút 134" cx="403.8" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 134</title>
+</circle>
+<circle id="node-135" class="circuit-node" data-node-number="135" data-module-row="3" data-module-column="3" data-local-row="3" data-local-column="3" aria-label="Nút 135" cx="452" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 135</title>
+</circle>
+</g>
+<g id="module-r3-c4" class="circuit-module" data-module-row="3" data-module-column="4">
+<line id="module-r3-c4-h1" class="connection horizontal" data-local-row="1" x1="511.8" y1="364.8" x2="560.6" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-h2" class="connection horizontal" data-local-row="1" x1="560.6" y1="364.8" x2="609.2" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-h3" class="connection horizontal" data-local-row="2" x1="511.8" y1="413.2" x2="560.6" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-h4" class="connection horizontal" data-local-row="2" x1="560.6" y1="413.2" x2="609.2" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-h5" class="connection horizontal" data-local-row="3" x1="511.8" y1="460.8" x2="560.6" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-h6" class="connection horizontal" data-local-row="3" x1="560.6" y1="460.8" x2="609.2" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-v1" class="connection vertical" data-local-column="1" x1="511.8" y1="364.8" x2="511.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-v2" class="connection vertical" data-local-column="1" x1="511.8" y1="413.2" x2="511.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-v3" class="connection vertical" data-local-column="2" x1="560.6" y1="364.8" x2="560.6" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-v4" class="connection vertical" data-local-column="2" x1="560.6" y1="413.2" x2="560.6" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-v5" class="connection vertical" data-local-column="3" x1="609.2" y1="364.8" x2="609.2" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c4-v6" class="connection vertical" data-local-column="3" x1="609.2" y1="413.2" x2="609.2" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-136" class="circuit-node" data-node-number="136" data-module-row="3" data-module-column="4" data-local-row="1" data-local-column="1" aria-label="Nút 136" cx="511.8" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 136</title>
+</circle>
+<circle id="node-137" class="circuit-node" data-node-number="137" data-module-row="3" data-module-column="4" data-local-row="1" data-local-column="2" aria-label="Nút 137" cx="560.6" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 137</title>
+</circle>
+<circle id="node-138" class="circuit-node" data-node-number="138" data-module-row="3" data-module-column="4" data-local-row="1" data-local-column="3" aria-label="Nút 138" cx="609.2" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 138</title>
+</circle>
+<circle id="node-139" class="circuit-node" data-node-number="139" data-module-row="3" data-module-column="4" data-local-row="2" data-local-column="1" aria-label="Nút 139" cx="511.8" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 139</title>
+</circle>
+<circle id="node-140" class="circuit-node" data-node-number="140" data-module-row="3" data-module-column="4" data-local-row="2" data-local-column="2" aria-label="Nút 140" cx="560.6" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 140</title>
+</circle>
+<circle id="node-141" class="circuit-node" data-node-number="141" data-module-row="3" data-module-column="4" data-local-row="2" data-local-column="3" aria-label="Nút 141" cx="609.2" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 141</title>
+</circle>
+<circle id="node-142" class="circuit-node" data-node-number="142" data-module-row="3" data-module-column="4" data-local-row="3" data-local-column="1" aria-label="Nút 142" cx="511.8" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 142</title>
+</circle>
+<circle id="node-143" class="circuit-node" data-node-number="143" data-module-row="3" data-module-column="4" data-local-row="3" data-local-column="2" aria-label="Nút 143" cx="560.6" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 143</title>
+</circle>
+<circle id="node-144" class="circuit-node" data-node-number="144" data-module-row="3" data-module-column="4" data-local-row="3" data-local-column="3" aria-label="Nút 144" cx="609.2" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 144</title>
+</circle>
+</g>
+<g id="module-r3-c5" class="circuit-module" data-module-row="3" data-module-column="5">
+<line id="module-r3-c5-h1" class="connection horizontal" data-local-row="1" x1="669.4" y1="364.8" x2="718.4" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-h2" class="connection horizontal" data-local-row="1" x1="718.4" y1="364.8" x2="767.8" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-h3" class="connection horizontal" data-local-row="2" x1="669.4" y1="413.2" x2="718.4" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-h4" class="connection horizontal" data-local-row="2" x1="718.4" y1="413.2" x2="767.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-h5" class="connection horizontal" data-local-row="3" x1="669.4" y1="460.8" x2="718.4" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-h6" class="connection horizontal" data-local-row="3" x1="718.4" y1="460.8" x2="767.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-v1" class="connection vertical" data-local-column="1" x1="669.4" y1="364.8" x2="669.4" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-v2" class="connection vertical" data-local-column="1" x1="669.4" y1="413.2" x2="669.4" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-v3" class="connection vertical" data-local-column="2" x1="718.4" y1="364.8" x2="718.4" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-v4" class="connection vertical" data-local-column="2" x1="718.4" y1="413.2" x2="718.4" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-v5" class="connection vertical" data-local-column="3" x1="767.8" y1="364.8" x2="767.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c5-v6" class="connection vertical" data-local-column="3" x1="767.8" y1="413.2" x2="767.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-145" class="circuit-node" data-node-number="145" data-module-row="3" data-module-column="5" data-local-row="1" data-local-column="1" aria-label="Nút 145" cx="669.4" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 145</title>
+</circle>
+<circle id="node-146" class="circuit-node" data-node-number="146" data-module-row="3" data-module-column="5" data-local-row="1" data-local-column="2" aria-label="Nút 146" cx="718.4" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 146</title>
+</circle>
+<circle id="node-147" class="circuit-node" data-node-number="147" data-module-row="3" data-module-column="5" data-local-row="1" data-local-column="3" aria-label="Nút 147" cx="767.8" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 147</title>
+</circle>
+<circle id="node-148" class="circuit-node" data-node-number="148" data-module-row="3" data-module-column="5" data-local-row="2" data-local-column="1" aria-label="Nút 148" cx="669.4" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 148</title>
+</circle>
+<circle id="node-149" class="circuit-node" data-node-number="149" data-module-row="3" data-module-column="5" data-local-row="2" data-local-column="2" aria-label="Nút 149" cx="718.4" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 149</title>
+</circle>
+<circle id="node-150" class="circuit-node" data-node-number="150" data-module-row="3" data-module-column="5" data-local-row="2" data-local-column="3" aria-label="Nút 150" cx="767.8" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 150</title>
+</circle>
+<circle id="node-151" class="circuit-node" data-node-number="151" data-module-row="3" data-module-column="5" data-local-row="3" data-local-column="1" aria-label="Nút 151" cx="669.4" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 151</title>
+</circle>
+<circle id="node-152" class="circuit-node" data-node-number="152" data-module-row="3" data-module-column="5" data-local-row="3" data-local-column="2" aria-label="Nút 152" cx="718.4" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 152</title>
+</circle>
+<circle id="node-153" class="circuit-node" data-node-number="153" data-module-row="3" data-module-column="5" data-local-row="3" data-local-column="3" aria-label="Nút 153" cx="767.8" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 153</title>
+</circle>
+</g>
+<g id="module-r3-c6" class="circuit-module" data-module-row="3" data-module-column="6">
+<line id="module-r3-c6-h1" class="connection horizontal" data-local-row="1" x1="828.8" y1="364.8" x2="878.8" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-h2" class="connection horizontal" data-local-row="1" x1="878.8" y1="364.8" x2="928.6" y2="364.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-h3" class="connection horizontal" data-local-row="2" x1="828.8" y1="413.2" x2="878.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-h4" class="connection horizontal" data-local-row="2" x1="878.8" y1="413.2" x2="928.6" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-h5" class="connection horizontal" data-local-row="3" x1="828.8" y1="460.8" x2="878.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-h6" class="connection horizontal" data-local-row="3" x1="878.8" y1="460.8" x2="928.6" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-v1" class="connection vertical" data-local-column="1" x1="828.8" y1="364.8" x2="828.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-v2" class="connection vertical" data-local-column="1" x1="828.8" y1="413.2" x2="828.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-v3" class="connection vertical" data-local-column="2" x1="878.8" y1="364.8" x2="878.8" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-v4" class="connection vertical" data-local-column="2" x1="878.8" y1="413.2" x2="878.8" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-v5" class="connection vertical" data-local-column="3" x1="928.6" y1="364.8" x2="928.6" y2="413.2" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r3-c6-v6" class="connection vertical" data-local-column="3" x1="928.6" y1="413.2" x2="928.6" y2="460.8" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-154" class="circuit-node" data-node-number="154" data-module-row="3" data-module-column="6" data-local-row="1" data-local-column="1" aria-label="Nút 154" cx="828.8" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 154</title>
+</circle>
+<circle id="node-155" class="circuit-node" data-node-number="155" data-module-row="3" data-module-column="6" data-local-row="1" data-local-column="2" aria-label="Nút 155" cx="878.8" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 155</title>
+</circle>
+<circle id="node-156" class="circuit-node" data-node-number="156" data-module-row="3" data-module-column="6" data-local-row="1" data-local-column="3" aria-label="Nút 156" cx="928.6" cy="364.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 156</title>
+</circle>
+<circle id="node-157" class="circuit-node" data-node-number="157" data-module-row="3" data-module-column="6" data-local-row="2" data-local-column="1" aria-label="Nút 157" cx="828.8" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 157</title>
+</circle>
+<circle id="node-158" class="circuit-node" data-node-number="158" data-module-row="3" data-module-column="6" data-local-row="2" data-local-column="2" aria-label="Nút 158" cx="878.8" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 158</title>
+</circle>
+<circle id="node-159" class="circuit-node" data-node-number="159" data-module-row="3" data-module-column="6" data-local-row="2" data-local-column="3" aria-label="Nút 159" cx="928.6" cy="413.2" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 159</title>
+</circle>
+<circle id="node-160" class="circuit-node" data-node-number="160" data-module-row="3" data-module-column="6" data-local-row="3" data-local-column="1" aria-label="Nút 160" cx="828.8" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 160</title>
+</circle>
+<circle id="node-161" class="circuit-node" data-node-number="161" data-module-row="3" data-module-column="6" data-local-row="3" data-local-column="2" aria-label="Nút 161" cx="878.8" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 161</title>
+</circle>
+<circle id="node-162" class="circuit-node" data-node-number="162" data-module-row="3" data-module-column="6" data-local-row="3" data-local-column="3" aria-label="Nút 162" cx="928.6" cy="460.8" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 162</title>
+</circle>
+</g>
+<g id="module-r4-c1" class="circuit-module" data-module-row="4" data-module-column="1">
+<line id="module-r4-c1-h1" class="connection horizontal" data-local-row="1" x1="43" y1="519.6" x2="91.4" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-h2" class="connection horizontal" data-local-row="1" x1="91.4" y1="519.6" x2="140" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-h3" class="connection horizontal" data-local-row="2" x1="43" y1="568.4" x2="91.4" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-h4" class="connection horizontal" data-local-row="2" x1="91.4" y1="568.4" x2="140" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-h5" class="connection horizontal" data-local-row="3" x1="43" y1="617" x2="91.4" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-h6" class="connection horizontal" data-local-row="3" x1="91.4" y1="617" x2="140" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-v1" class="connection vertical" data-local-column="1" x1="43" y1="519.6" x2="43" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-v2" class="connection vertical" data-local-column="1" x1="43" y1="568.4" x2="43" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-v3" class="connection vertical" data-local-column="2" x1="91.4" y1="519.6" x2="91.4" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-v4" class="connection vertical" data-local-column="2" x1="91.4" y1="568.4" x2="91.4" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-v5" class="connection vertical" data-local-column="3" x1="140" y1="519.6" x2="140" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c1-v6" class="connection vertical" data-local-column="3" x1="140" y1="568.4" x2="140" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-163" class="circuit-node" data-node-number="163" data-module-row="4" data-module-column="1" data-local-row="1" data-local-column="1" aria-label="Nút 163" cx="43" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 163</title>
+</circle>
+<circle id="node-164" class="circuit-node" data-node-number="164" data-module-row="4" data-module-column="1" data-local-row="1" data-local-column="2" aria-label="Nút 164" cx="91.4" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 164</title>
+</circle>
+<circle id="node-165" class="circuit-node" data-node-number="165" data-module-row="4" data-module-column="1" data-local-row="1" data-local-column="3" aria-label="Nút 165" cx="140" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 165</title>
+</circle>
+<circle id="node-166" class="circuit-node" data-node-number="166" data-module-row="4" data-module-column="1" data-local-row="2" data-local-column="1" aria-label="Nút 166" cx="43" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 166</title>
+</circle>
+<circle id="node-167" class="circuit-node" data-node-number="167" data-module-row="4" data-module-column="1" data-local-row="2" data-local-column="2" aria-label="Nút 167" cx="91.4" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 167</title>
+</circle>
+<circle id="node-168" class="circuit-node" data-node-number="168" data-module-row="4" data-module-column="1" data-local-row="2" data-local-column="3" aria-label="Nút 168" cx="140" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 168</title>
+</circle>
+<circle id="node-169" class="circuit-node" data-node-number="169" data-module-row="4" data-module-column="1" data-local-row="3" data-local-column="1" aria-label="Nút 169" cx="43" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 169</title>
+</circle>
+<circle id="node-170" class="circuit-node" data-node-number="170" data-module-row="4" data-module-column="1" data-local-row="3" data-local-column="2" aria-label="Nút 170" cx="91.4" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 170</title>
+</circle>
+<circle id="node-171" class="circuit-node" data-node-number="171" data-module-row="4" data-module-column="1" data-local-row="3" data-local-column="3" aria-label="Nút 171" cx="140" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 171</title>
+</circle>
+</g>
+<g id="module-r4-c2" class="circuit-module" data-module-row="4" data-module-column="2">
+<line id="module-r4-c2-h1" class="connection horizontal" data-local-row="1" x1="199.4" y1="519.6" x2="247.6" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-h2" class="connection horizontal" data-local-row="1" x1="247.6" y1="519.6" x2="296" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-h3" class="connection horizontal" data-local-row="2" x1="199.4" y1="568.4" x2="247.6" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-h4" class="connection horizontal" data-local-row="2" x1="247.6" y1="568.4" x2="296" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-h5" class="connection horizontal" data-local-row="3" x1="199.4" y1="617" x2="247.6" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-h6" class="connection horizontal" data-local-row="3" x1="247.6" y1="617" x2="296" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-v1" class="connection vertical" data-local-column="1" x1="199.4" y1="519.6" x2="199.4" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-v2" class="connection vertical" data-local-column="1" x1="199.4" y1="568.4" x2="199.4" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-v3" class="connection vertical" data-local-column="2" x1="247.6" y1="519.6" x2="247.6" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-v4" class="connection vertical" data-local-column="2" x1="247.6" y1="568.4" x2="247.6" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-v5" class="connection vertical" data-local-column="3" x1="296" y1="519.6" x2="296" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c2-v6" class="connection vertical" data-local-column="3" x1="296" y1="568.4" x2="296" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-172" class="circuit-node" data-node-number="172" data-module-row="4" data-module-column="2" data-local-row="1" data-local-column="1" aria-label="Nút 172" cx="199.4" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 172</title>
+</circle>
+<circle id="node-173" class="circuit-node" data-node-number="173" data-module-row="4" data-module-column="2" data-local-row="1" data-local-column="2" aria-label="Nút 173" cx="247.6" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 173</title>
+</circle>
+<circle id="node-174" class="circuit-node" data-node-number="174" data-module-row="4" data-module-column="2" data-local-row="1" data-local-column="3" aria-label="Nút 174" cx="296" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 174</title>
+</circle>
+<circle id="node-175" class="circuit-node" data-node-number="175" data-module-row="4" data-module-column="2" data-local-row="2" data-local-column="1" aria-label="Nút 175" cx="199.4" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 175</title>
+</circle>
+<circle id="node-176" class="circuit-node" data-node-number="176" data-module-row="4" data-module-column="2" data-local-row="2" data-local-column="2" aria-label="Nút 176" cx="247.6" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 176</title>
+</circle>
+<circle id="node-177" class="circuit-node" data-node-number="177" data-module-row="4" data-module-column="2" data-local-row="2" data-local-column="3" aria-label="Nút 177" cx="296" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 177</title>
+</circle>
+<circle id="node-178" class="circuit-node" data-node-number="178" data-module-row="4" data-module-column="2" data-local-row="3" data-local-column="1" aria-label="Nút 178" cx="199.4" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 178</title>
+</circle>
+<circle id="node-179" class="circuit-node" data-node-number="179" data-module-row="4" data-module-column="2" data-local-row="3" data-local-column="2" aria-label="Nút 179" cx="247.6" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 179</title>
+</circle>
+<circle id="node-180" class="circuit-node" data-node-number="180" data-module-row="4" data-module-column="2" data-local-row="3" data-local-column="3" aria-label="Nút 180" cx="296" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 180</title>
+</circle>
+</g>
+<g id="module-r4-c3" class="circuit-module" data-module-row="4" data-module-column="3">
+<line id="module-r4-c3-h1" class="connection horizontal" data-local-row="1" x1="355.2" y1="519.6" x2="403.8" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-h2" class="connection horizontal" data-local-row="1" x1="403.8" y1="519.6" x2="452" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-h3" class="connection horizontal" data-local-row="2" x1="355.2" y1="568.4" x2="403.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-h4" class="connection horizontal" data-local-row="2" x1="403.8" y1="568.4" x2="452" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-h5" class="connection horizontal" data-local-row="3" x1="355.2" y1="617" x2="403.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-h6" class="connection horizontal" data-local-row="3" x1="403.8" y1="617" x2="452" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-v1" class="connection vertical" data-local-column="1" x1="355.2" y1="519.6" x2="355.2" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-v2" class="connection vertical" data-local-column="1" x1="355.2" y1="568.4" x2="355.2" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-v3" class="connection vertical" data-local-column="2" x1="403.8" y1="519.6" x2="403.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-v4" class="connection vertical" data-local-column="2" x1="403.8" y1="568.4" x2="403.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-v5" class="connection vertical" data-local-column="3" x1="452" y1="519.6" x2="452" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c3-v6" class="connection vertical" data-local-column="3" x1="452" y1="568.4" x2="452" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-181" class="circuit-node" data-node-number="181" data-module-row="4" data-module-column="3" data-local-row="1" data-local-column="1" aria-label="Nút 181" cx="355.2" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 181</title>
+</circle>
+<circle id="node-182" class="circuit-node" data-node-number="182" data-module-row="4" data-module-column="3" data-local-row="1" data-local-column="2" aria-label="Nút 182" cx="403.8" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 182</title>
+</circle>
+<circle id="node-183" class="circuit-node" data-node-number="183" data-module-row="4" data-module-column="3" data-local-row="1" data-local-column="3" aria-label="Nút 183" cx="452" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 183</title>
+</circle>
+<circle id="node-184" class="circuit-node" data-node-number="184" data-module-row="4" data-module-column="3" data-local-row="2" data-local-column="1" aria-label="Nút 184" cx="355.2" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 184</title>
+</circle>
+<circle id="node-185" class="circuit-node" data-node-number="185" data-module-row="4" data-module-column="3" data-local-row="2" data-local-column="2" aria-label="Nút 185" cx="403.8" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 185</title>
+</circle>
+<circle id="node-186" class="circuit-node" data-node-number="186" data-module-row="4" data-module-column="3" data-local-row="2" data-local-column="3" aria-label="Nút 186" cx="452" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 186</title>
+</circle>
+<circle id="node-187" class="circuit-node" data-node-number="187" data-module-row="4" data-module-column="3" data-local-row="3" data-local-column="1" aria-label="Nút 187" cx="355.2" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 187</title>
+</circle>
+<circle id="node-188" class="circuit-node" data-node-number="188" data-module-row="4" data-module-column="3" data-local-row="3" data-local-column="2" aria-label="Nút 188" cx="403.8" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 188</title>
+</circle>
+<circle id="node-189" class="circuit-node" data-node-number="189" data-module-row="4" data-module-column="3" data-local-row="3" data-local-column="3" aria-label="Nút 189" cx="452" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 189</title>
+</circle>
+</g>
+<g id="module-r4-c4" class="circuit-module" data-module-row="4" data-module-column="4">
+<line id="module-r4-c4-h1" class="connection horizontal" data-local-row="1" x1="511.8" y1="519.6" x2="560.6" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-h2" class="connection horizontal" data-local-row="1" x1="560.6" y1="519.6" x2="609.2" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-h3" class="connection horizontal" data-local-row="2" x1="511.8" y1="568.4" x2="560.6" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-h4" class="connection horizontal" data-local-row="2" x1="560.6" y1="568.4" x2="609.2" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-h5" class="connection horizontal" data-local-row="3" x1="511.8" y1="617" x2="560.6" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-h6" class="connection horizontal" data-local-row="3" x1="560.6" y1="617" x2="609.2" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-v1" class="connection vertical" data-local-column="1" x1="511.8" y1="519.6" x2="511.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-v2" class="connection vertical" data-local-column="1" x1="511.8" y1="568.4" x2="511.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-v3" class="connection vertical" data-local-column="2" x1="560.6" y1="519.6" x2="560.6" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-v4" class="connection vertical" data-local-column="2" x1="560.6" y1="568.4" x2="560.6" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-v5" class="connection vertical" data-local-column="3" x1="609.2" y1="519.6" x2="609.2" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c4-v6" class="connection vertical" data-local-column="3" x1="609.2" y1="568.4" x2="609.2" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-190" class="circuit-node" data-node-number="190" data-module-row="4" data-module-column="4" data-local-row="1" data-local-column="1" aria-label="Nút 190" cx="511.8" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 190</title>
+</circle>
+<circle id="node-191" class="circuit-node" data-node-number="191" data-module-row="4" data-module-column="4" data-local-row="1" data-local-column="2" aria-label="Nút 191" cx="560.6" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 191</title>
+</circle>
+<circle id="node-192" class="circuit-node" data-node-number="192" data-module-row="4" data-module-column="4" data-local-row="1" data-local-column="3" aria-label="Nút 192" cx="609.2" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 192</title>
+</circle>
+<circle id="node-193" class="circuit-node" data-node-number="193" data-module-row="4" data-module-column="4" data-local-row="2" data-local-column="1" aria-label="Nút 193" cx="511.8" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 193</title>
+</circle>
+<circle id="node-194" class="circuit-node" data-node-number="194" data-module-row="4" data-module-column="4" data-local-row="2" data-local-column="2" aria-label="Nút 194" cx="560.6" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 194</title>
+</circle>
+<circle id="node-195" class="circuit-node" data-node-number="195" data-module-row="4" data-module-column="4" data-local-row="2" data-local-column="3" aria-label="Nút 195" cx="609.2" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 195</title>
+</circle>
+<circle id="node-196" class="circuit-node" data-node-number="196" data-module-row="4" data-module-column="4" data-local-row="3" data-local-column="1" aria-label="Nút 196" cx="511.8" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 196</title>
+</circle>
+<circle id="node-197" class="circuit-node" data-node-number="197" data-module-row="4" data-module-column="4" data-local-row="3" data-local-column="2" aria-label="Nút 197" cx="560.6" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 197</title>
+</circle>
+<circle id="node-198" class="circuit-node" data-node-number="198" data-module-row="4" data-module-column="4" data-local-row="3" data-local-column="3" aria-label="Nút 198" cx="609.2" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 198</title>
+</circle>
+</g>
+<g id="module-r4-c5" class="circuit-module" data-module-row="4" data-module-column="5">
+<line id="module-r4-c5-h1" class="connection horizontal" data-local-row="1" x1="669.4" y1="519.6" x2="718.4" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-h2" class="connection horizontal" data-local-row="1" x1="718.4" y1="519.6" x2="767.8" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-h3" class="connection horizontal" data-local-row="2" x1="669.4" y1="568.4" x2="718.4" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-h4" class="connection horizontal" data-local-row="2" x1="718.4" y1="568.4" x2="767.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-h5" class="connection horizontal" data-local-row="3" x1="669.4" y1="617" x2="718.4" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-h6" class="connection horizontal" data-local-row="3" x1="718.4" y1="617" x2="767.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-v1" class="connection vertical" data-local-column="1" x1="669.4" y1="519.6" x2="669.4" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-v2" class="connection vertical" data-local-column="1" x1="669.4" y1="568.4" x2="669.4" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-v3" class="connection vertical" data-local-column="2" x1="718.4" y1="519.6" x2="718.4" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-v4" class="connection vertical" data-local-column="2" x1="718.4" y1="568.4" x2="718.4" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-v5" class="connection vertical" data-local-column="3" x1="767.8" y1="519.6" x2="767.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c5-v6" class="connection vertical" data-local-column="3" x1="767.8" y1="568.4" x2="767.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-199" class="circuit-node" data-node-number="199" data-module-row="4" data-module-column="5" data-local-row="1" data-local-column="1" aria-label="Nút 199" cx="669.4" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 199</title>
+</circle>
+<circle id="node-200" class="circuit-node" data-node-number="200" data-module-row="4" data-module-column="5" data-local-row="1" data-local-column="2" aria-label="Nút 200" cx="718.4" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 200</title>
+</circle>
+<circle id="node-201" class="circuit-node" data-node-number="201" data-module-row="4" data-module-column="5" data-local-row="1" data-local-column="3" aria-label="Nút 201" cx="767.8" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 201</title>
+</circle>
+<circle id="node-202" class="circuit-node" data-node-number="202" data-module-row="4" data-module-column="5" data-local-row="2" data-local-column="1" aria-label="Nút 202" cx="669.4" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 202</title>
+</circle>
+<circle id="node-203" class="circuit-node" data-node-number="203" data-module-row="4" data-module-column="5" data-local-row="2" data-local-column="2" aria-label="Nút 203" cx="718.4" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 203</title>
+</circle>
+<circle id="node-204" class="circuit-node" data-node-number="204" data-module-row="4" data-module-column="5" data-local-row="2" data-local-column="3" aria-label="Nút 204" cx="767.8" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 204</title>
+</circle>
+<circle id="node-205" class="circuit-node" data-node-number="205" data-module-row="4" data-module-column="5" data-local-row="3" data-local-column="1" aria-label="Nút 205" cx="669.4" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 205</title>
+</circle>
+<circle id="node-206" class="circuit-node" data-node-number="206" data-module-row="4" data-module-column="5" data-local-row="3" data-local-column="2" aria-label="Nút 206" cx="718.4" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 206</title>
+</circle>
+<circle id="node-207" class="circuit-node" data-node-number="207" data-module-row="4" data-module-column="5" data-local-row="3" data-local-column="3" aria-label="Nút 207" cx="767.8" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 207</title>
+</circle>
+</g>
+<g id="module-r4-c6" class="circuit-module" data-module-row="4" data-module-column="6">
+<line id="module-r4-c6-h1" class="connection horizontal" data-local-row="1" x1="828.8" y1="519.6" x2="878.8" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-h2" class="connection horizontal" data-local-row="1" x1="878.8" y1="519.6" x2="928.6" y2="519.6" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-h3" class="connection horizontal" data-local-row="2" x1="828.8" y1="568.4" x2="878.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-h4" class="connection horizontal" data-local-row="2" x1="878.8" y1="568.4" x2="928.6" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-h5" class="connection horizontal" data-local-row="3" x1="828.8" y1="617" x2="878.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-h6" class="connection horizontal" data-local-row="3" x1="878.8" y1="617" x2="928.6" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-v1" class="connection vertical" data-local-column="1" x1="828.8" y1="519.6" x2="828.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-v2" class="connection vertical" data-local-column="1" x1="828.8" y1="568.4" x2="828.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-v3" class="connection vertical" data-local-column="2" x1="878.8" y1="519.6" x2="878.8" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-v4" class="connection vertical" data-local-column="2" x1="878.8" y1="568.4" x2="878.8" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-v5" class="connection vertical" data-local-column="3" x1="928.6" y1="519.6" x2="928.6" y2="568.4" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="module-r4-c6-v6" class="connection vertical" data-local-column="3" x1="928.6" y1="568.4" x2="928.6" y2="617" stroke="#686868" stroke-width="4.1" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="node-208" class="circuit-node" data-node-number="208" data-module-row="4" data-module-column="6" data-local-row="1" data-local-column="1" aria-label="Nút 208" cx="828.8" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 208</title>
+</circle>
+<circle id="node-209" class="circuit-node" data-node-number="209" data-module-row="4" data-module-column="6" data-local-row="1" data-local-column="2" aria-label="Nút 209" cx="878.8" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 209</title>
+</circle>
+<circle id="node-210" class="circuit-node" data-node-number="210" data-module-row="4" data-module-column="6" data-local-row="1" data-local-column="3" aria-label="Nút 210" cx="928.6" cy="519.6" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 210</title>
+</circle>
+<circle id="node-211" class="circuit-node" data-node-number="211" data-module-row="4" data-module-column="6" data-local-row="2" data-local-column="1" aria-label="Nút 211" cx="828.8" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 211</title>
+</circle>
+<circle id="node-212" class="circuit-node" data-node-number="212" data-module-row="4" data-module-column="6" data-local-row="2" data-local-column="2" aria-label="Nút 212" cx="878.8" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 212</title>
+</circle>
+<circle id="node-213" class="circuit-node" data-node-number="213" data-module-row="4" data-module-column="6" data-local-row="2" data-local-column="3" aria-label="Nút 213" cx="928.6" cy="568.4" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 213</title>
+</circle>
+<circle id="node-214" class="circuit-node" data-node-number="214" data-module-row="4" data-module-column="6" data-local-row="3" data-local-column="1" aria-label="Nút 214" cx="828.8" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 214</title>
+</circle>
+<circle id="node-215" class="circuit-node" data-node-number="215" data-module-row="4" data-module-column="6" data-local-row="3" data-local-column="2" aria-label="Nút 215" cx="878.8" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 215</title>
+</circle>
+<circle id="node-216" class="circuit-node" data-node-number="216" data-module-row="4" data-module-column="6" data-local-row="3" data-local-column="3" aria-label="Nút 216" cx="928.6" cy="617" r="9.2" fill="url(#node-gradient)" stroke="#fafafa" stroke-width="1.3" filter="url(#node-shadow)">
+<title>Nút 216</title>
+</circle>
+</g>
+</svg>

@@ -13,7 +13,7 @@ interface HomeScreenProps {
   completedCount: number;
   // Danh sách các bài lab đang trong trạng thái "vừa vào, chưa nộp"
   inProgressLabIds?: string[];
-  reports?: Array<{ title: string; date: string; score?: number; shortTitle?: string }>;
+  reports?: Array<{ title: string; date: string; score?: number; shortTitle?: string; lessonId?: string }>;
   onNav: (tab: "home" | "scan" | "lab" | "notes" | "prelab") => void;
   onOpenLab: (id: string) => void;
   onSubjectClick?: (subject: string) => void;
@@ -58,11 +58,10 @@ export default function HomeScreen({
   // Logic tiến độ:
   //   - Chưa vào: 0%
   //   - Đã vào (in progress): 25%
-  //   - Đã hoàn thành 1 bài: 50%
-  //   - Hoàn thành >=2 bài: 100%
+  //   - Đã nộp báo cáo của đúng bài: 100%
   const calcPct = (labId: string) => {
     if (inProgressLabIds.includes(labId)) return 25;
-    if (completedCount >= 1) return 50;
+    if (reports.some((report) => report.lessonId === labId)) return 100;
     return 0;
   };
 
@@ -97,7 +96,7 @@ export default function HomeScreen({
   const subjects = [
     { title: "Cơ học", icon: Compass, ready: true },
     { title: "Nhiệt học", icon: Thermometer, ready: false },
-    { title: "Điện học", icon: Zap, ready: false },
+    { title: "Điện", icon: Zap, ready: true },
     { title: "Quang học", icon: Lightbulb, ready: false },
     { title: "Vật lý hạt nhân", icon: Atom, ready: false }
   ];
@@ -107,6 +106,7 @@ export default function HomeScreen({
     {
       id: "do-toc-do-vat-chuyen-dong",
       grade: 10,
+      subject: "Cơ học",
       name: "Đo vận tốc tức thời và vận tốc trung bình",
       sgk: "Bài 6 SGK Vật lý 10 - Kết nối tri thức",
       desc: "Khảo sát chuyển động thẳng biến đổi đều bằng máng nghiêng và cổng quang điện.",
@@ -118,6 +118,7 @@ export default function HomeScreen({
     {
       id: "do-gia-toc-roi-tu-do",
       grade: 10,
+      subject: "Cơ học",
       name: "Xác định gia tốc rơi tự do",
       sgk: "Bài 11 SGK Vật lý 10 - Kết nối tri thức",
       desc: "Thả rơi bi sắt từ tính qua cổng quang điện để đo gia tốc trọng trường g.",
@@ -129,6 +130,7 @@ export default function HomeScreen({
     {
       id: "dong-luong",
       grade: 10,
+      subject: "Cơ học",
       name: "Khảo sát định luật bảo toàn động lượng",
       sgk: "Bài 19 SGK Vật lý 10 - Kết nối tri thức",
       desc: "Thí nghiệm va chạm xe trượt trên đệm khí.",
@@ -141,6 +143,7 @@ export default function HomeScreen({
     {
       id: "do-tieu-cu",
       grade: 11,
+      subject: "Quang học",
       name: "Đo tiêu cự của thấu kính hội tụ",
       sgk: "Bài 22 SGK Vật lý 11 - Kết nối tri thức",
       desc: "Đo tiêu cự f bằng phương pháp ảnh ảo Bessel.",
@@ -150,20 +153,34 @@ export default function HomeScreen({
       active: false
     },
     {
-      id: "suat-dien-dong",
+      id: "do-dien-tro-dinh-luat-ohm",
       grade: 11,
-      name: "Đo suất điện động và điện trở trong",
-      sgk: "Bài 12 SGK Vật lý 11 - Kết nối tri thức",
-      desc: "Vẽ đặc tuyến vôn-ampe của nguồn điện một chiều.",
+      subject: "Điện",
+      name: "Đo điện trở theo định luật Ohm",
+      sgk: "Bài 23 SGK Vật lý 11 - Kết nối tri thức",
+      desc: "Đo đặc tuyến I–U của hai vật dẫn X, Y bằng hai đồng hồ đa năng hiện số.",
       difficulty: "Trung bình",
+      duration: "20 phút",
+      image: "/images/do-dien-tro-ohm.png",
+      active: true
+    },
+    {
+      id: "do-suat-dien-dong-pin-dien-hoa",
+      grade: 11,
+      subject: "Điện",
+      name: "Thực hành đo suất điện động pin điện hóa",
+      sgk: "Bài 26 SGK Vật lý 11 - Kết nối tri thức",
+      desc: "Đo nhiều cặp U–I, vẽ đồ thị U = E − Ir để xác định suất điện động của pin.",
+      difficulty: "Khó",
       duration: "25 phút",
-      image: "",
-      active: false
+      image: "/images/do-suat-dien-dong.png",
+      active: true
     },
     // Grade 12
     {
       id: "giao-thoa-anh-sang",
       grade: 12,
+      subject: "Quang học",
       name: "Đo bước sóng ánh sáng bằng phương pháp giao thoa",
       sgk: "Bài 15 SGK Vật lý 12 - Kết nối tri thức",
       desc: "Đo bước sóng nguồn laser qua khe Young.",
@@ -176,7 +193,8 @@ export default function HomeScreen({
 
   // Tiến độ thật: tính tổng % của tất cả bài đã hoàn thành 50% hoặc 100%
   const totalPct = experiments.reduce((sum, lab) => sum + calcPct(lab.id), 0);
-  const overallPct = Math.min(100, Math.round(totalPct));
+  const overallPct = experiments.length ? Math.round(totalPct / experiments.length) : 0;
+  const completedLabCount = Math.max(completedCount, new Set(reports.map((report) => report.lessonId).filter(Boolean)).size);
 
   const filteredLabs = experiments.filter(lab => lab.grade === selectedGrade);
 
@@ -255,7 +273,7 @@ export default function HomeScreen({
           {subjects.map((sub, idx) => {
             const Icon = sub.icon;
             // Cozy clay colors for each subject
-            let colorTheme = {
+            const colorTheme = {
               bg: "bg-[#FFFBF7] border-[#E2DFD8]",
               activeBg: "bg-[#FFF2E6] border-[#D56A17] text-[#321E12] shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_6px_12px_rgba(213,106,23,0.04)]",
               accent: "bg-[#FAF8F5] text-[#605248] border-[#E2DFD8]",
@@ -264,7 +282,7 @@ export default function HomeScreen({
 
             if (sub.title === "Nhiệt học") {
               colorTheme.accent = "bg-[#FFF5F5] text-[#C62828] border-[#FFCDD2]";
-            } else if (sub.title === "Điện học") {
+            } else if (sub.title === "Điện") {
               colorTheme.accent = "bg-[#FFFDE6] text-[#F57F17] border-[#FFE082]";
             } else if (sub.title === "Quang học") {
               colorTheme.accent = "bg-[#F0FDFA] text-[#00695C] border-[#B2DFDB]";
@@ -272,12 +290,12 @@ export default function HomeScreen({
               colorTheme.accent = "bg-[#F5F3FF] text-[#6D28D9] border-[#DDD6FE]";
             }
 
-            const active = sub.ready; // Mechanics is the only active subject now
+            const active = sub.ready;
             
             return (
               <button
                 key={idx}
-                onClick={() => onSubjectClick?.(sub.title)}
+                onClick={() => { if (sub.title === "Điện") setSelectedGrade(11); onSubjectClick?.(sub.title); }}
                 className={`snap-start flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all duration-200 flex-shrink-0 w-[145px] select-none active:scale-97 cursor-pointer ${
                   active ? colorTheme.activeBg : `${colorTheme.bg} shadow-xs`
                 }`}
@@ -581,7 +599,7 @@ export default function HomeScreen({
               return (
                 <div
                   key={idx}
-                  onClick={() => onSubjectClick?.(sub.title)}
+                  onClick={() => { if (sub.title === "Điện") setSelectedGrade(11); onSubjectClick?.(sub.title); }}
                   className="bg-[#FFFFFF] border border-[#E2DFD8] rounded-2xl p-4 flex items-center shadow-[0_2px_8px_rgba(50,30,18,0.005)] hover:border-[#C85A17]/25 transition-all group cursor-pointer"
                 >
                   <div className="w-9 h-9 rounded-xl bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/5 flex items-center justify-center flex-shrink-0 group-hover:bg-[#C85A17] group-hover:text-white transition-colors duration-250">
@@ -639,9 +657,10 @@ export default function HomeScreen({
               >
                 <div className="p-5 space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black text-[#C85A17] bg-[#FFF2E6] px-2 py-0.5 rounded border border-[#C85A17]/10">
-                      {lab.sgk}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-black text-[#C85A17] bg-[#FFF2E6] px-2 py-0.5 rounded border border-[#C85A17]/10">{lab.sgk}</span>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded border ${lab.subject === "Điện" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>{lab.subject}</span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
                         lab.difficulty === "Dễ"
@@ -749,6 +768,7 @@ export default function HomeScreen({
                       }`}>
                         {lab.difficulty}
                       </span>
+                      <span className={`text-[8px] font-black px-2 py-0.5 rounded border ${lab.subject === "Điện" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>{lab.subject}</span>
                       <span className="text-[9px] font-bold text-[#605248]/70 flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" /> {lab.duration}
                       </span>
@@ -852,7 +872,7 @@ export default function HomeScreen({
                 Hoàn thành chuyên môn
               </h5>
               <p className="text-[11px] text-[#605248] font-bold leading-normal">
-                Bạn đã hoàn thành {completedCount}/{experiments.length} thí nghiệm
+                Bạn đã hoàn thành {completedLabCount}/{experiments.length} thí nghiệm
               </p>
             </div>
           </div>
@@ -876,17 +896,17 @@ export default function HomeScreen({
             {[
               {
                 text: "Hoàn thành 1 thí nghiệm",
-                completed: completedCount >= 1,
-                progress: `${Math.min(completedCount, 1)}/1`,
-                badgeColor: completedCount >= 1
+                completed: completedLabCount >= 1,
+                progress: `${Math.min(completedLabCount, 1)}/1`,
+                badgeColor: completedLabCount >= 1
                   ? "bg-[#E6F4EA] text-[#137333] border border-[#137333]/10"
                   : "bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/10"
               },
               {
                 text: "Vào Prelab trước khi thực hành",
-                completed: completedCount >= 1,
-                progress: completedCount >= 1 ? "1/1" : "0/1",
-                badgeColor: completedCount >= 1
+                completed: completedLabCount >= 1,
+                progress: completedLabCount >= 1 ? "1/1" : "0/1",
+                badgeColor: completedLabCount >= 1
                   ? "bg-[#E6F4EA] text-[#137333] border border-[#137333]/10"
                   : "bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/10"
               }

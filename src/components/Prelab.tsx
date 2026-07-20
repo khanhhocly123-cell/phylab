@@ -6,6 +6,7 @@ import { BookOpen, ChevronLeft, ChevronRight, Check, Lock, Info, MousePointerCli
 import PhotogatePrelab from "./prelab/PhotogatePrelab";
 import PlumbBasePrelab from "./prelab/PlumbBasePrelab";
 import { MC964Interactive, CaliperZoom } from "./prelab/MC964Prelab";
+import ElectricalPrelab from "./prelab/ElectricalPrelab";
 
 interface PrelabProps {
   spec: ExperimentSpec;
@@ -21,6 +22,8 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
   const [caliperInputText, setCaliperInputText] = useState("");
 
   const isB11 = spec.id === "do-gia-toc-roi-tu-do";
+  const isElectrical = spec.id === "do-dien-tro-dinh-luat-ohm"
+    || spec.id === "do-suat-dien-dong-pin-dien-hoa";
   const totalSlides = 5; // Prelab intro + Cover + Photogate + MC964 + (Caliper or PlumbBase)
 
   const handleCaliperSubmit = (valStr: string) => {
@@ -56,6 +59,16 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false }: Pr
       }
     }
   };
+
+  if (isElectrical) {
+    return (
+      <ElectricalPrelab
+        spec={spec}
+        viewOnly={viewOnly}
+        onFinish={() => onStartExperiment()}
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white border border-brand-orange/20 shadow-lg rounded-3xl p-5 md:p-6 my-4 transition-all duration-300">

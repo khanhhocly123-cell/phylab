@@ -208,9 +208,45 @@ const LAB11: LessonReview = {
   ],
 };
 
+const LAB23: LessonReview = {
+  quizzes: [
+    { q: "Ampe kế trong mạch đo điện trở phải mắc thế nào?", options: ["Nối tiếp vật dẫn", "Song song vật dẫn", "Song song nguồn", "Không cần mắc"], answer: 0, explain: "Ampe kế phải nằm trên nhánh chính để toàn bộ dòng qua vật dẫn cũng đi qua đồng hồ.", category: "experiment" },
+    { q: "Vôn kế đo U hai đầu vật dẫn phải mắc thế nào?", options: ["Song song vật dẫn", "Nối tiếp vật dẫn", "Nối tiếp khóa K", "Nối tắt nguồn"], answer: 0, explain: "Vôn kế so sánh điện thế tại hai đầu nên luôn mắc song song.", category: "experiment" },
+    { q: "Trước khi đổi vật dẫn X sang Y cần làm gì?", options: ["Mở khóa K", "Tăng điện áp cực đại", "Đổi V sang mA", "Nối tắt vật dẫn"], answer: 0, explain: "Mở khóa để mạch không có dòng khi thay đổi cấu hình.", category: "experiment" },
+    { q: "Công thức xác định điện trở từ số đo U, I là:", options: ["$R=U/I$", "$R=UI$", "$R=I/U$", "$R=U+I$"], answer: 0, explain: "Từ định luật Ohm $I=U/R$ suy ra $R=U/I$.", category: "theory" },
+    { q: "Vật dẫn tuân theo định luật Ohm có đồ thị I–U dạng:", options: ["Đường thẳng qua gốc", "Parabol", "Đường tròn", "Đường thẳng ngang"], answer: 0, explain: "$I=U/R$ nên I tỉ lệ thuận U khi R không đổi.", category: "theory" },
+  ],
+  flashcards: [
+    { front: "Cách mắc ampe kế", back: "Mắc nối tiếp với vật dẫn, đúng cực và đúng mode mA/A.", category: "experiment" },
+    { front: "Cách mắc vôn kế", back: "Mắc song song hai đầu vật dẫn, đúng cực và mode V DC.", category: "experiment" },
+    { front: "Quy tắc đổi dây", back: "Mở khóa K và tắt nguồn trước khi lắp hoặc đổi dây.", category: "experiment" },
+    { front: "Định luật Ohm", back: "$I=U/R$, hay $R=U/I$.", category: "theory" },
+    { front: "Ý nghĩa điện trở", back: "Đại lượng đặc trưng mức độ cản trở dòng điện của vật dẫn, đơn vị Ω.", category: "theory" },
+  ],
+};
+
+const LAB26: LessonReview = {
+  quizzes: [
+    { q: "Trong mạch đo, ampe kế phải mắc:", options: ["Nối tiếp", "Song song", "Nối tắt pin", "Ngoài mạch"], answer: 0, explain: "Dòng mạch chính phải đi qua ampe kế.", category: "experiment" },
+    { q: "Muốn có nhiều cặp U–I khác nhau cần:", options: ["Thay đổi biến trở", "Đảo pin liên tục", "Nối tắt điện trở", "Đổi đơn vị đo"], answer: 0, explain: "Biến trở làm thay đổi điện trở mạch ngoài và dòng điện.", category: "experiment" },
+    { q: "Trước khi nối lại mạch phải:", options: ["Mở khóa K", "Đóng khóa K", "Nối tắt pin", "Đặt biến trở về 0 Ω"], answer: 0, explain: "Ngắt mạch giúp tránh chập mạch và bảo vệ đồng hồ.", category: "experiment" },
+    { q: "Phương trình đặc trưng của nguồn là:", options: ["$U=E-Ir$", "$U=E+Ir$", "$E=UI$", "$I=Ur$"], answer: 0, explain: "Hiệu điện thế mạch ngoài bằng suất điện động trừ độ giảm thế trong nguồn.", category: "theory" },
+    { q: "Trên đồ thị U theo I, tung độ gốc là:", options: ["Suất điện động E", "Điện trở trong r", "Điện trở ngoài", "Công suất"], answer: 0, explain: "Khi I=0, phương trình U=E−Ir cho U=E.", category: "theory" },
+  ],
+  flashcards: [
+    { front: "Cách mắc ampe kế", back: "Mắc nối tiếp trong mạch chính, đúng cực và thang mA.", category: "experiment" },
+    { front: "Cách mắc vôn kế", back: "Mắc song song với hai cực pin, đúng cực và thang V.", category: "experiment" },
+    { front: "Vai trò biến trở", back: "Tạo nhiều giá trị dòng điện để thu các cặp U–I.", category: "experiment" },
+    { front: "Phương trình nguồn", back: "$U=E-Ir$.", category: "theory" },
+    { front: "Đọc đồ thị U–I", back: "Tung độ gốc là E; độ lớn hệ số góc là r.", category: "theory" },
+  ],
+};
+
 export const QUIZ_BANK: Record<string, LessonReview> = {
   "do-toc-do-vat-chuyen-dong": LAB6,
   "do-gia-toc-roi-tu-do": LAB11,
+  "do-dien-tro-dinh-luat-ohm": LAB23,
+  "do-suat-dien-dong-pin-dien-hoa": LAB26,
 };
 
 export function getReview(lessonId: string): LessonReview | null {

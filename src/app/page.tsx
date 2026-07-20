@@ -41,6 +41,8 @@ function LabChooser({ onSelect, onScan }: { onSelect: (id: LessonId) => void; on
   const images: Record<string, string> = {
     "do-toc-do-vat-chuyen-dong": "/images/marble_ramp.webp",
     "do-gia-toc-roi-tu-do": "/images/free_fall.webp",
+    "do-dien-tro-dinh-luat-ohm": "/images/do-dien-tro-ohm.png",
+    "do-suat-dien-dong-pin-dien-hoa": "/images/do-suat-dien-dong.png",
   };
 
   return (
@@ -351,16 +353,24 @@ export default function Page() {
   const handleExportNote = (payload: LabExportPayload) => {
     const rich: RichTrial[] = (payload.trials || []).map((tr) => {
       const lab = String((tr as { lab?: string }).lab || payload.lab) as RichTrial["lab"];
-      const t = Number((tr as { t?: number }).t) || 0;
+      const t = lab === "ohm-x" || lab === "ohm-y"
+        ? Number((tr as { current?: number }).current) || 0
+        : lab === "emf"
+          ? 1
+          : Number((tr as { t?: number }).t) || 0;
       const sEF = (tr as { sEF?: number | null }).sEF;
       // freefall dùng s; average dùng sEF; instant dùng đường kính bi (mm -> m).
-      const s = lab === "freefall"
+      const s = lab === "ohm-x" || lab === "ohm-y"
+        ? Number((tr as { voltage?: number }).voltage) || 0
+        : lab === "emf"
+          ? Number((tr as { emf?: number; s?: number }).emf ?? (tr as { s?: number }).s) || 0
+        : lab === "freefall"
         ? Number((tr as { s?: number }).s) || 0
         : lab === "average"
           ? Number(sEF) || 0
           : (payload.measuredD || 0) / 1000;
       return {
-        lab, s, t,
+        ...(tr as unknown as Partial<RichTrial>), lab, s, t,
         theta: (tr as { theta?: number }).theta,
         balanced: (tr as { balanced?: boolean }).balanced !== false,
       };
@@ -374,7 +384,7 @@ export default function Page() {
   // Nhận báo cáo đã chấm từ Notes -> lưu vào lịch sử + NỘP cho giáo viên nếu có assignment.
   const handleReportGraded = (report: ExperimentReport) => {
     setReports((prev) => [report, ...prev]);
-    setCompletedCount((prev) => Math.min(2, prev + 1));
+    setCompletedCount((prev) => Math.min(Object.keys(EXPERIMENT_SPECS).length, prev + 1));
 
     // Có bài Lab giáo viên giao trùng bài học này → nộp lên lớp (server re-verify điểm).
     const matching = myClass?.assignments.find(
@@ -753,8 +763,8 @@ export default function Page() {
                     onNav={(tab) => setActiveTab(tab)}
                     onOpenLab={(id) => handleLessonSelect(id as LessonId)}
                     onSubjectClick={(subject) => {
-                      // Cơ học → trang chính, môn khác → báo chưa có lab
-                      if (subject === "Cơ học") {
+                      // Cơ học và Điện đã có phòng Lab hoạt động.
+                      if (subject === "Cơ học" || subject === "Điện") {
                         setActiveTab("home");
                       } else {
                         showToast(`Chưa có thí nghiệm nào thuộc chủ đề "${subject}". Vui lòng quay lại sau nhé!`);

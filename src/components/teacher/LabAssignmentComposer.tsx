@@ -13,7 +13,7 @@ import React, { useMemo, useState } from "react";
 import { X, Plus, Trash2, FlaskConical, Eye } from "lucide-react";
 import { EXPERIMENT_SPECS } from "@/experiments/specs";
 import { theoreticalOf } from "@/lib/grading";
-import type { AvgTarget, InstTarget, FallTarget } from "@/lib/problemGen";
+import type { AvgTarget, InstTarget, FallTarget, OhmTarget, EmfTarget } from "@/lib/problemGen";
 import type { LabAssignmentPayload } from "@/lib/classTypes";
 import { teacherPost } from "./api";
 
@@ -26,6 +26,8 @@ interface Props {
 
 const LAB6_ID = "do-toc-do-vat-chuyen-dong";
 const LAB11_ID = "do-gia-toc-roi-tu-do";
+const LAB23_ID = "do-dien-tro-dinh-luat-ohm";
+const LAB26_ID = "do-suat-dien-dong-pin-dien-hoa";
 
 /** Thời gian rơi lý thuyết t = √(2s/g) — cho cột đáp án bài 11. */
 const fallTime = (s: number) => Math.sqrt((2 * s) / 9.8);
@@ -48,6 +50,12 @@ export default function LabAssignmentComposer({ token, classId, onClose, onCreat
   const [instTargets, setInstTargets] = useState<InstTarget[]>([
     { theta: 15 }, { theta: 20 }, { theta: 25 },
   ]);
+  const [ohmTargets, setOhmTargets] = useState<OhmTarget[]>([
+    { voltage: 2 }, { voltage: 4 }, { voltage: 6 }, { voltage: 8 }, { voltage: 10 },
+  ]);
+  const [emfTargets, setEmfTargets] = useState<EmfTarget[]>([
+    { resistance: 20 }, { resistance: 40 }, { resistance: 60 }, { resistance: 80 }, { resistance: 100 },
+  ]);
 
   const spec = EXPERIMENT_SPECS[lessonId];
   const defaultTitle = useMemo(
@@ -60,10 +68,13 @@ export default function LabAssignmentComposer({ token, classId, onClose, onCreat
     setBusy(true);
     setError("");
     try {
-      const payload: LabAssignmentPayload =
-        lessonId === LAB11_ID
-          ? { problemSets: { freefall: fallTargets } }
-          : { problemSets: { average: avgTargets, instant: instTargets } };
+      const payload: LabAssignmentPayload = lessonId === LAB11_ID
+        ? { problemSets: { freefall: fallTargets } }
+        : lessonId === LAB23_ID
+          ? { problemSets: { "ohm-x": ohmTargets, "ohm-y": ohmTargets } }
+          : lessonId === LAB26_ID
+            ? { problemSets: { emf: emfTargets } }
+            : { problemSets: { average: avgTargets, instant: instTargets } };
       const res = await teacherPost<{ assignment: { id: string } }>(token, "assignment", {
         classId,
         kind: "lab",
@@ -112,7 +123,7 @@ export default function LabAssignmentComposer({ token, classId, onClose, onCreat
 
         {/* Chọn bài */}
         <div className="grid grid-cols-2 gap-2">
-          {[LAB6_ID, LAB11_ID].map((id) => {
+          {[LAB6_ID, LAB11_ID, LAB23_ID, LAB26_ID].map((id) => {
             const sp = EXPERIMENT_SPECS[id];
             return (
               <button
@@ -284,6 +295,40 @@ export default function LabAssignmentComposer({ token, classId, onClose, onCreat
               </div>
             </section>
           </>
+        )}
+
+        {(lessonId === LAB23_ID || lessonId === LAB26_ID) && (
+          <section className="bg-white border border-[#E2DFD8] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black text-[#321E12]">
+                {lessonId === LAB23_ID ? "5 điện áp bắt buộc cho cả vật dẫn X và Y" : "5 mức biến trở để thu các cặp U–I"}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+              {(lessonId === LAB23_ID ? ohmTargets : emfTargets).map((tg, i) => (
+                <label key={i} className="p-2 rounded-xl bg-[#FAF9F6] border border-[#E2DFD8] text-center">
+                  <span className="block text-[9px] font-black text-[#605248] mb-1">Lần {i + 1}</span>
+                  <input
+                    type="number"
+                    step={lessonId === LAB23_ID ? 1 : 20}
+                    min={lessonId === LAB23_ID ? 1 : 20}
+                    max={lessonId === LAB23_ID ? 10 : 100}
+                    value={lessonId === LAB23_ID ? (tg as OhmTarget).voltage : (tg as EmfTarget).resistance}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      if (lessonId === LAB23_ID) setOhmTargets((p) => p.map((x, j) => j === i ? { voltage: value } : x));
+                      else setEmfTargets((p) => p.map((x, j) => j === i ? { resistance: value } : x));
+                    }}
+                    className="w-full px-1.5 py-1 bg-white border border-[#E2DFD8] rounded-lg text-xs font-black text-center outline-none focus:border-[#C85A17]"
+                  />
+                  <span className="block text-[9px] font-black text-[#C85A17] mt-1">{lessonId === LAB23_ID ? "V" : "Ω"}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[10px] font-bold text-[#137333] inline-flex items-center gap-1.5"><Eye className="w-3 h-3" />
+              {lessonId === LAB23_ID ? "Học sinh phải hoàn thành đủ 5 mức cho từng mẫu; Rₓ≈120 Ω, Rᵧ≈220 Ω." : "Học sinh phải hoàn thành đủ 5 mức biến trở, rồi suy ra E và r từ đồ thị U–I."}
+            </p>
+          </section>
         )}
 
         <p className="text-xs font-bold text-[#605248] bg-[#FFF2E6]/60 border border-[#C85A17]/10 rounded-xl px-3.5 py-2.5">

@@ -1,6 +1,8 @@
 export type LessonId = 
   | "do-toc-do-vat-chuyen-dong" 
   | "do-gia-toc-roi-tu-do"
+  | "do-dien-tro-dinh-luat-ohm"
+  | "do-suat-dien-dong-pin-dien-hoa"
   | string;
 
 export interface InstrumentSpec {
@@ -65,11 +67,21 @@ export interface Note {
 
 /** Một lần đo giàu thông tin do engine lab xuất ra (đủ để chấm điểm). */
 export interface RichTrial {
-  lab: "average" | "instant" | "freefall";
-  s: number;            // sEF (average) | d/1000 (instant) | quãng rơi s (freefall) — mét
-  t: number;            // thời gian đo (s)
+  lab: "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf";
+  s: number;            // đại lượng tử số của công thức chấm (quãng đường, U hoặc E đo được)
+  t: number;            // đại lượng mẫu số (thời gian, I hoặc 1 với phép đo trực tiếp)
   theta?: number;       // góc nghiêng (Bài 6)
   balanced?: boolean;   // máng đã cân bằng khi đo chưa
+  /** Giá trị vật lý chuẩn của cấu hình, dùng chấm các lab điện. */
+  expected?: number;
+  /** Biến điều khiển cấu hình (U nguồn hoặc U dây điện trở). */
+  config?: number;
+  voltage?: number;
+  current?: number;
+  resistance?: number;
+  material?: "X" | "Y";
+  length?: number;      // vị trí con chạy trên dây điện trở (cm)
+  emf?: number;
   studentResult?: number | null; // kết quả HS tự tính (điền ở Notes)
 }
 
