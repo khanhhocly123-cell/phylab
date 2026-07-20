@@ -886,6 +886,13 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     </>
   );
 
+  const renderMobileSheetContent = () => (
+    <>
+      {renderSideContent({ assistant: false, progress: !setupDone, data: setupDone })}
+      {renderSideContent({ assistant: true, progress: false, data: false })}
+    </>
+  );
+
   return (
     <div className="phy-screen" data-lab-engine="freefall" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
       <div data-lab-header style={isMobile
@@ -904,7 +911,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
       </div>
 
       <div data-lab-layout data-orientation={isPortrait ? "portrait" : "landscape"} style={isMobile
-        ? { flex: 1, display: "grid", gridTemplateColumns: isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr) minmax(220px, 28vw)", minHeight: 0, overflow: "hidden", position: "relative" }
+        ? { flex: 1, display: "grid", gridTemplateColumns: isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr)", minHeight: 0, overflow: "hidden", position: "relative" }
         : { flex: 1, display: "grid", gridTemplateColumns: "minmax(220px, 14vw) 1fr minmax(360px, 24vw)", minHeight: 0 }
       }>
         {/* TRÁI: dụng cụ */}
@@ -985,12 +992,12 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
             highlightStep={nextStepKey}
           />
           {isMobile && assembled && (
-            <div style={{ position: "absolute", top: 8, right: 8, zIndex: 36, pointerEvents: "none" }}>
+            <div data-lab-quick-controls style={{ position: "absolute", top: isPortrait ? 8 : 4, right: 0, zIndex: 36, pointerEvents: "none", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
               {!controlsOpen && (
                 <button
                   type="button"
-                  onClick={() => setControlsOpen(true)}
-                  style={{ pointerEvents: "auto", width: 34, height: 58, borderRadius: "14px 0 0 14px", border: `1px solid ${C.orange}`, borderRight: "none", background: "#FFF7EF", color: C.orangeDk, fontSize: 20, fontWeight: 900, boxShadow: "0 6px 18px rgba(50,30,18,0.16)", transform: "translateX(10px)" }}
+                  onClick={() => { setSheetOpen(false); setControlsOpen(true); }}
+                  style={{ pointerEvents: "auto", width: 34, height: 58, borderRadius: "14px 0 0 14px", border: `1px solid ${C.orange}`, borderRight: "none", background: "#FFF7EF", color: C.orangeDk, fontSize: 20, fontWeight: 900, boxShadow: "0 6px 18px rgba(50,30,18,0.16)" }}
                   aria-label="Mở điều khiển nhanh"
                 >
                   &gt;
@@ -1003,7 +1010,8 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
                   maxWidth: "78vw",
                   background: "#fff",
                   border: `1px solid ${C.line}`,
-                  borderRadius: 16,
+                  borderRight: "none",
+                  borderRadius: "16px 0 0 16px",
                   padding: 10,
                   boxShadow: "0 12px 28px rgba(50,30,18,0.18)",
                   transform: controlsOpen ? "translateX(0)" : "translateX(112%)",
@@ -1371,20 +1379,24 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
           />
         ))}
 
-        {/* PHẢI / BOTTOM SHEET: Trợ lý / Tiến trình / Điều kiện / Ghi số liệu */}
-        {isMobile && isPortrait ? (
-          <motion.div
-            animate={{ height: sheetOpen ? "82%" : 40 }}
+        {/* MOBILE BOTTOM SHEET / DESKTOP SIDEBAR: Trợ lý / Tiến trình / Điều kiện / Ghi số liệu */}
+        {isMobile ? (
+          <motion.div data-lab-guide-sheet
+            animate={{ height: sheetOpen ? (isPortrait ? "82%" : "86%") : 40 }}
             transition={{ type: "spring", damping: 20, stiffness: 180 }}
             style={{
               position: "absolute",
-              bottom: 6,
-              left: sheetOpen ? 6 : "auto",
-              right: 6,
-              width: sheetOpen ? "auto" : "min(190px, calc(100% - 12px))",
+              bottom: isPortrait ? 6 : 0,
+              left: isPortrait && sheetOpen ? 6 : "auto",
+              right: isPortrait ? 6 : 0,
+              width: sheetOpen
+                ? (isPortrait ? "auto" : "min(340px, calc(100% - 12px))")
+                : "min(190px, calc(100% - 12px))",
               background: "#FFFBF7",
               border: `1.5px solid ${C.line}`,
-              borderRadius: sheetOpen ? 18 : 14,
+              borderRight: isPortrait ? undefined : "none",
+              borderBottom: isPortrait ? undefined : "none",
+              borderRadius: sheetOpen ? (isPortrait ? 18 : "18px 0 0 0") : (isPortrait ? 14 : "14px 0 0 0"),
               boxShadow: sheetOpen ? "0 -8px 24px rgba(50,30,18,0.12)" : "0 8px 24px rgba(50,30,18,0.14)",
               zIndex: 40,
               display: "flex",
@@ -1393,12 +1405,12 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
             }}
           >
             {/* Click-to-toggle handle */}
-            <div 
-              onClick={() => setSheetOpen(!sheetOpen)}
+            <div data-lab-guide-toggle
+              onClick={() => { setControlsOpen(false); setSheetOpen(!sheetOpen); }}
               style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "manipulation", padding: "0 12px" }}
             >
               <span style={{ fontSize: 11, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {sheetOpen ? "Bảng điều khiển Lab" : assembled ? (justRolled ? "Ghi số liệu" : "Bảng Lab") : "Hướng dẫn"}
+                {setupDone ? "Ghi số liệu" : "Tiến trình Lab"}
               </span>
               {sheetOpen ? (
                 <ChevronDown className="w-4 h-4 text-[#C85A17]" />
@@ -1409,7 +1421,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
             
             {/* Sheet body */}
             <div data-lab-scroll style={{ flex: 1, overflow: "auto", overscrollBehavior: "contain", padding: "0 12px calc(16px + env(safe-area-inset-bottom, 0px))", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
-              {renderGuidanceContent()}
+              {renderMobileSheetContent()}
             </div>
           </motion.div>
         ) : (
