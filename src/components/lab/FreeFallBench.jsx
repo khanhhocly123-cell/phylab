@@ -897,29 +897,40 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
 
   return (
     <div className="phy-screen" data-lab-engine="freefall" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
-      <div data-lab-header style={isMobile
-        ? { display: "flex", flexDirection: isPortrait ? "column" : "row", alignItems: isPortrait ? "stretch" : "center", gap: isPortrait ? 3 : 6, padding: "4px 6px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
-        : { display: "flex", alignItems: "center", gap: 14, padding: "10px 18px", borderBottom: `1px solid ${C.line}`, background: "#fff" }
-      }>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: isPortrait ? "space-between" : (isMobile ? "flex-start" : "space-between"), gap: isMobile ? 4 : 0, width: isPortrait ? "100%" : (isMobile ? "auto" : "100%"), flexShrink: 0 }}>
+      <div data-lab-header style={{
+        display: "grid",
+        gridTemplateColumns: isMobile && !isPortrait
+          ? "auto minmax(0, 1fr) auto"
+          : "minmax(0, 1fr) auto minmax(0, 1fr)",
+        gridTemplateRows: isPortrait ? "auto auto" : "auto",
+        alignItems: "center",
+        columnGap: isMobile ? 6 : 12,
+        rowGap: isPortrait ? 3 : 0,
+        padding: isMobile ? "4px 6px" : "7px 14px",
+        borderBottom: `1px solid ${C.line}`,
+        background: "#fff",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 8, minWidth: 0, justifySelf: "start" }}>
           {onBack && <button onClick={handleExit} style={{ ...btnGhost, padding: isMobile ? "0 5px" : undefined }}>← Thoát</button>}
           {onReplayPrelab && <button onClick={() => onReplayPrelab?.()} style={{ ...btnGhost, color: C.navy, fontSize: isMobile ? 11 : 12, padding: isMobile ? "0 5px" : undefined }}>{isMobile ? "Prelab" : "Xem lại Prelab"}</button>}
-          <div data-lab-meta style={{ fontSize: 12, color: C.sub }}>g lý thuyết = <b style={{ color: C.ink }}>{FREEFALL.g} m/s²</b></div>
         </div>
-        
-        <div style={{ textAlign: "center", width: isMobile ? "auto" : "100%", flex: isMobile ? 1 : "initial", minWidth: 0, fontSize: isMobile ? 12 : 13, fontWeight: 800, color: C.ink }}>
+
+        <div style={{ gridColumn: isPortrait ? "1 / -1" : "2", gridRow: isPortrait ? "2" : "1", textAlign: "center", minWidth: 0, fontSize: isMobile ? 12 : 13, fontWeight: 800, color: C.ink, whiteSpace: "nowrap" }}>
           {isMobile ? "Bài 11 · Rơi tự do" : "Bài 11 — Đo gia tốc rơi tự do"}
         </div>
+
+        <div data-lab-meta style={{ gridColumn: "3", gridRow: "1", justifySelf: "end", fontSize: isMobile ? 11 : 12, color: C.sub, whiteSpace: "nowrap" }}>g lý thuyết = <b style={{ color: C.ink }}>{FREEFALL.g} m/s²</b></div>
       </div>
 
       <div data-lab-layout data-orientation={isPortrait ? "portrait" : "landscape"} style={isMobile
         ? { flex: 1, display: "grid", gridTemplateColumns: isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr)", minHeight: 0, overflow: "hidden", position: "relative" }
-        : { flex: 1, display: "grid", gridTemplateColumns: "minmax(220px, 14vw) 1fr minmax(360px, 24vw)", minHeight: 0 }
+        : { flex: 1, display: "grid", gridTemplateColumns: "clamp(190px, 12vw, 230px) minmax(0, 1fr) clamp(300px, 21vw, 380px)", minHeight: 0, overflow: "hidden" }
       }>
         {/* TRÁI: dụng cụ */}
           <aside data-lab-tooltray data-lab-scroll style={isMobile
             ? { background: "#fff", borderRight: `1px solid ${C.line}`, padding: isPortrait ? 4 : 6, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 5, overflowY: "auto", overflowX: "hidden", minWidth: 0 }
-            : { borderRight: `1px solid ${C.line}`, background: "#fff", overflow: "auto", padding: 12 }
+            : { borderRight: `1px solid ${C.line}`, background: "#fff", overflow: "auto", padding: 10 }
           }>
             {isMobile && (
               <div style={{ flexShrink: 0, borderRadius: 9, background: C.peachLt, color: C.orangeDk, padding: "5px 4px", fontSize: isPortrait ? 9 : 10, fontWeight: 900, lineHeight: 1.15, textAlign: "center" }}>
@@ -944,10 +955,10 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
                       flyToPlace(t.k, target.x, target.y - 60);
                     }
                   }}
-                  style={{ display: "flex", flexDirection: isMobile && isPortrait ? "column" : "row", alignItems: "center", gap: isMobile ? (isPortrait ? 2 : 6) : 12, padding: isMobile ? (isPortrait ? "5px 3px" : "4px 5px") : "11px 13px", borderRadius: 10, marginBottom: isMobile ? 0 : 7, cursor: done ? "default" : (isMobile ? "pointer" : "grab"), touchAction: isMobile ? "manipulation" : "none", flexShrink: 0, minWidth: 0, width: "100%",
+                  style={{ display: "flex", flexDirection: isMobile && isPortrait ? "column" : "row", alignItems: "center", gap: isMobile ? (isPortrait ? 2 : 6) : 9, padding: isMobile ? (isPortrait ? "5px 3px" : "4px 5px") : "8px 10px", borderRadius: 10, marginBottom: isMobile ? 0 : 6, cursor: done ? "default" : (isMobile ? "pointer" : "grab"), touchAction: isMobile ? "manipulation" : "none", flexShrink: 0, minWidth: 0, width: "100%",
                     border: `1.5px solid ${done ? C.good : isNext ? C.orange : C.line}`, background: done ? "#F3F8F3" : "#fff", opacity: done ? 0.7 : 1, boxShadow: isNext ? `0 0 0 3px ${C.orange}22` : "none" }}>
-                  <div style={{ width: isMobile ? 24 : 56, height: isMobile ? 24 : 56, display: "grid", placeItems: "center", background: C.bg, borderRadius: 8, flexShrink: 0 }}>
-                    <img src={t.img} alt="" style={{ maxWidth: isMobile ? 18 : 44, maxHeight: isMobile ? 18 : 44, objectFit: "contain" }} />
+                  <div style={{ width: isMobile ? 24 : 44, height: isMobile ? 24 : 44, display: "grid", placeItems: "center", background: C.bg, borderRadius: 8, flexShrink: 0 }}>
+                    <img src={t.img} alt="" style={{ maxWidth: isMobile ? 18 : 34, maxHeight: isMobile ? 18 : 34, objectFit: "contain" }} />
                   </div>
                   <div style={{ minWidth: 0, textAlign: isPortrait ? "center" : "left", flex: 1, width: isPortrait ? "100%" : "auto" }}>
                     <div style={{ fontSize: isMobile ? (isPortrait ? 9.5 : 10.5) : 13.5, fontWeight: 700, color: C.ink, whiteSpace: isPortrait ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.15 }}>{t.name}</div>
