@@ -165,6 +165,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
   const zeroLed = zeroDisplay(scale);
   const isReset = led === zeroLed;
   const currentTargets = set.freefall;
+  const isTeacherAssigned = Boolean(assignedSets?.freefall?.length);
   const currentTaskIndex = clamp(activeTaskIndex, 0, Math.max(0, currentTargets.length - 1));
   const currentTask = currentTargets[currentTaskIndex];
   const isTargetMeasured = (target) => !!target && trials.some((t) => Math.abs(t.s - target.s) < 1e-6);
@@ -824,29 +825,6 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
               </div>
             ))}
           </div>
-          {setupDone && <>
-            <div style={{ ...sideTitle, marginTop: 12 }}>Cấu hình cần đo</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {set.freefall.map((sT, i) => {
-                const used = trials.some((t) => Math.abs(t.s - sT.s) < 1e-6);
-                return (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 9px", borderRadius: 7, border: `1px solid ${C.line}`, background: used ? "#F3F8F3" : C.bg, fontSize: isMobile ? 11.5 : 12.5, color: C.ink }}>
-                    <span>Câu {i + 1}: s={(sT.s * 100).toFixed(0)}cm</span>
-                    <span style={{ color: used ? C.good : C.sub, display: "inline-flex", alignItems: "center", gap: 3 }}>
-                      {used ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 stroke-[3] text-[#27AE60]" />
-                          <span style={{ fontWeight: 800 }}>đã đo</span>
-                        </>
-                      ) : (
-                        "chưa đo"
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </>}
         </section>
       )}
 
@@ -879,8 +857,31 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     </>
   );
 
+  const renderAssignmentCard = () => (
+    <section data-lab-assignment style={{ ...cardStyle, background: "#FFF8F1", border: `1.5px solid ${C.orange}55` }}>
+      <div style={{ ...sideTitle, color: C.orangeDk, marginBottom: 4 }}>
+        {isTeacherAssigned ? "Đề giáo viên giao" : "Cấu hình cần đo"}
+      </div>
+      <div style={{ fontSize: isMobile ? 11 : 12, color: C.sub, lineHeight: 1.4, marginBottom: 8 }}>
+        Đo đúng từng quãng rơi dưới đây; mỗi dòng là một yêu cầu riêng.
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        {currentTargets.map((target, index) => {
+          const used = isTargetMeasured(target);
+          return (
+            <div key={`${target.s}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 8, border: `1px solid ${used ? C.good : C.line}`, background: used ? "#F3F8F3" : "#fff", fontSize: isMobile ? 11.5 : 12.5, color: C.ink }}>
+              <b>Câu {index + 1}: s={(target.s * 100).toFixed(0)}cm</b>
+              <span style={{ color: used ? C.good : C.sub, fontWeight: 800, whiteSpace: "nowrap" }}>{used ? "✓ Đã đo" : "Chưa đo"}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
   const renderGuidanceContent = () => (
     <>
+      {renderAssignmentCard()}
       {renderSideContent({ assistant: false, progress: true, data: true })}
       {renderSideContent({ assistant: true, progress: false, data: false })}
     </>
@@ -888,6 +889,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
 
   const renderMobileSheetContent = () => (
     <>
+      {renderAssignmentCard()}
       {renderSideContent({ assistant: false, progress: !setupDone, data: setupDone })}
       {renderSideContent({ assistant: true, progress: false, data: false })}
     </>
