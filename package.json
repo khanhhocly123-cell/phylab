@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node --max-old-space-size=1536 node_modules/next/dist/bin/next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "test": "node --no-warnings scripts/test.mjs",
     "test:smartbot": "node scripts/test-smartbot.mjs",
@@ -12,10 +12,16 @@
     "lint": "eslint",
     "clean": "node -e \"const fs = require('fs'); try { fs.rmSync('.next', {recursive: true, force: true}); } catch(e) { if (e.code !== 'ENOENT') { setTimeout(() => { try { fs.rmSync('.next', {recursive: true, force: true}); console.log('Cleaned successfully on retry.'); } catch(err) { console.error('Clean failed:', err.message); } }, 1500); } }\"",
     "demo": "node scripts/demo.js",
-    "upload-env": "node scripts/upload-env.js"
+    "upload-env": "node scripts/upload-env.js",
+    "db:migrate": "wrangler d1 migrations apply phylab-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply phylab-db --remote",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv --include-runtime false cloudflare-env.d.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@opennextjs/cloudflare": "^1.20.1",
     "framer-motion": "^12.42.0",
     "idb": "^8.0.3",
     "katex": "^0.17.0",
@@ -34,6 +40,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.112.0"
   }
 }

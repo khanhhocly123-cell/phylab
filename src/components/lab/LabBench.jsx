@@ -7,7 +7,7 @@ import { MathText } from "../Latex";
 import { C, FONT } from "../../engine/tokens.js";
 import { LAB6, computeTime, zeroDisplay } from "../../engine/physics.js";
 import { guide, ask, smartbotReady } from "../../engine/smartbot.js";
-import { generateProblemSet } from "../../lib/problemGen";
+import { generateProblemSet, buildAssignedSet } from "../../lib/problemGen";
 
 /* Assets phục vụ qua thư mục public (không import kiểu Vite trong Next). */
 const railPng = "/lab/bai6/rail.png";
@@ -104,20 +104,26 @@ function buildPath() {
 }
 const PATH = buildPath();
 
-export default function LabBench({ measuredD = 20.0, studentName, assistantSettings, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+export default function LabBench({ measuredD = 20.0, studentName, assignedSets, assistantSettings, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
   const [lab, setLab] = useState("average");
-  // Đề bài RA THEO TỪNG HỌC SINH (deterministic) — không ai giống ai.
+  // Đề bài: GIÁO VIÊN giao (assignment lớp học) > seeded THEO TỪNG HỌC SINH.
   const set = useMemo(
-    () => generateProblemSet(studentName || "Học sinh", "do-toc-do-vat-chuyen-dong", lab),
-    [studentName, lab]
+    () => assignedSets?.[lab]?.length
+      ? buildAssignedSet(lab, assignedSets)
+      : generateProblemSet(studentName || "Học sinh", "do-toc-do-vat-chuyen-dong", lab),
+    [studentName, lab, assignedSets]
   );
   const suggestedAvg = useMemo(
-    () => generateProblemSet(studentName || "Học sinh", "do-toc-do-vat-chuyen-dong", "average").average,
-    [studentName]
+    () => assignedSets?.average?.length
+      ? assignedSets.average
+      : generateProblemSet(studentName || "Học sinh", "do-toc-do-vat-chuyen-dong", "average").average,
+    [studentName, assignedSets]
   );
   const suggestedInst = useMemo(
-    () => generateProblemSet(studentName || "Học sinh", "do-toc-do-vat-chuyen-dong", "instant").instant,
-    [studentName]
+    () => assignedSets?.instant?.length
+      ? assignedSets.instant
+      : generateProblemSet(studentName || "Học sinh", "do-toc-do-vat-chuyen-dong", "instant").instant,
+    [studentName, assignedSets]
   );
   const [placed, setPlaced] = useState(() => new Set());
   const [theta, setTheta] = useState(LAB6.angle.default);
@@ -171,13 +177,18 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => setIsMobile(
+      window.innerWidth < 768
+      || window.matchMedia("(pointer: coarse) and (max-width: 1024px)").matches
+      || window.matchMedia("(max-height: 600px) and (max-width: 1024px)").matches
+    );
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
   const rafRef = useRef(0);
   const mainRef = useRef(null);
+  const lastMeasurementRef = useRef(null);
   const swingRef = useRef({ s: 0, v: 0, t: 0, running: false });
   const prevTheta = useRef(theta);
 
@@ -245,6 +256,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trials.length, lab, currentTargets.length]);
 
+  // Đổi góc/khoảng cách sau khi đo sẽ làm phép đo cũ mất hiệu lực.
   function placeTool(k) {
     if (placed.has(k)) return;
     if (!isNextTool(k)) { flash(`Lắp theo thứ tự — bước này: ${activeGroup.map((x) => TOOLS.find((t) => t.k === x)?.name).join(" / ")}.`); return; }
@@ -389,13 +401,24 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
     return () => clearTimeout(timer);
   }, [assembled, isMobile, nextStepKey]);
 
-  function resetTimer() { cancelAnimationFrame(rafRef.current); setRolling(false); setLed(zeroDisplay(scale)); setJustRolled(false); }
+  function resetTimer() { cancelAnimationFrame(rafRef.current); lastMeasurementRef.current = null; setRolling(false); setLed(zeroDisplay(scale)); setJustRolled(false); }
   function magnetOff() {
     if (rolling) return;
     // kiểm tra TRƯỚC khi nhả nam châm — nếu không bi sẽ "biến mất" (không giữ mà cũng không lăn)
     if (!assembled) { flash("Hãy lắp đủ dụng cụ (kể cả đồng hồ) trước khi thả bi."); return; }
     if (!power) { flash("Chưa bật nguồn đồng hồ (mặt sau)."); return; }
     if (!wiredOK) { flash("Chưa nối dây cổng quang vào ổ A/B."); return; }
+    const matchesTeacherTarget = currentTargets.some((target) =>
+      Math.abs(theta - target.theta) < 0.5
+      && (lab === "instant" || Math.abs(sEF - target.sEF) < 0.005)
+    );
+    if (set.seed === "teacher" && !matchesTeacherTarget) {
+      const wanted = currentTask
+        ? `θ=${currentTask.theta}°${lab === "average" ? `, sEF=${(currentTask.sEF * 100).toFixed(0)}cm` : ""}`
+        : "cấu hình trong đề";
+      flash(`Đề giáo viên yêu cầu ${wanted} — chỉnh đúng trước khi thả bi.`);
+      return;
+    }
     setMagnetOn(false); runRoll();
   }
   function magnetHold() { if (rolling) return; setMagnetOn(true); setBallT(0); setBallDrag(null); }
@@ -406,6 +429,8 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
     if (!power) { flash("Chưa bật nguồn đồng hồ (mặt sau)."); return; }
     if (!wiredOK) { flash("Chưa nối dây cổng quang vào ổ A/B."); return; }
 
+    const measuredConfig = { lab, theta, sEF, scale, mode, balanced, measuredD };
+    lastMeasurementRef.current = null;
     const res = computeTime({ mode, thetaDeg: theta, sE, sF, dMm: measuredD, balanced, scale });
     const sc = LAB6.scales[scale];
     const base = parseFloat(led) || 0;               // CỘNG DỒN nếu chưa reset
@@ -433,17 +458,58 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
         setLed((base + measured * prog * jitter).toFixed(sc.dp));
       }
       if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      else { setLed(res.valid ? finalShown.toFixed(sc.dp) : (base).toFixed(sc.dp)); setRolling(false); setJustRolled(res.valid); }
+      else {
+        setLed(res.valid ? finalShown.toFixed(sc.dp) : (base).toFixed(sc.dp));
+        setRolling(false);
+        setJustRolled(res.valid);
+        lastMeasurementRef.current = res.valid ? measuredConfig : null;
+      }
     };
     rafRef.current = requestAnimationFrame(tick);
   }
 
   function recordTrial() {
     if (rolling) return;
+    if (!justRolled) { flash("Mỗi lượt thả chỉ được ghi một lần — hãy Reset, chỉnh cấu hình rồi đo lại."); return; }
     if (led === zeroDisplay(scale)) { flash("Chưa có số đo — thả bi trước."); return; }
+    const measuredConfig = lastMeasurementRef.current;
+    const configUnchanged = measuredConfig
+      && measuredConfig.lab === lab
+      && Math.abs(measuredConfig.theta - theta) < 0.5
+      && (lab === "instant" || Math.abs(measuredConfig.sEF - sEF) < 0.005)
+      && measuredConfig.scale === scale
+      && measuredConfig.mode === mode
+      && measuredConfig.balanced === balanced
+      && measuredConfig.measuredD === measuredD;
+    if (!configUnchanged) {
+      flash("Cấu hình đã đổi sau phép đo — hãy Reset và đo lại trước khi ghi.");
+      setJustRolled(false);
+      return;
+    }
+    const matchesTeacherTarget = currentTargets.some((target) =>
+      Math.abs(measuredConfig.theta - target.theta) < 0.5
+      && (lab === "instant" || Math.abs(measuredConfig.sEF - target.sEF) < 0.005)
+    );
+    if (set.seed === "teacher" && !matchesTeacherTarget) {
+      const wanted = currentTask
+        ? `θ=${currentTask.theta}°${lab === "average" ? `, sEF=${(currentTask.sEF * 100).toFixed(0)}cm` : ""}`
+        : "cấu hình trong đề";
+      flash(`Sai cấu hình đề giáo viên — hãy chỉnh đúng ${wanted} rồi đo lại.`);
+      return;
+    }
     const s = lab === "average" ? sEF : measuredD / 1000;
     const v = parseFloat(led) > 0 ? s / parseFloat(led) : null;
-    setTrials((tr) => [...tr, { id: tr.length + 1, lab, theta, sEF: lab === "average" ? sEF : null, mode, t: parseFloat(led), v, balanced }]);
+    setTrials((tr) => [...tr, {
+      id: tr.length + 1,
+      lab,
+      theta: measuredConfig.theta,
+      sEF: lab === "average" ? measuredConfig.sEF : null,
+      mode: measuredConfig.mode,
+      t: parseFloat(led),
+      v,
+      balanced: measuredConfig.balanced,
+    }]);
+    lastMeasurementRef.current = null;
     setJustRolled(false);
     flash(`Đã ghi lần đo #${trials.length + 1}.`);
   }
@@ -934,7 +1000,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
             <b style={{ fontFamily: "monospace", fontSize: isMobile ? 28 : 24, color: justRolled ? C.orangeDk : C.ink }}>{led}</b>
             <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub }}>s</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: isMobile ? 200 : 140, overflow: "auto" }}>
+          <div data-lab-scroll style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: isMobile ? 200 : 140, overflow: "auto" }}>
             {trials.map((t) => (
               <div key={t.id} style={{ fontSize: isMobile ? 13.5 : 13, color: C.sub, display: "flex", justifyContent: "space-between", padding: isMobile ? "7px 10px" : "4px 8px", background: C.bg, borderRadius: 6 }}>
                 <span>#{t.id} θ{t.theta}° {t.mode}</span>
@@ -943,7 +1009,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
             ))}
             {!trials.length && <div style={{ fontSize: isMobile ? 13 : 13, color: C.sub2, fontStyle: "italic" }}>Chưa có lần đo. Reset → thả bi → Ghi số liệu.</div>}
           </div>
-          <button onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8 }}>Ghi số liệu</button>
+          <button disabled={!justRolled || rolling} onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8, opacity: justRolled && !rolling ? 1 : 0.5, cursor: justRolled && !rolling ? "pointer" : "not-allowed" }}>Ghi số liệu</button>
           <button onClick={exportNote} style={{ ...btnBig, width: "100%" }}>Xuất sang Sổ Báo Cáo</button>
         </section>
       )}
@@ -953,16 +1019,16 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
   return (
     <div className="phy-screen" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
       <div style={isMobile
-        ? { display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
+        ? { display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
         : { display: "flex", alignItems: "center", gap: 14, padding: "10px 18px", borderBottom: `1px solid ${C.line}`, background: "#fff" }
       }>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "flex-start" : "space-between", gap: isMobile ? 4 : 0, width: isMobile ? "auto" : "100%", flexShrink: 0 }}>
           {onBack && <button onClick={handleExit} style={btnGhost}>← Thoát</button>}
           {onReplayPrelab && <button onClick={() => onReplayPrelab?.()} style={{ ...btnGhost, color: C.navy, fontSize: 12 }}>Xem lại Prelab</button>}
           <div style={{ fontSize: 12, color: C.sub }}>d = <b style={{ color: C.ink }}>{measuredD.toFixed(2)} mm</b></div>
         </div>
         
-        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "center", width: isMobile ? "auto" : "100%", flex: isMobile ? 1 : "initial", minWidth: 0 }}>
           <div style={{ display: "flex", gap: 4, background: C.peachLt, padding: 3, borderRadius: 10, border: `1px solid ${C.line}`, width: isMobile ? "100%" : "auto" }}>
             {[["average", "Vận tốc trung bình"], ["instant", "Vận tốc tức thời"]].map(([k, t]) => (
               <button key={k} onClick={() => setLab(k)} style={{ ...tabBtn, flex: isMobile ? 1 : "initial", fontSize: isMobile ? 11.5 : 12.5, padding: isMobile ? "6px 4px" : "6px 12px", ...(lab === k ? tabActive : {}) }}>{t}</button>
@@ -1043,7 +1109,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
         )}
 
         {/* GIỮA: workbench */}
-        <main ref={mainRef} style={{ position: "relative", overflow: isMobile ? "auto" : "hidden", padding: 10, display: "flex", flexDirection: "column", minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: isMobile ? 12 : 0, paddingBottom: isMobile ? 80 : 10 }}>
+        <main ref={mainRef} data-lab-stage style={{ position: "relative", overflow: "hidden", overscrollBehavior: "none", touchAction: "manipulation", padding: isMobile ? 6 : 10, display: "flex", flexDirection: "column", minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: 0, paddingBottom: isMobile ? 58 : 10 }}>
           <Workbench
             lab={lab} placed={placed} theta={theta} sE={sE} sF={sF} sEF={sEF} balanced={balanced}
             magnetOn={magnetOn} rolling={rolling} ballT={ballT} ballDrag={ballDrag} wires={wires} wireDrag={wireDrag}
@@ -1066,7 +1132,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
             setZoomMode={setZoomMode}
             highlightStep={nextStepKey}
           />
-          {false && isMobile && assembled && (
+          {isMobile && assembled && (
             <div style={{ position: "absolute", top: 76, right: 10, zIndex: 36, pointerEvents: "none" }}>
               {!controlsOpen && (
                 <button
@@ -1154,7 +1220,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
               </div>
             </div>
           )}
-          {isMobile && (
+          {false && isMobile && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
               {assembled && (
                 <section style={{ position: "relative", zIndex: controlsOpen ? 45 : 35, minHeight: 44, marginTop: -2 }}>
@@ -1419,8 +1485,9 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <button
                               type="button"
+                              disabled={!justRolled || rolling}
                               onClick={recordTrial}
-                              style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5 }}
+                              style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5, opacity: justRolled && !rolling ? 1 : 0.5, cursor: justRolled && !rolling ? "pointer" : "not-allowed" }}
                             >
                               Ghi số liệu
                             </button>
@@ -1515,7 +1582,7 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
               style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "none", padding: "0 14px" }}
             >
               <span style={{ fontSize: 11, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {sheetOpen ? "Trợ lý Phylab" : "Hỏi Phylab"}
+                {sheetOpen ? "Bảng điều khiển Lab" : assembled ? (justRolled ? "Ghi số liệu" : "Bảng Lab") : "Hướng dẫn"}
               </span>
               {sheetOpen ? (
                 <ChevronDown className="w-4 h-4 text-[#C85A17]" />
@@ -1525,11 +1592,8 @@ export default function LabBench({ measuredD = 20.0, studentName, assistantSetti
             </div>
             
             {/* Sheet body */}
-            <div style={{ flex: 1, overflow: "auto", padding: "0 12px 24px", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
-              {assembled 
-                ? renderSideContent({ assistant: true, progress: false, data: false })
-                : renderSideContent({ assistant: true, progress: true, data: false })
-              }
+            <div data-lab-scroll style={{ flex: 1, overflow: "auto", overscrollBehavior: "contain", padding: "0 12px calc(16px + env(safe-area-inset-bottom, 0px))", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
+              {renderSideContent()}
             </div>
           </motion.div>
         ) : (
@@ -1594,8 +1658,6 @@ function Workbench(props) {
     zoomMode === "rail" ? "50 60 700 440" :
     (props.isMobile ? "70 55 640 480" : `0 0 ${VBW} ${VBH}`);
   // Trên mobile: bỏ letterbox — cho SVG tự cao đúng theo tỉ lệ viewBox để khung lab
-  // lấp đầy chiều ngang màn hình (to & rõ nhất có thể), không còn viền trống trên/dưới.
-  const [, , vbW, vbH] = viewBoxStr.split(" ").map(Number);
   const showHint = props.isMobile && dropTarget.length === 0;
   const HintBox = ({ x, y, w, h, label }) => (
     <g style={{ pointerEvents: "none" }}>
@@ -1611,7 +1673,7 @@ function Workbench(props) {
         onPointerDown={onCanvasTap}
         viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet"
         style={props.isMobile
-          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "77vh", minHeight: 252, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
+          ? { flex: 1, flexShrink: 1, width: "100%", height: "100%", minHeight: 0, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 12, border: `1px solid ${C.line}`, touchAction: "none" }
           : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
         <rect x="0" y={FLOOR} width={VBW} height={VBH - FLOOR} fill="#F1E7D3" />
         <line x1="0" y1={FLOOR} x2={VBW} y2={FLOOR} stroke="#E1D3B6" strokeWidth="2" />

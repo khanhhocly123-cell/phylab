@@ -7,7 +7,7 @@ import { MathText } from "../Latex";
 import { C, FONT } from "../../engine/tokens.js";
 import { FREEFALL, computeFallTime, gFromMeasurement } from "../../engine/physicsFreeFall.js";
 import { guide, ask, smartbotReady } from "../../engine/smartbot.js";
-import { generateProblemSet } from "../../lib/problemGen";
+import { generateProblemSet, buildAssignedSet } from "../../lib/problemGen";
 
 /* Assets phục vụ qua thư mục public (không import kiểu Vite trong Next). */
 const railPng = "/lab/bai11/rail.png";
@@ -74,11 +74,13 @@ const magnetTerm = { x: RAILX - 30, y: Y0 - 4 };
 
 const zeroDisplay = (scale) => (0).toFixed((FREEFALL.scales[scale] || FREEFALL.scales.fine).dp);
 
-export default function FreeFallBench({ studentName, assistantSettings, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
-  // Đề bài rơi tự do RA THEO TỪNG HỌC SINH (deterministic) — quãng rơi s khác nhau.
+export default function FreeFallBench({ studentName, assignedSets, assistantSettings, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+  // Đề bài: GIÁO VIÊN giao (assignment lớp học) > seeded THEO TỪNG HỌC SINH.
   const set = useMemo(
-    () => generateProblemSet(studentName || "Học sinh", "do-gia-toc-roi-tu-do", "freefall"),
-    [studentName]
+    () => assignedSets?.freefall?.length
+      ? buildAssignedSet("freefall", assignedSets)
+      : generateProblemSet(studentName || "Học sinh", "do-gia-toc-roi-tu-do", "freefall"),
+    [studentName, assignedSets]
   );
   const suggestedFall = useMemo(
     () => set.freefall.map((f) => f.s),
@@ -129,10 +131,15 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const rafRef = useRef(null);
   const mainRef = useRef(null);
+  const lastMeasurementRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => setIsMobile(
+      window.innerWidth < 768
+      || window.matchMedia("(pointer: coarse) and (max-width: 1024px)").matches
+      || window.matchMedia("(max-height: 600px) and (max-width: 1024px)").matches
+    );
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -172,6 +179,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trials.length, currentTargets.length]);
 
+  // Đổi quãng rơi sau khi đo sẽ làm phép đo cũ mất hiệu lực.
   function placeTool(k) {
     if (placed.has(k)) return;
     if (!isNextTool(k)) { flash(`Lắp theo thứ tự — bước này: ${activeGroup.map((x) => TOOLS.find((t) => t.k === x)?.name).join(" / ")}.`); return; }
@@ -309,7 +317,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
     return () => clearTimeout(timer);
   }, [assembled, isMobile, nextStepKey]);
 
-  function resetTimer() { cancelAnimationFrame(rafRef.current); setRolling(false); setLed(zeroDisplay(scale)); setJustRolled(false); }
+  function resetTimer() { cancelAnimationFrame(rafRef.current); lastMeasurementRef.current = null; setRolling(false); setLed(zeroDisplay(scale)); setJustRolled(false); }
   function magnetHold() { if (rolling) return; setMagnetOn(true); setFallY(Y0); setCylDrag(null); }
 
   function release() {
@@ -319,11 +327,19 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
     if (!power) { flash("Chưa bật nguồn đồng hồ (mặt sau)."); return; }
     if (!magnetWire) { flash("Chưa nối dây công tắc kép → nam châm điện."); return; }
     if (!(wires.A === "switch" && wires.B === "gate")) { flash("Chưa nối dây: công tắc→ổ A, cổng quang→ổ B."); return; }
+    const matchesTeacherTarget = currentTargets.some((target) => Math.abs(s - target.s) < 0.005);
+    if (set.seed === "teacher" && !matchesTeacherTarget) {
+      const wanted = currentTask ? `${(currentTask.s * 100).toFixed(0)}cm` : "quãng đường trong đề";
+      flash(`Đề giáo viên yêu cầu s=${wanted} — chỉnh đúng trước khi thả trụ.`);
+      return;
+    }
     setMagnetOn(false); runFall();
   }
 
   function runFall() {
     if (rolling) return;
+    const measuredConfig = { s, scale, mode, balanced };
+    lastMeasurementRef.current = null;
     const res = computeFallTime({ s, balanced, scale });
     const sc = FREEFALL.scales[scale];
     const yGate = gateY(s);
@@ -344,16 +360,46 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
         setLed((base + measured * prog * jitter).toFixed(sc.dp));
       }
       if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      else { setLed(res.valid ? finalShown.toFixed(sc.dp) : base.toFixed(sc.dp)); setRolling(false); setJustRolled(res.valid); }
+      else {
+        setLed(res.valid ? finalShown.toFixed(sc.dp) : base.toFixed(sc.dp));
+        setRolling(false);
+        setJustRolled(res.valid);
+        lastMeasurementRef.current = res.valid ? measuredConfig : null;
+      }
     };
     rafRef.current = requestAnimationFrame(tick);
   }
 
   function recordTrial() {
     if (rolling) return;
+    if (!justRolled) { flash("Mỗi lượt thả chỉ được ghi một lần — hãy Reset, chỉnh quãng đường rồi đo lại."); return; }
     if (led === zeroLed) { flash("Chưa có số đo — thả trụ thép trước."); return; }
+    const measuredConfig = lastMeasurementRef.current;
+    if (!measuredConfig
+      || Math.abs(measuredConfig.s - s) >= 0.005
+      || measuredConfig.scale !== scale
+      || measuredConfig.mode !== mode
+      || measuredConfig.balanced !== balanced) {
+      flash("Quãng rơi đã đổi sau phép đo — hãy Reset và đo lại trước khi ghi.");
+      setJustRolled(false);
+      return;
+    }
+    const matchesTeacherTarget = currentTargets.some((target) => Math.abs(measuredConfig.s - target.s) < 0.005);
+    if (set.seed === "teacher" && !matchesTeacherTarget) {
+      const wanted = currentTask ? `${(currentTask.s * 100).toFixed(0)}cm` : "quãng đường trong đề";
+      flash(`Sai cấu hình đề giáo viên — hãy chỉnh quãng rơi đúng ${wanted} rồi đo lại.`);
+      return;
+    }
     const t = parseFloat(led);
-    setTrials((tr) => [...tr, { id: tr.length + 1, lab: "freefall", s: +s.toFixed(3), t, g: gFromMeasurement(s, t), balanced }]);
+    setTrials((tr) => [...tr, {
+      id: tr.length + 1,
+      lab: "freefall",
+      s: +measuredConfig.s.toFixed(3),
+      t,
+      g: gFromMeasurement(measuredConfig.s, t),
+      balanced: measuredConfig.balanced,
+    }]);
+    lastMeasurementRef.current = null;
     setJustRolled(false);
     flash(`Đã ghi lần đo #${trials.length + 1}.`);
   }
@@ -835,7 +881,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
             <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub }}>s</span>
             {justRolled && <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub, marginLeft: "auto" }}>g ≈ <b style={{ color: C.ink }}>{gFromMeasurement(s, parseFloat(led)).toFixed(2)}</b></span>}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: isMobile ? 200 : 140, overflow: "auto" }}>
+          <div data-lab-scroll style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: isMobile ? 200 : 140, overflow: "auto" }}>
             {trials.map((t) => (
               <div key={t.id} style={{ fontSize: isMobile ? 13.5 : 13, color: C.sub, display: "flex", justifyContent: "space-between", padding: isMobile ? "7px 10px" : "4px 8px", background: C.bg, borderRadius: 6 }}>
                 <span>#{t.id} s={(t.s * 100).toFixed(0)}cm</span>
@@ -844,7 +890,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
             ))}
             {!trials.length && <div style={{ fontSize: isMobile ? 12 : 13, color: C.sub2 || C.sub, fontStyle: "italic" }}>Chưa có lần đo. Reset → thả trụ thép → Ghi số liệu.</div>}
           </div>
-          <button onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8 }}>Ghi số liệu</button>
+          <button disabled={!justRolled || rolling} onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8, opacity: justRolled && !rolling ? 1 : 0.5, cursor: justRolled && !rolling ? "pointer" : "not-allowed" }}>Ghi số liệu</button>
           <button onClick={exportNote} style={{ ...btnBig, width: "100%" }}>Xuất sang Sổ Báo Cáo</button>
         </section>
       )}
@@ -854,16 +900,16 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
   return (
     <div className="phy-screen" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
       <div style={isMobile
-        ? { display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
+        ? { display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderBottom: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }
         : { display: "flex", alignItems: "center", gap: 14, padding: "10px 18px", borderBottom: `1px solid ${C.line}`, background: "#fff" }
       }>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: isMobile ? "flex-start" : "space-between", gap: isMobile ? 4 : 0, width: isMobile ? "auto" : "100%", flexShrink: 0 }}>
           {onBack && <button onClick={handleExit} style={btnGhost}>← Thoát</button>}
           {onReplayPrelab && <button onClick={() => onReplayPrelab?.()} style={{ ...btnGhost, color: C.navy, fontSize: 12 }}>Xem lại Prelab</button>}
           <div style={{ fontSize: 12, color: C.sub }}>g lý thuyết = <b style={{ color: C.ink }}>{FREEFALL.g} m/s²</b></div>
         </div>
         
-        <div style={{ textAlign: "center", width: "100%", fontSize: 13, fontWeight: 800, color: C.ink }}>
+        <div style={{ textAlign: "center", width: isMobile ? "auto" : "100%", flex: isMobile ? 1 : "initial", minWidth: 0, fontSize: isMobile ? 12 : 13, fontWeight: 800, color: C.ink }}>
           Bài 11 — Đo gia tốc rơi tự do
         </div>
       </div>
@@ -939,7 +985,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
         )}
 
         {/* GIỮA: workbench */}
-        <main ref={mainRef} style={{ position: "relative", overflow: isMobile ? "auto" : "hidden", padding: 10, display: "flex", flexDirection: "column", minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: isMobile ? 12 : 0, paddingBottom: isMobile ? 80 : 10 }}>
+        <main ref={mainRef} data-lab-stage style={{ position: "relative", overflow: "hidden", overscrollBehavior: "none", touchAction: "manipulation", padding: isMobile ? 6 : 10, display: "flex", flexDirection: "column", minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: 0, paddingBottom: isMobile ? 58 : 10 }}>
 
 
           <FallScene
@@ -961,7 +1007,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
             setZoomMode={setZoomMode}
             highlightStep={nextStepKey}
           />
-          {false && isMobile && assembled && (
+          {isMobile && assembled && (
             <div style={{ position: "absolute", top: 76, right: 10, zIndex: 36, pointerEvents: "none" }}>
               {!controlsOpen && (
                 <button
@@ -1038,7 +1084,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
               </div>
             </div>
           )}
-          {isMobile && (
+          {false && isMobile && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
               {assembled && (
                 <section style={{ position: "relative", zIndex: controlsOpen ? 45 : 35, minHeight: 44, marginTop: -2 }}>
@@ -1282,8 +1328,9 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <button
                               type="button"
+                              disabled={!justRolled || rolling}
                               onClick={recordTrial}
-                              style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5 }}
+                              style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5, opacity: justRolled && !rolling ? 1 : 0.5, cursor: justRolled && !rolling ? "pointer" : "not-allowed" }}
                             >
                               Ghi số liệu
                             </button>
@@ -1378,7 +1425,7 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
               style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "none", padding: "0 14px" }}
             >
               <span style={{ fontSize: 11, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {sheetOpen ? "Trợ lý Phylab" : "Hỏi Phylab"}
+                {sheetOpen ? "Bảng điều khiển Lab" : assembled ? (justRolled ? "Ghi số liệu" : "Bảng Lab") : "Hướng dẫn"}
               </span>
               {sheetOpen ? (
                 <ChevronDown className="w-4 h-4 text-[#C85A17]" />
@@ -1388,11 +1435,8 @@ export default function FreeFallBench({ studentName, assistantSettings, onExport
             </div>
             
             {/* Sheet body */}
-            <div style={{ flex: 1, overflow: "auto", padding: "0 12px 24px", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
-              {assembled 
-                ? renderSideContent({ assistant: true, progress: false, data: false })
-                : renderSideContent({ assistant: true, progress: true, data: false })
-              }
+            <div data-lab-scroll style={{ flex: 1, overflow: "auto", overscrollBehavior: "contain", padding: "0 12px calc(16px + env(safe-area-inset-bottom, 0px))", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
+              {renderSideContent()}
             </div>
           </motion.div>
         ) : (
@@ -1424,7 +1468,6 @@ function FallScene(props) {
     zoomMode === "rail" ? "200 40 500 440" :
     (props.isMobile ? "55 25 645 540" : `0 0 ${VBW} ${VBH}`);
   // Trên mobile: bỏ letterbox — SVG tự cao theo tỉ lệ viewBox để máng đứng cao & rõ.
-  const [, , vbW, vbH] = viewBoxStr.split(" ").map(Number);
   const showHint = props.isMobile && dropTarget.length === 0;
   const HintBox = ({ x, y, w, h, label }) => (
     <g style={{ pointerEvents: "none" }}>
@@ -1440,7 +1483,7 @@ function FallScene(props) {
         onPointerDown={onCanvasTap}
         viewBox={viewBoxStr} preserveAspectRatio="xMidYMid meet"
         style={props.isMobile
-          ? { flex: "none", flexShrink: 0, width: "100%", aspectRatio: `${vbW} / ${vbH}`, height: "auto", maxHeight: "79vh", minHeight: 312, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}` }
+          ? { flex: 1, flexShrink: 1, width: "100%", height: "100%", minHeight: 0, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 12, border: `1px solid ${C.line}`, touchAction: "none" }
           : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
         <rect x="0" y={FLOOR} width={VBW} height={VBH - FLOOR} fill="#F1E7D3" />
         <line x1="0" y1={FLOOR} x2={VBW} y2={FLOOR} stroke="#E1D3B6" strokeWidth="2" />

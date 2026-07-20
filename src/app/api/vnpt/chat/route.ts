@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
 import { retrieveAnswer, buildRagContext } from "@/lib/labKnowledge";
 import { askSmartBotResilient, getSmartBotConfig } from "@/lib/vnpt-smartbot";
 import { sanitizeText, LIMITS } from "@/lib/security";

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
 import { sanitizeText, LIMITS } from "@/lib/security";
 
 const ENGLISH_PHONETICS: Record<string, string> = {

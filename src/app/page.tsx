@@ -5,7 +5,7 @@ import {
   Camera, BookOpen, Clipboard, User,
   Settings, LogOut, CheckCircle,
   FileText, ArrowRight, Home, ChevronDown, Bell,
-  ChevronLeft, ChevronRight, AlertTriangle
+  ChevronLeft, ChevronRight, AlertTriangle, GraduationCap
 } from "lucide-react";
 import LoginScreen from "@/components/LoginScreen";
 import ScanScreen from "@/components/ScanScreen";
@@ -14,9 +14,14 @@ import NoteSection from "@/components/NoteSection";
 import Prelab from "@/components/Prelab";
 import HomeScreen from "@/components/HomeScreen";
 import Logo from "@/components/Logo";
+import TeacherShell from "@/components/teacher/TeacherShell";
+import MyClassTab from "@/components/student/MyClassTab";
 import { MathText } from "@/components/Latex";
 import { getExperimentSpec, EXPERIMENT_SPECS } from "@/experiments/specs";
 import { LessonId, ExperimentReport, RichTrial } from "@/lib/types";
+import { useMyClass } from "@/lib/useMyClass";
+import { getStudentId, logActivity } from "@/lib/activity";
+import type { LabAssignmentPayload } from "@/lib/classTypes";
 
 export type AssistantSettings = {
   pronoun: "anh" | "chị";
@@ -106,7 +111,9 @@ function LabChooser({ onSelect, onScan }: { onSelect: (id: LessonId) => void; on
 
 export default function Page() {
   const [studentName, setStudentName] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"home" | "scan" | "lab" | "notes" | "prelab">("home");
+  const [role, setRole] = useState<"student" | "teacher">("student");
+  const [teacherToken, setTeacherToken] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"home" | "scan" | "lab" | "notes" | "prelab" | "myclass">("home");
   const [activeLessonId, setActiveLessonId] = useState<LessonId | null>(null);
   const [prelabPassed, setPrelabPassed] = useState<Record<string, boolean>>({});
 
@@ -126,6 +133,11 @@ export default function Page() {
       const savedName = localStorage.getItem("studentName");
       if (savedName) {
         setStudentName(savedName);
+      }
+      const savedRole = localStorage.getItem("role");
+      if (savedRole === "teacher") {
+        setRole("teacher");
+        setTeacherToken(localStorage.getItem("teacherToken"));
       }
       const savedTab = localStorage.getItem("activeTab");
       if (savedTab) {
@@ -228,6 +240,27 @@ export default function Page() {
   // Dữ liệu đo giàu thông tin vừa xuất từ phòng Lab, chờ chấm ở Notes.
   const [labData, setLabData] = useState<{ lessonId: string; trials: RichTrial[] } | null>(null);
 
+  // ── Lớp học: dữ liệu "Lớp của tôi" (đề GV giao + trạng thái nộp) ──
+  const { myClass, loading: myClassLoading, refresh: refreshMyClass } = useMyClass(
+    !!studentName && role === "student"
+  );
+
+  // Assignment Lab đang active cho bài học hiện tại (mới nhất trước) → override đề seeded/AI.
+  const activeLabAssignment = React.useMemo(() => {
+    if (!myClass || !activeLessonId) return null;
+    return (
+      myClass.assignments.find(
+        (s) => s.assignment.kind === "lab" && s.assignment.lessonId === activeLessonId
+      ) ?? null
+    );
+  }, [myClass, activeLessonId]);
+
+  const assignedSets = React.useMemo(() => {
+    if (!activeLabAssignment) return null;
+    const payload = activeLabAssignment.assignment.payload as LabAssignmentPayload | null;
+    return payload?.problemSets ?? null;
+  }, [activeLabAssignment]);
+
   // Overall grades/stats
   const [, setReportSubmitted] = useState(false);
   const [, setGpaScore] = useState<number | null>(null);
@@ -242,11 +275,48 @@ export default function Page() {
     }
   }, [isDoingExperiment]);
 
+  // Ghi hoạt động "vào phòng Lab" cho dashboard giáo viên.
+  React.useEffect(() => {
+    if (isDoingExperiment && studentName && role === "student") {
+      logActivity("lab_start", studentName, activeLessonId || undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDoingExperiment]);
+
   // Handle successful logins
-  const handleLoginSuccess = (name: string) => {
+  const handleLoginSuccess = (name: string, loginRole: "student" | "teacher" = "student", token?: string) => {
     setStudentName(name);
     localStorage.setItem("studentName", name);
+    if (loginRole === "teacher" && token) {
+      setRole("teacher");
+      setTeacherToken(token);
+      localStorage.setItem("role", "teacher");
+      localStorage.setItem("teacherToken", token);
+    } else {
+      setRole("student");
+      localStorage.setItem("role", "student");
+      getStudentId(); // sinh UUID định danh HS trên thiết bị (nếu chưa có)
+      logActivity("login", name);
+    }
     setActiveTab("home");
+  };
+
+  // Đăng xuất (dùng chung cho cả 2 vai trò).
+  const handleLogout = () => {
+    setStudentName(null);
+    setRole("student");
+    setTeacherToken(null);
+    localStorage.removeItem("studentName");
+    localStorage.removeItem("activeTab");
+    localStorage.removeItem("activeLessonId");
+    localStorage.removeItem("prelabPassed");
+    localStorage.removeItem("role");
+    localStorage.removeItem("teacherToken");
+    // GIỮ studentId — định danh thiết bị để lần sau vào lại vẫn là "em đó" trong lớp.
+    setPrelabPassed({});
+    setActiveLessonId(null);
+    setActiveTab("home");
+    setProfileMenuOpen(false);
   };
 
   // Chọn/nhận diện bài -> sang tab Lab; nếu phiên này chưa hoàn thành Prelab của bài,
@@ -301,10 +371,36 @@ export default function Page() {
     setActiveTab("notes");
   };
 
-  // Nhận báo cáo đã chấm từ Notes -> lưu vào lịch sử.
+  // Nhận báo cáo đã chấm từ Notes -> lưu vào lịch sử + NỘP cho giáo viên nếu có assignment.
   const handleReportGraded = (report: ExperimentReport) => {
     setReports((prev) => [report, ...prev]);
     setCompletedCount((prev) => Math.min(2, prev + 1));
+
+    // Có bài Lab giáo viên giao trùng bài học này → nộp lên lớp (server re-verify điểm).
+    const matching = myClass?.assignments.find(
+      (s) => s.assignment.kind === "lab" && s.assignment.lessonId === report.lessonId
+    );
+    if (matching && report.trials?.length && studentName) {
+      fetch("/api/class/submit-lab", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignmentId: matching.assignment.id,
+          studentId: getStudentId(),
+          studentName,
+          trials: report.trials,
+          graphScore: report.graphScore,
+          aiFeedback: report.aiFeedback,
+        }),
+      })
+        .then((res) => {
+          if (res.ok) {
+            showToast("Đã nộp bài Lab cho giáo viên ✓");
+            void refreshMyClass();
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   // Auth loading gate to prevent login layout flashing on reload
@@ -314,6 +410,13 @@ export default function Page() {
         <div className="w-10 h-10 border-4 border-[#C85A17]/20 border-t-[#C85A17] rounded-full animate-spin" />
         <p className="text-xs font-black tracking-wider text-[#605248]">Đang khởi động phòng Lab...</p>
       </div>
+    );
+  }
+
+  // ── SHELL GIÁO VIÊN: nhánh riêng hoàn toàn, không render shell học sinh ──
+  if (studentName && role === "teacher" && teacherToken) {
+    return (
+      <TeacherShell teacherName={studentName} token={teacherToken} onLogout={handleLogout} />
     );
   }
 
@@ -339,7 +442,7 @@ export default function Page() {
   const shortName = studentName.split(" (")[0];
 
   return (
-    <div className={`flex flex-col lg:flex-row h-screen w-screen bg-[#FAF9F6] text-[#321E12] font-nunito overflow-hidden select-none ${
+    <div className={`flex flex-col lg:flex-row h-[100dvh] w-screen bg-[#FAF9F6] text-[#321E12] font-nunito overflow-hidden select-none ${
       isDoingExperiment || isScanMode ? "pb-0" : "pb-16"
     } lg:pb-0`}>
       
@@ -396,6 +499,7 @@ export default function Page() {
             {[
               { label: "Trang chủ", tab: "home" as const, icon: Home },
               { label: "Phòng Lab của tôi", tab: "lab" as const, icon: Clipboard },
+              { label: "Lớp của tôi", tab: "myclass" as const, icon: GraduationCap },
               { label: "Quét tài liệu", tab: "scan" as const, icon: Camera },
               { label: "Sổ Báo Cáo", tab: "notes" as const, icon: FileText },
               { label: "Prelab", tab: "prelab" as const, icon: BookOpen }
@@ -473,7 +577,7 @@ export default function Page() {
               <span className="cursor-pointer hover:text-[#C85A17] transition-colors">Phylab</span>
               <span>&gt;</span>
               <span className="text-[#321E12] font-black">
-                {activeTab === "home" ? "Trang chủ" : activeTab === "lab" ? "Phòng Lab của tôi" : activeTab === "scan" ? "Quét tài liệu" : activeTab === "notes" ? "Sổ Báo Cáo" : "Prelab"}
+                {activeTab === "home" ? "Trang chủ" : activeTab === "lab" ? "Phòng Lab của tôi" : activeTab === "scan" ? "Quét tài liệu" : activeTab === "notes" ? "Sổ Báo Cáo" : activeTab === "myclass" ? "Lớp của tôi" : "Prelab"}
               </span>
             </div>
           </div>
@@ -616,17 +720,7 @@ export default function Page() {
                       <Settings className="w-3.5 h-3.5" /> Cấu hình tài khoản
                     </button>
                     <button
-                      onClick={() => {
-                        setStudentName(null);
-                        localStorage.removeItem("studentName");
-                        localStorage.removeItem("activeTab");
-                        localStorage.removeItem("activeLessonId");
-                        localStorage.removeItem("prelabPassed");
-                        setPrelabPassed({});
-                        setActiveLessonId(null);
-                        setActiveTab("home");
-                        setProfileMenuOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="w-full text-left py-2 px-2.5 text-red-650 hover:bg-red-50 rounded-xl transition-colors cursor-pointer flex items-center gap-2 font-black"
                     >
                       <LogOut className="w-3.5 h-3.5" /> Đăng xuất
@@ -699,6 +793,7 @@ export default function Page() {
                       spec={activeSpec}
                       measuredD={measuredD}
                       studentName={studentName}
+                      assignedSets={assignedSets}
                       assistantSettings={assistantSettings}
                       onExportNote={handleExportNote}
                       onReplayPrelab={() => setPrelabOverlay(true)}
@@ -720,7 +815,21 @@ export default function Page() {
                     labData={labData}
                     studentName={studentName}
                     assistantSettings={assistantSettings}
+                    assignedSets={assignedSets}
                     onReportGraded={handleReportGraded}
+                  />
+                </div>
+              )}
+
+              {/* 3b. LỚP CỦA TÔI — tham gia lớp giáo viên + bài tập được giao */}
+              {activeTab === "myclass" && (
+                <div className="animate-scale-up">
+                  <MyClassTab
+                    studentName={studentName}
+                    myClass={myClass}
+                    loading={myClassLoading}
+                    onRefresh={() => void refreshMyClass()}
+                    onOpenLab={(id) => handleLessonSelect(id)}
                   />
                 </div>
               )}
@@ -775,6 +884,17 @@ export default function Page() {
           >
             <Clipboard className="w-5 h-5 stroke-[2.5]" />
             <span className="text-[9px] font-black mt-1">Phòng Lab</span>
+          </button>
+
+          {/* Tab: Lớp của tôi */}
+          <button
+            onClick={() => setActiveTab("myclass")}
+            className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all active:scale-95 cursor-pointer ${
+              activeTab === "myclass" ? "text-[#C85A17]" : "text-[#605248]/70"
+            }`}
+          >
+            <GraduationCap className="w-5 h-5 stroke-[2.5]" />
+            <span className="text-[9px] font-black mt-1">Lớp học</span>
           </button>
 
           {/* Floating Central Scan Button */}

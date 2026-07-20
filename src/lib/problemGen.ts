@@ -64,6 +64,28 @@ export function generateProblemSet(
   return { labKind: "average", seed, average, prompt: buildPrompt("average", { average }) };
 }
 
+/**
+ * Bọc bộ mục tiêu do GIÁO VIÊN tự đặt (assignment lớp học) thành ProblemSet —
+ * cùng shape với generateProblemSet nên bench dùng thay thế trực tiếp.
+ * seed = "teacher" đánh dấu đề không phải seeded-random.
+ */
+export function buildAssignedSet(
+  labKind: LabKind,
+  targets: { average?: AvgTarget[]; instant?: InstTarget[]; freefall?: FallTarget[] }
+): ProblemSet {
+  const data = {
+    average: labKind === "average" ? targets.average : undefined,
+    instant: labKind === "instant" ? targets.instant : undefined,
+    freefall: labKind === "freefall" ? targets.freefall : undefined,
+  };
+  return {
+    labKind,
+    seed: "teacher",
+    ...data,
+    prompt: `【Đề của giáo viên】 ${buildPrompt(labKind, data)}`,
+  };
+}
+
 /** Câu chữ đề bài mặc định (template) — Smartbot có thể thay bằng văn phong tự nhiên hơn. */
 export function buildPrompt(
   labKind: LabKind,

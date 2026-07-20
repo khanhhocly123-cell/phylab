@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
 import { getSmartBotConfig } from "@/lib/vnpt-smartbot";
 
 export async function GET(req: NextRequest) {

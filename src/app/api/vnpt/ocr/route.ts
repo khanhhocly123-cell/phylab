@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
 import { classifyLesson } from "@/lib/lessonMatch";
 import { checkImageFile } from "@/lib/security";
 

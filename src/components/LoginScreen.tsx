@@ -6,7 +6,8 @@ import { Camera, User, CreditCard, Sparkles, Scan, Check, Eye, EyeOff, Lock, Mai
 import Logo from "./Logo";
 
 interface LoginScreenProps {
-  onLoginSuccess: (studentName: string) => void;
+  /** role/token chỉ có khi đăng nhập bằng mật khẩu (teacher nhận token quản lý lớp). */
+  onLoginSuccess: (studentName: string, role?: "student" | "teacher", token?: string) => void;
 }
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
@@ -239,7 +240,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const name = data.name || "Khánh (TestUser101)";
       setStudentName(name);
       setTimeout(() => {
-        onLoginSuccess(name);
+        onLoginSuccess(name, data.role === "teacher" ? "teacher" : "student", data.token);
       }, 1000);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Đã xảy ra lỗi khi đăng nhập.");

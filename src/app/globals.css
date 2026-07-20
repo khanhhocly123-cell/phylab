@@ -34,6 +34,58 @@ body {
   overflow-x: hidden;
 }
 
+/* ===== Lab mobile: viewport cố định, không kéo trôi cả trang ===== */
+html.lab-active,
+body.lab-active {
+  height: 100%;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.lab-session {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  isolation: isolate;
+}
+
+.lab-session [data-lab-stage] {
+  overscroll-behavior: none;
+}
+
+.lab-session [data-lab-scroll] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.lab-session button,
+.lab-session input,
+.lab-session textarea {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) and (max-width: 1024px) {
+  .lab-session {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: 100vw;
+    height: 100dvh;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    box-sizing: border-box;
+  }
+
+  .lab-session button {
+    min-height: 36px;
+  }
+
+  .lab-session input,
+  .lab-session textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* ===== In báo cáo (Xuất PDF): chỉ giữ #phylab-report, khổ A4 =====
    Phần ẩn khung app (sidebar/header/nav) dùng class Tailwind `print:hidden` trong JSX;
    ở đây chỉ giữ các rule Lightning CSS xử lý được (không lồng @page, không :not() phức tạp). */

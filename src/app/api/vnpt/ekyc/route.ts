@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
 import { checkImageFile } from "@/lib/security";
 
 async function uploadFileToVnpt(file: File, token: string, tokenId: string, tokenKey: string) {

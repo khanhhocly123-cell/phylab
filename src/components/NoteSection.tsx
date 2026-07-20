@@ -16,6 +16,7 @@ import {
 } from "@/lib/grading";
 import GraphPlotter, { DataPoint } from "./notes/GraphPlotter";
 import AiChat from "./notes/AiChat";
+import type { LabAssignmentPayload } from "@/lib/classTypes";
 
 interface LabData {
   lessonId: string;
@@ -30,6 +31,7 @@ interface NoteSectionProps {
     pronoun?: "anh" | "chị";
     answerStyle?: "short" | "detailed";
   };
+  assignedSets?: LabAssignmentPayload["problemSets"] | null;
   onReportGraded?: (report: ExperimentReport) => void;
 }
 
@@ -65,7 +67,7 @@ function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> 
   return out;
 }
 
-export default function NoteSection({ reports, labData, studentName, assistantSettings, onReportGraded }: NoteSectionProps) {
+export default function NoteSection({ reports, labData, studentName, assistantSettings, assignedSets, onReportGraded }: NoteSectionProps) {
   const lessonIds = Object.keys(EXPERIMENT_SPECS);
   const [activeLesson, setActiveLesson] = useState<string>(
     () => labData?.lessonId || reports[0]?.lessonId || lessonIds[0] || ""
@@ -85,6 +87,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
 
   const samples = useMemo(() => groupByLab(trials), [trials]);
   const spec = EXPERIMENT_SPECS[activeLesson];
+  const expectedTargets = labData?.lessonId === activeLesson ? assignedSets ?? undefined : undefined;
 
   // Kết quả HS tự tính, keyed "lab-index".
   const [results, setResults] = useState<Record<string, string>>({});
@@ -150,7 +153,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
     )) {
       return;
     }
-    const g = gradeLesson(activeLesson, map, { hasGraph: true, graphScore });
+    const g = gradeLesson(activeLesson, map, { hasGraph: true, graphScore, expectedTargets });
     setGrade(g);
     flash(`Đã chấm: ${g.totalScore.toFixed(1)}/10`);
 
@@ -307,6 +310,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
           aiComment={aiComment}
           aiLoading={aiLoading}
           report={activeReport}
+          expectedTargets={expectedTargets}
         />
       )}
 
@@ -377,8 +381,10 @@ function SampleTable({
               const correct = correctResultOf(lab, r.s, r.t);
               const ok = sr != null && Math.abs(sr - correct) <= correct * RESULT_TOLERANCE;
               const filled = sr != null;
+              const rowGrade = grade?.samples.find((sample) => sample.labKind === lab)?.perRow[i];
+              const matchesExpectedTarget = rowGrade?.matchesExpectedTarget !== false;
               return (
-                <tr key={i} className="border-b border-[#E2DFD8]/60 font-semibold text-[#605248]">
+                <tr key={i} className={`border-b border-[#E2DFD8]/60 font-semibold text-[#605248] ${matchesExpectedTarget ? "" : "bg-rose-50"}`}>
                   <td className="p-2 text-center text-[#605248]/40 font-black">{i + 1}</td>
                   <td className="p-2 text-center font-mono">{r.s.toFixed(3)}</td>
                   <td className="p-2 text-center font-mono">{r.t.toFixed(3)}</td>
@@ -397,7 +403,8 @@ function SampleTable({
                     />
                   </td>
                   <td className="p-2 text-center">
-                    {!filled ? <span className="text-[8px] text-[#605248]/40 font-black">—</span>
+                    {!matchesExpectedTarget ? <span className="text-[8px] bg-rose-600 text-white px-1.5 py-0.5 rounded font-black">Sai đề</span>
+                      : !filled ? <span className="text-[8px] text-[#605248]/40 font-black">—</span>
                       : ok ? <span className="text-[8px] bg-emerald-500 text-white px-1.5 py-0.5 rounded font-black">Đúng</span>
                         : <span className="text-[8px] bg-rose-100 border border-rose-300 text-rose-700 px-1.5 py-0.5 rounded font-black">Lệch</span>}
                   </td>
@@ -415,7 +422,9 @@ function SampleTable({
             Số liệu {sg.dataScore}/10 · Trình tự {sg.sequenceScore}/10 · Sai số {sg.errorScore}/10 →
             <b className="text-[#C85A17]"> Điểm mẫu {sg.experimentScore.toFixed(1)}/10</b>
             {sg.badSetupCount > 0 && <span className="text-rose-600"> (trừ {sg.badSetupCount} lần đo khi chưa cân bằng)</span>}
-            {sg.missingTrials > 0 && <span className="text-rose-600"> (thiếu {sg.missingTrials} lần đo so với tối thiểu {MIN_TRIALS})</span>}
+            {sg.missingTrials > 0 && <span className="text-rose-600"> (thiếu {sg.missingTrials}/{sg.expectedConfigurationCount} cấu hình {sg.assignmentConstrained ? "đề giáo viên" : "độc lập"})</span>}
+            {sg.unexpectedTrialCount > 0 && <span className="text-rose-700"> ({sg.unexpectedTrialCount} dòng đo sai cấu hình đề)</span>}
+            {sg.duplicateTrialCount > 0 && <span className="text-amber-700"> ({sg.duplicateTrialCount} dòng trùng không tăng độ phủ)</span>}
           </p>
         );
       })()}
@@ -431,6 +440,9 @@ function GradeBreakdown({ grade }: { grade: LessonGrade }) {
         <div className="text-2xl font-black text-[#C85A17]">{grade.totalScore.toFixed(1)}<span className="text-sm text-[#605248]">/10</span></div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+        {grade.samples.some((sample) => sample.assignmentConstrained) && (
+          <Metric label="Đúng cấu hình đề" value={`${grade.assignmentCoveragePercent}%`} sub="cap điểm tổng theo độ phủ" />
+        )}
         {grade.samples.map((s) => (
           <Metric key={s.labKind} label={s.label} value={`${s.experimentScore.toFixed(1)}/10`} sub={`sát ${s.physicalCloseness}%`} />
         ))}
@@ -533,7 +545,7 @@ function GraphTab({
 }
 
 function ReportTab({
-  spec, studentName, grade, aiComment, aiLoading, report,
+  spec, studentName, grade, aiComment, aiLoading, report, expectedTargets,
 }: {
   spec: (typeof EXPERIMENT_SPECS)[string] | undefined;
   studentName?: string;
@@ -541,6 +553,7 @@ function ReportTab({
   aiComment: string;
   aiLoading: boolean;
   report: ExperimentReport | null;
+  expectedTargets?: LabAssignmentPayload["problemSets"];
 }) {
   // Nếu chưa chấm ở phiên này nhưng có báo cáo cũ, tái dựng điểm deterministic từ trials
   // (kèm điểm đồ thị đã lưu trong báo cáo, nếu có).
@@ -549,7 +562,7 @@ function ReportTab({
       ? gradeLesson(
           report.lessonId,
           groupByLab(report.trials) as Partial<Record<LabKind, Trial[]>>,
-          { hasGraph: report.graphScore != null, graphScore: report.graphScore }
+          { hasGraph: report.graphScore != null, graphScore: report.graphScore, expectedTargets }
         )
       : null);
   const comment = aiComment || report?.aiFeedback || "";
@@ -633,7 +646,7 @@ function ReportTab({
                       <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.correctResult.toFixed(3)}</td>
                       <td className="border border-[#C9C2B6] p-1.5">{Math.round(r.physCloseness)}%</td>
                       <td className={`border border-[#C9C2B6] p-1.5 font-black ${r.correct ? "text-emerald-700" : "text-rose-700"}`}>
-                        {r.correct ? "Đúng" : "Lệch"}{!r.balanced && " · chưa cân bằng"}
+                        {!r.matchesExpectedTarget ? "Sai cấu hình đề" : r.correct ? "Đúng" : "Lệch"}{!r.balanced && " · chưa cân bằng"}
                       </td>
                     </tr>
                   ))}
@@ -644,7 +657,9 @@ function ReportTab({
                 Giá trị trung bình: <b className="text-[#321E12]">{s.meanResult.toFixed(3)} {s.unit}</b>
                 {" "}· Giá trị lý thuyết: <b className="text-[#321E12]">{s.perRow[0]?.theoretical.toFixed(3)} {s.unit}</b>
                 {s.badSetupCount > 0 && <span className="text-rose-700"> · {s.badSetupCount} lần đo khi chưa cân bằng</span>}
-                {s.missingTrials > 0 && <span className="text-rose-700"> · thiếu {s.missingTrials} lần đo (tối thiểu {MIN_TRIALS})</span>}
+                {s.missingTrials > 0 && <span className="text-rose-700"> · thiếu {s.missingTrials}/{s.expectedConfigurationCount} cấu hình {s.assignmentConstrained ? "đề giáo viên" : "độc lập"}</span>}
+                {s.unexpectedTrialCount > 0 && <span className="text-rose-700"> · {s.unexpectedTrialCount} dòng sai cấu hình đề</span>}
+                {s.duplicateTrialCount > 0 && <span className="text-amber-700"> · {s.duplicateTrialCount} dòng trùng không tính độ phủ</span>}
               </p>
             </div>
           ))}
@@ -876,12 +891,13 @@ function QuizRunner({ quizzes }: { quizzes: NonNullable<ReturnType<typeof getRev
 /* ============================ helpers ============================ */
 
 function buildGradeSummary(g: LessonGrade, title: string): string {
-  const lines = [`Bài: ${title}`, `Điểm tổng: ${g.totalScore.toFixed(1)}/10`, `Điểm thí nghiệm: ${g.experimentScore.toFixed(1)}/10`];
+  const lines = [`Bài: ${title}`, `Điểm tổng: ${g.totalScore.toFixed(1)}/10`, `Điểm thí nghiệm: ${g.experimentScore.toFixed(1)}/10`, `Độ phủ đúng cấu hình đề: ${g.assignmentCoveragePercent}%`];
   g.samples.forEach((s) => {
     lines.push(
-      `- ${s.label}: ${s.rowCount} lần đo, TB=${s.meanResult.toFixed(3)}${s.unit}, ` +
+      `- ${s.label}: ${s.rowCount} dòng / ${s.uniqueConfigurationCount} cấu hình độc lập, TB=${s.meanResult.toFixed(3)}${s.unit}, ` +
       `Số liệu ${s.dataScore}/10 (sát ${s.dataCloseness}%), Trình tự ${s.sequenceScore}/10 ` +
-      `(${s.badSetupCount} lần chưa cân bằng), Sai số ${s.errorScore}/10 (sát lý thuyết ${s.physicalCloseness}%).`
+      `(${s.badSetupCount} lần chưa cân bằng), Sai số ${s.errorScore}/10 (sát lý thuyết ${s.physicalCloseness}%), ` +
+      `${s.duplicateTrialCount} dòng trùng, ${s.unexpectedTrialCount} dòng sai cấu hình đề.`
     );
   });
   return lines.join("\n");

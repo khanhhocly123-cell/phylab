@@ -60,7 +60,7 @@ registerHooks({
 head("1) UNIT — Bộ chấm điểm khắt khe (src/lib/grading.ts)");
 try {
   const G = await import("../src/lib/grading.ts");
-  const { bandScore, gradeSample, gradeLesson, correctResultOf, RESULT_TOLERANCE, MIN_TRIALS } = G;
+  const { bandScore, gradeSample, gradeLesson, correctResultOf, theoreticalOf, RESULT_TOLERANCE, MIN_TRIALS } = G;
 
   ok("Hằng số: dung sai 1%, tối thiểu 3 lần đo", RESULT_TOLERANCE === 0.01 && MIN_TRIALS === 3);
   ok("bandScore ≥98 → 10", bandScore(98) === 10 && bandScore(100) === 10);
@@ -96,9 +96,63 @@ try {
     ok("2 lần chưa cân bằng → Trình tự 5 (trừ 2.5đ/lần)", sg.sequenceScore === 5, `seq=${sg.sequenceScore}`);
   }
   {
-    // Chỉ đo 2 lần → thiếu 1 so với MIN_TRIALS → Số liệu 10 - 2 = 8
+    // Chỉ đo 2 cấu hình → độ phủ 2/3, không được hưởng trọn điểm chất lượng.
     const sg = gradeSample("freefall", perfect.slice(0, 2));
-    ok("Chỉ 2 lần đo → Số liệu bị trừ còn 8", sg.dataScore === 8 && sg.missingTrials === 1, `data=${sg.dataScore}`);
+    ok("Chỉ 2 cấu hình → Số liệu còn 6.7", sg.dataScore === 6.7 && sg.missingTrials === 1, `data=${sg.dataScore}`);
+  }
+  {
+    // Cùng một cấu hình đúng tuyệt đối nhưng gửi lặp không được giả thành 3 phép đo độc lập.
+    const spam = [perfect[0], { ...perfect[0] }, { ...perfect[0] }];
+    const sg = gradeSample("freefall", spam);
+    ok("Spam 1 cấu hình 3 lần → chỉ tính độ phủ 1/3",
+      sg.uniqueConfigurationCount === 1 && sg.duplicateTrialCount === 2 && sg.dataScore === 3.3,
+      `unique=${sg.uniqueConfigurationCount} duplicate=${sg.duplicateTrialCount} data=${sg.dataScore}`);
+  }
+  {
+    // GV giao góc 30°, HS đo hoàn hảo ở góc 20° vẫn là sai đề.
+    const s = 0.0182;
+    const actualTheta = 20;
+    const result = theoreticalOf("instant", s, actualTheta);
+    const sg = gradeSample("instant", [
+      { s, t: s / result, theta: actualTheta, balanced: true, studentResult: result },
+    ], [{ theta: 30 }]);
+    ok("GV giao θ=30°, đo đúng vật lý ở θ=20° → 0 điểm dữ liệu",
+      sg.dataScore === 0 && sg.errorScore === 0 && sg.matchedConfigurationCount === 0
+        && sg.unexpectedTrialCount === 1 && sg.perRow[0].matchesExpectedTarget === false,
+      `data=${sg.dataScore} matched=${sg.matchedConfigurationCount} wrong=${sg.unexpectedTrialCount}`);
+  }
+  {
+    const expected = [{ theta: 15 }, { theta: 20 }, { theta: 25 }];
+    const wrongTrials = [16, 21, 26].map((theta) => {
+      const s = 0.0182;
+      const result = theoreticalOf("instant", s, theta);
+      return { s, t: s / result, theta, balanced: true, studentResult: result };
+    });
+    const lg = gradeLesson("do-toc-do-vat-chuyen-dong", { instant: wrongTrials }, {
+      hasGraph: true, graphScore: 10, expectedTargets: { instant: expected },
+    });
+    ok("Đo sai toàn bộ góc GV giao → điểm tổng bị cap 0 dù đồ thị 10",
+      lg.assignmentCoveragePercent === 0 && lg.totalScore === 0,
+      `coverage=${lg.assignmentCoveragePercent}% total=${lg.totalScore}`);
+  }
+  {
+    const avgTargets = [
+      { theta: 20, sEF: 0.2 }, { theta: 25, sEF: 0.25 }, { theta: 30, sEF: 0.3 },
+    ];
+    const avgTrials = avgTargets.map(({ theta, sEF }) => {
+      const result = theoreticalOf("average", sEF, theta);
+      return { s: sEF, t: sEF / result, theta, balanced: true, studentResult: result };
+    });
+    const lg = gradeLesson("do-toc-do-vat-chuyen-dong", { average: avgTrials }, {
+      hasGraph: true,
+      graphScore: 10,
+      expectedTargets: { average: avgTargets, instant: [{ theta: 15 }, { theta: 20 }, { theta: 25 }] },
+    });
+    const instantGrade = lg.samples.find((sample) => sample.labKind === "instant");
+    ok("Bỏ hẳn phần vận tốc tức thời GV giao → tạo mẫu 0 và cap tổng 5",
+      lg.samples.length === 2 && instantGrade?.rowCount === 0
+        && instantGrade?.experimentScore === 0 && lg.assignmentCoveragePercent === 50 && lg.totalScore === 5,
+      `samples=${lg.samples.length} coverage=${lg.assignmentCoveragePercent}% total=${lg.totalScore}`);
   }
   {
     // Ô bỏ trống → độ sát tự tính của lần đó = 0%
@@ -130,6 +184,11 @@ function runChild(label, scriptRel, extraArgs = []) {
 {
   const okUnit = runChild("2) UNIT vật lý + API shape (scripts/test.mjs)", "scripts/test.mjs", NO_API ? ["--no-api"] : []);
   ok("scripts/test.mjs exit 0", okUnit);
+}
+
+{
+  const okClass = runChild("2B) UNIT tính năng lớp học — quiz MOE + anti-cheat + đề GV (scripts/test-class.mjs)", "scripts/test-class.mjs");
+  ok("scripts/test-class.mjs exit 0", okClass);
 }
 
 let serverUp = false;
