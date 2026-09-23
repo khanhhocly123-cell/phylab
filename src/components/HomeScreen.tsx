@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Camera, BookOpen, ChevronRight, Thermometer,
+  Camera, GraduationCap, ChevronRight, Thermometer,
   Atom, FileText, FlaskConical, History, Compass, Zap, Lightbulb,
   Sparkles, Check, ArrowRight, Clock, Lock, FileBarChart
 } from "lucide-react";
@@ -14,7 +14,7 @@ interface HomeScreenProps {
   // Danh sách các bài lab đang trong trạng thái "vừa vào, chưa nộp"
   inProgressLabIds?: string[];
   reports?: Array<{ title: string; date: string; score?: number; shortTitle?: string; lessonId?: string }>;
-  onNav: (tab: "home" | "scan" | "lab" | "notes" | "prelab") => void;
+  onNav: (tab: "home" | "scan" | "lab" | "notes" | "myclass") => void;
   onOpenLab: (id: string) => void;
   onSubjectClick?: (subject: string) => void;
 }
@@ -85,10 +85,10 @@ export default function HomeScreen({
       tab: "notes" as const,
     },
     {
-      label: "Prelab",
-      desc: "Chuẩn bị trước khi vào thí nghiệm",
-      icon: BookOpen,
-      tab: "prelab" as const,
+      label: "Lớp của tôi",
+      desc: "Bài giáo viên giao & trạng thái nộp",
+      icon: GraduationCap,
+      tab: "myclass" as const,
     },
   ];
 
@@ -354,10 +354,10 @@ export default function HomeScreen({
                 color: "bg-[#FFF2E6] text-[#C85A17] border-[#C85A17]/15",
               },
               {
-                label: "Prelab",
-                desc: "Chuẩn bị",
-                icon: BookOpen,
-                tab: "prelab" as const,
+                label: "Lớp học",
+                desc: "Bài được giao",
+                icon: GraduationCap,
+                tab: "myclass" as const,
                 color: "bg-[#F3F8F2] text-[#2E7D32] border-[#2E7D32]/15",
               },
               {

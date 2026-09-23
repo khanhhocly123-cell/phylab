@@ -72,6 +72,7 @@ export interface RichTrial {
   t: number;            // đại lượng mẫu số (thời gian, I hoặc 1 với phép đo trực tiếp)
   theta?: number;       // góc nghiêng (Bài 6)
   balanced?: boolean;   // máng đã cân bằng khi đo chưa
+  steady?: boolean;     // thả khi máng/trụ đã đứng yên chưa (false = còn rung, số đo dễ lệch)
   /** Giá trị vật lý chuẩn của cấu hình, dùng chấm các lab điện. */
   expected?: number;
   /** Biến điều khiển cấu hình (U nguồn hoặc U dây điện trở). */
@@ -80,6 +81,7 @@ export interface RichTrial {
   current?: number;
   resistance?: number;
   material?: "X" | "Y";
+  cell?: "new" | "old"; // Bài 26: phân biệt pin mới và pin đã sử dụng
   length?: number;      // vị trí con chạy trên dây điện trở (cm)
   emf?: number;
   studentResult?: number | null; // kết quả HS tự tính (điền ở Notes)
@@ -95,10 +97,11 @@ export interface ExperimentReport {
   measures: Array<{ s: number; t: number }>;
   /** Dữ liệu đo giàu thông tin (kèm lab/theta/balanced) để chấm điểm. */
   trials?: RichTrial[];
-  score: number;          // điểm tổng (thang 10)
-  /** Điểm đồ thị HS tự vẽ (0..10) — bắt buộc khi nộp báo cáo. */
+  /** Điểm tổng (thang 10) — phần chấm phía học sinh đang tạm gỡ nên báo cáo mới không có. */
+  score?: number;
+  /** Điểm đồ thị HS tự vẽ (0..10). */
   graphScore?: number;
-  aiFeedback: string;
+  aiFeedback?: string;
 }
 
 export interface Lesson {

@@ -3,20 +3,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Table, LineChart as LineChartIcon, FileText, GraduationCap,
-  Send, CheckCircle2, AlertTriangle, Sparkles, Printer, RotateCcw,
+  Save, CheckCircle2, AlertTriangle, Sparkles, Printer, RotateCcw, Info,
 } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ExperimentReport, RichTrial } from "@/lib/types";
 import { EXPERIMENT_SPECS } from "@/experiments/specs";
 import { MathText } from "./Latex";
 import { getReview } from "@/data/quizBank";
-import {
-  gradeLesson, correctResultOf, LessonGrade, LabKind, Trial,
-  RESULT_TOLERANCE, MIN_TRIALS,
-} from "@/lib/grading";
+import { correctResultOf, LabKind } from "@/lib/grading";
 import GraphPlotter, { DataPoint } from "./notes/GraphPlotter";
-import AiChat from "./notes/AiChat";
-import type { LabAssignmentPayload } from "@/lib/classTypes";
+
+/*
+ * Sổ Báo Cáo — nơi nhận số liệu từ Phòng Lab: bảng số liệu (HS tự tính kết quả),
+ * tự vẽ đồ thị, lập báo cáo in được và ôn tập.
+ * Phần CHẤM ĐIỂM + nhận xét AI + chatbot đang tạm gỡ khỏi giao diện học sinh để làm lại
+ * (logic chấm vẫn nằm ở src/lib/grading.ts, server vẫn tính điểm bài nộp cho giáo viên).
+ */
 
 interface LabData {
   lessonId: string;
@@ -27,23 +29,20 @@ interface NoteSectionProps {
   reports: ExperimentReport[];
   labData?: LabData | null;
   studentName?: string;
-  assistantSettings?: {
-    pronoun?: "anh" | "chị";
-    answerStyle?: "short" | "detailed";
-  };
-  assignedSets?: LabAssignmentPayload["problemSets"] | null;
-  onReportGraded?: (report: ExperimentReport) => void;
+  /** Bài đang có số liệu mới thuộc một bài Lab giáo viên giao → lưu báo cáo sẽ nộp luôn. */
+  hasAssignment?: boolean;
+  onReportSaved?: (report: ExperimentReport) => void;
 }
 
 type TabKey = "data" | "graph" | "report" | "review";
 
-const LAB_META: Record<LabKind, { title: string; formula: string; sLabel: string; tLabel: string; unit: string }> = {
-  average: { title: "Mẫu 1 — Vận tốc trung bình", formula: "v = \\dfrac{s_{EF}}{t}", sLabel: "sEF (m)", tLabel: "t (s)", unit: "m/s" },
-  instant: { title: "Mẫu 2 — Vận tốc tức thời", formula: "v = \\dfrac{d}{t}", sLabel: "d (m)", tLabel: "t (s)", unit: "m/s" },
-  freefall: { title: "Số liệu — Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", sLabel: "s (m)", tLabel: "t (s)", unit: "m/s²" },
-  "ohm-x": { title: "Mẫu X — Điện trở theo định luật Ohm", formula: "R_X = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω" },
-  "ohm-y": { title: "Mẫu Y — Điện trở theo định luật Ohm", formula: "R_Y = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω" },
-  emf: { title: "Số liệu — Suất điện động pin", formula: "U = \\mathcal{E} - Ir", sLabel: "I (A)", tLabel: "U (V)", unit: "V" },
+const LAB_META: Record<LabKind, { title: string; formula: string; sLabel: string; tLabel: string; unit: string; resultLabel: string }> = {
+  average: { title: "Mẫu 1 — Vận tốc trung bình", formula: "v = \\dfrac{s_{EF}}{t}", sLabel: "sEF (m)", tLabel: "t (s)", unit: "m/s", resultLabel: "v" },
+  instant: { title: "Mẫu 2 — Vận tốc tức thời", formula: "v = \\dfrac{d}{t}", sLabel: "d (m)", tLabel: "t (s)", unit: "m/s", resultLabel: "v" },
+  freefall: { title: "Số liệu — Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", sLabel: "s (m)", tLabel: "t (s)", unit: "m/s²", resultLabel: "g" },
+  "ohm-x": { title: "Mẫu X — Điện trở theo định luật Ohm", formula: "R_X = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω", resultLabel: "R" },
+  "ohm-y": { title: "Mẫu Y — Điện trở theo định luật Ohm", formula: "R_Y = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω", resultLabel: "R" },
+  emf: { title: "Số liệu — Suất điện động pin", formula: "U = \\mathcal{E} - Ir", sLabel: "I (A)", tLabel: "U (V)", unit: "V", resultLabel: "E" },
 };
 
 const DEMO_TRIALS: Record<string, RichTrial[]> = {
@@ -70,35 +69,53 @@ function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> 
   return out;
 }
 
-export default function NoteSection({ reports, labData, studentName, assistantSettings, assignedSets, onReportGraded }: NoteSectionProps) {
+const decimalsOf = (lab: LabKind) => (lab === "freefall" ? 2 : lab === "ohm-x" || lab === "ohm-y" ? 1 : 3);
+
+/** Trung bình kết quả; Bài 26 tách theo từng pin (trộn pin mới với pin cũ là vô nghĩa). */
+function meanGroups(lab: LabKind, rows: RichTrial[], results: Record<string, string>) {
+  const entries = rows.map((row, i) => ({ row, value: parseResult(results[`${lab}-${i}`]) }));
+  const groups = lab === "emf"
+    ? (["new", "old"] as const).map((cell) => ({ label: cell === "new" ? "Pin mới" : "Pin cũ", items: entries.filter((e) => e.row.cell === cell) }))
+    : [{ label: "", items: entries }];
+  return groups
+    .map((g) => {
+      const values = g.items.map((e) => e.value).filter((v): v is number => v != null);
+      return { label: g.label, count: values.length, mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : null };
+    })
+    .filter((g) => g.mean != null) as Array<{ label: string; count: number; mean: number }>;
+}
+const parseResult = (raw: string | undefined) => {
+  if (raw == null || raw.trim() === "") return null;
+  const v = parseFloat(raw.replace(",", "."));
+  return Number.isFinite(v) ? v : null;
+};
+
+export default function NoteSection({ reports, labData, studentName, hasAssignment, onReportSaved }: NoteSectionProps) {
   const lessonIds = Object.keys(EXPERIMENT_SPECS);
   const [activeLesson, setActiveLesson] = useState<string>(
     () => labData?.lessonId || reports[0]?.lessonId || lessonIds[0] || ""
   );
   const [tab, setTab] = useState<TabKey>("data");
 
-  // Số liệu để chấm: ưu tiên dữ liệu mới xuất từ lab; nếu không có, lấy từ báo cáo gần nhất.
+  // Số liệu: ưu tiên dữ liệu mới lưu từ Lab; nếu không có, lấy từ báo cáo gần nhất; cuối cùng là số liệu mẫu.
   const activeReport = useMemo(
     () => reports.find((r) => r.lessonId === activeLesson) ?? null,
     [reports, activeLesson]
   );
+  const isFreshData = !!labData && labData.lessonId === activeLesson && labData.trials.length > 0;
   const trials: RichTrial[] = useMemo(() => {
     if (labData && labData.lessonId === activeLesson && labData.trials.length) return labData.trials;
     if (activeReport?.trials?.length) return activeReport.trials;
     return DEMO_TRIALS[activeLesson] ?? [];
   }, [labData, activeLesson, activeReport]);
+  const isDemo = !isFreshData && !activeReport?.trials?.length && trials.length > 0;
 
   const samples = useMemo(() => groupByLab(trials), [trials]);
   const spec = EXPERIMENT_SPECS[activeLesson];
-  const expectedTargets = labData?.lessonId === activeLesson ? assignedSets ?? undefined : undefined;
 
-  // Kết quả HS tự tính, keyed "lab-index".
+  // Kết quả HS tự tính, keyed "lab-index" (điền sẵn theo công thức, HS sửa lại theo cách tính của mình).
   const [results, setResults] = useState<Record<string, string>>({});
-  const [grade, setGrade] = useState<LessonGrade | null>(null);
-  // Điểm đồ thị HS tự vẽ (bắt buộc trước khi nộp) — giữ ở đây để không mất khi đổi tab.
-  const [graphScore, setGraphScore] = useState<number | null>(null);
-  const [aiComment, setAiComment] = useState<string>("");
-  const [aiLoading, setAiLoading] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   useEffect(() => {
@@ -110,7 +127,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
       (Object.keys(grouped) as LabKind[]).forEach((lab) => {
         (grouped[lab] || []).forEach((tr, i) => {
           const value = tr.studentResult ?? correctResultOf(lab, tr.s, tr.t);
-          next[`${lab}-${i}`] = Number.isFinite(value) ? String(Number(value).toFixed(lab === "freefall" ? 2 : 3)) : "";
+          next[`${lab}-${i}`] = Number.isFinite(value) ? String(Number(value).toFixed(decimalsOf(lab))) : "";
         });
       });
       return next;
@@ -122,93 +139,51 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
     setTimeout(() => setToast(null), 2600);
   };
 
-  const setResult = (lab: string, i: number, v: string) =>
+  const setResult = (lab: string, i: number, v: string) => {
     setResults((p) => ({ ...p, [`${lab}-${i}`]: v }));
-
-  const buildTrialsWithResults = (): Partial<Record<LabKind, Trial[]>> => {
-    const map: Partial<Record<LabKind, Trial[]>> = {};
-    (Object.keys(samples) as LabKind[]).forEach((lab) => {
-      map[lab] = (samples[lab] || []).map((tr, i) => {
-        const raw = results[`${lab}-${i}`];
-        const sr = raw != null && raw.trim() !== "" ? parseFloat(raw) : null;
-        return { ...tr, s: tr.s, t: tr.t, theta: tr.theta, balanced: tr.balanced, studentResult: sr };
-      });
-    });
-    return map;
+    setSavedAt(null);
   };
 
-  const handleGrade = async () => {
-    if (trials.length === 0) {
-      flash("Chưa có số liệu — hãy đo ở phòng Lab rồi Xuất sang Sổ Báo Cáo.", false);
-      return;
-    }
-    // Đồ thị BẮT BUỘC: chưa vẽ + chấm đồ thị thì không cho nộp báo cáo.
-    if (graphScore == null) {
-      setTab("graph");
-      flash("Bắt buộc: hãy tự vẽ đồ thị và bấm 'Chấm đồ thị' trước khi nộp báo cáo.", false);
-      return;
-    }
-    const map = buildTrialsWithResults();
-    // Ô bỏ trống bị tính 0 điểm cho lần đo đó — cảnh báo trước khi chấm.
-    const anyBlank = Object.values(map).some((rows) => rows!.some((r) => r.studentResult == null));
-    if (anyBlank && !window.confirm(
-      "Còn ô 'Kết quả tính' bỏ trống. Ô trống sẽ bị 0% độ sát cho lần đo đó. Vẫn chấm điểm?"
-    )) {
-      return;
-    }
-    const g = gradeLesson(activeLesson, map, { hasGraph: true, graphScore, expectedTargets });
-    setGrade(g);
-    flash(`Đã chấm: ${g.totalScore.toFixed(1)}/10`);
+  const changeLesson = (id: string) => {
+    setActiveLesson(id);
+    setResults({});
+    setSavedAt(null);
+    setTab("data");
+  };
 
-    // Nhờ Smartbot viết nhận xét (fallback template ở server nếu chưa có bot_id).
-    setAiLoading(true);
-    let comment = "";
-    try {
-      const s0 = g.samples[0];
-      const res = await fetch("/api/vnpt/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task: "grade",
-          summary: buildGradeSummary(g, spec?.title || activeLesson),
-          totalScore: g.totalScore,
-          dataCloseness: s0?.dataCloseness,
-          physicalCloseness: s0?.physicalCloseness,
-          badSetupCount: g.samples.reduce((a, s) => a + s.badSetupCount, 0),
-          assistantSettings,
-        }),
+  const buildTrialsWithResults = (): RichTrial[] => {
+    const out: RichTrial[] = [];
+    (Object.keys(samples) as LabKind[]).forEach((lab) => {
+      (samples[lab] || []).forEach((tr, i) => {
+        out.push({ ...tr, lab, studentResult: parseResult(results[`${lab}-${i}`]) });
       });
-      const data = await res.json();
-      comment = data.message || "";
-    } catch {
-      comment = "";
-    }
-    setAiComment(comment);
-    setAiLoading(false);
+    });
+    return out;
+  };
 
-    // Lưu báo cáo (kèm trials có studentResult để tái dựng deterministic).
-    const richTrials: RichTrial[] = [];
-    (Object.keys(map) as LabKind[]).forEach((lab) => {
-      (map[lab] || []).forEach((r) =>
-        richTrials.push({ ...(r as RichTrial), lab, s: r.s, t: r.t, theta: r.theta, balanced: r.balanced, studentResult: r.studentResult })
-      );
+  const handleSave = () => {
+    if (trials.length === 0 || isDemo) {
+      flash("Chưa có số liệu của em — hãy đo ở Phòng Lab rồi lưu sang Sổ Báo Cáo.", false);
+      return;
+    }
+    const richTrials = buildTrialsWithResults();
+    const blank = richTrials.filter((t) => t.studentResult == null).length;
+    if (blank && !window.confirm(`Còn ${blank} ô "Kết quả" để trống. Vẫn lưu báo cáo?`)) return;
+    const date = new Date().toLocaleString("vi-VN", {
+      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
     });
     const report: ExperimentReport = {
       id: `rep-${Date.now()}`,
       lessonId: activeLesson,
       title: spec?.title || activeLesson,
       shortTitle: spec?.shortTitle || "",
-      date: new Date().toLocaleString("vi-VN", {
-        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-      }),
+      date,
       attempt: reports.filter((r) => r.lessonId === activeLesson).length + 1,
       measures: richTrials.map((t) => ({ s: t.s, t: t.t })),
       trials: richTrials,
-      score: g.totalScore,
-      graphScore,
-      aiFeedback: comment,
     };
-    onReportGraded?.(report);
+    onReportSaved?.(report);
+    setSavedAt(date);
     setTab("report");
   };
 
@@ -216,31 +191,37 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
     <div className="w-full space-y-5">
       {/* Header + lesson selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2DFD8]/60 pb-3 print:hidden">
-        <h2 className="text-base md:text-lg font-black text-[#321E12] flex items-center gap-2">
-          <FileText className="w-5 h-5 text-[#C85A17] stroke-[2.5]" />
-          Sổ Báo Cáo — Chấm điểm &amp; Báo cáo
-        </h2>
+        <div>
+          <h2 className="text-base md:text-lg font-black text-[#321E12] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#C85A17] stroke-[2.5]" />
+            Sổ Báo Cáo
+          </h2>
+          <p className="text-[11px] font-bold text-[#605248] mt-0.5">Số liệu từ Phòng Lab → tự tính kết quả → vẽ đồ thị → lưu &amp; in báo cáo.</p>
+        </div>
         <select
           value={activeLesson}
-          onChange={(e) => { setActiveLesson(e.target.value); setGrade(null); setGraphScore(null); setAiComment(""); setResults({}); }}
+          onChange={(e) => changeLesson(e.target.value)}
+          aria-label="Chọn bài thực hành"
           className="text-xs font-black text-[#321E12] bg-white border border-[#E2DFD8] rounded-lg px-3 py-1.5 outline-none cursor-pointer"
         >
           {lessonIds.map((id) => (
-            <option key={id} value={id}>{EXPERIMENT_SPECS[id].book}</option>
+            <option key={id} value={id}>{EXPERIMENT_SPECS[id].book} — {EXPERIMENT_SPECS[id].shortTitle}</option>
           ))}
         </select>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5 flex-wrap print:hidden">
+      <div className="flex gap-1.5 flex-wrap print:hidden" role="tablist">
         {([
-          ["data", "Số liệu", Table],
-          ["graph", "Đồ thị", LineChartIcon],
-          ["report", "Báo cáo", FileText],
+          ["data", "1. Số liệu", Table],
+          ["graph", "2. Đồ thị", LineChartIcon],
+          ["report", "3. Báo cáo", FileText],
           ["review", "Ôn tập", GraduationCap],
         ] as [TabKey, string, typeof Table][]).map(([key, label, Icon]) => (
           <button
             key={key}
+            role="tab"
+            aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border ${
               tab === key
@@ -252,6 +233,13 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
           </button>
         ))}
       </div>
+
+      {isDemo && tab !== "review" && (
+        <div className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-bold text-sky-900 print:hidden">
+          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>Đây là <b>số liệu mẫu</b> để em xem cách trình bày. Vào Phòng Lab, đo xong bấm “Lưu vào Sổ Báo Cáo” để có số liệu của chính em.</span>
+        </div>
+      )}
 
       {/* ---------- TAB: SỐ LIỆU ---------- */}
       {tab === "data" && (
@@ -267,26 +255,34 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
                   rows={samples[lab] || []}
                   results={results}
                   onChange={(i, v) => setResult(lab, i, v)}
-                  grade={grade}
                 />
               ))}
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-[11px] font-bold text-[#605248] max-w-md">
-                  Tổng = <b>Thí nghiệm×70% + Đồ thị×30%</b> (đồ thị bắt buộc). Thí nghiệm =
-                  Số liệu×70% + Trình tự×20% + Sai số×10%. Dung sai tính đúng chỉ {RESULT_TOLERANCE * 100}%,
-                  cần tối thiểu {MIN_TRIALS} lần đo/mẫu. Máy chấm điểm số, Trợ lý Phylab (SmartBot) viết nhận xét.
+              <div className="flex items-center justify-between gap-3 flex-wrap bg-white border border-[#E2DFD8] rounded-2xl p-4">
+                <p className="text-[11px] font-bold text-[#605248] max-w-lg leading-relaxed">
+                  Cột <b>Kết quả</b> được điền sẵn theo công thức — em kiểm tra lại, sửa theo cách tính của mình,
+                  rồi sang <b>Đồ thị</b> và <b>lưu báo cáo</b>.
                 </p>
-                <p className={`text-[11px] font-black ${graphScore != null ? "text-emerald-600" : "text-rose-600"}`}>
-                  {graphScore != null ? `✓ Đồ thị đã chấm: ${graphScore}/10` : "⚠ Chưa chấm đồ thị (bắt buộc)"}
-                </p>
-                <button
-                  onClick={handleGrade}
-                  className="px-5 py-2.5 bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-xs font-black rounded-xl shadow-sm hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="w-4 h-4" /> Chấm điểm &amp; nộp báo cáo
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setTab("graph")}
+                    className="px-4 py-2.5 bg-white border border-[#E2DFD8] text-[#321E12] text-xs font-black rounded-xl hover:border-[#C85A17]/40 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <LineChartIcon className="w-4 h-4" /> Vẽ đồ thị
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isDemo}
+                    className="px-5 py-2.5 bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-xs font-black rounded-xl shadow-sm hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                  >
+                    <Save className="w-4 h-4" /> {hasAssignment ? "Lưu & nộp cho giáo viên" : "Lưu báo cáo"}
+                  </button>
+                </div>
               </div>
-              {grade && <GradeBreakdown grade={grade} />}
+              {savedAt && (
+                <p className="text-[11px] font-black text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" /> Đã lưu báo cáo lúc {savedAt}.
+                </p>
+              )}
             </>
           )}
         </div>
@@ -295,13 +291,7 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
       {/* ---------- TAB: ĐỒ THỊ ---------- */}
       {/* Luôn mount (chỉ ẩn/hiện) để không mất các điểm HS đã vẽ khi chuyển tab. */}
       <div className={tab === "graph" ? "" : "hidden"}>
-        <GraphTab
-          lessonId={activeLesson}
-          trials={trials}
-          graphScore={graphScore}
-          onScored={setGraphScore}
-          onBackToData={() => setTab("data")}
-        />
+        <GraphTab key={activeLesson} lessonId={activeLesson} trials={trials} />
       </div>
 
       {/* ---------- TAB: BÁO CÁO ---------- */}
@@ -309,19 +299,21 @@ export default function NoteSection({ reports, labData, studentName, assistantSe
         <ReportTab
           spec={spec}
           studentName={studentName}
-          grade={grade}
-          aiComment={aiComment}
-          aiLoading={aiLoading}
+          samples={samples}
+          results={results}
           report={activeReport}
-          expectedTargets={expectedTargets}
+          savedAt={savedAt}
+          canSave={!isDemo && trials.length > 0}
+          hasAssignment={hasAssignment}
+          onSave={handleSave}
         />
       )}
 
       {/* ---------- TAB: ÔN TẬP ---------- */}
-      {tab === "review" && <ReviewTab lessonId={activeLesson} lessonTitle={spec?.title} assistantSettings={assistantSettings} />}
+      {tab === "review" && <ReviewTab lessonId={activeLesson} />}
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl shadow-lg text-xs font-black flex items-center gap-2 animate-scale-up print:hidden ${
+        <div className={`fixed bottom-24 lg:bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl shadow-lg text-xs font-black flex items-center gap-2 animate-scale-up print:hidden ${
           toast.ok ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
         }`}>
           {toast.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
@@ -338,153 +330,97 @@ function EmptyState() {
   return (
     <div className="bg-white border border-[#E2DFD8] rounded-3xl p-12 text-center text-[#605248]">
       <Table className="w-12 h-12 mx-auto mb-3 stroke-[1.5] text-[#605248]/40" />
-      <h3 className="text-sm font-black text-[#321E12]">Chưa có số liệu để chấm</h3>
+      <h3 className="text-sm font-black text-[#321E12]">Chưa có số liệu</h3>
       <p className="text-xs font-bold mt-2">
-        Vào <b>Phòng Lab</b>, đo đủ các câu trong đề rồi bấm <b>“Xuất sang Sổ Báo Cáo”</b> để chấm điểm ở đây.
+        Vào <b>Phòng Lab</b>, đo các cấu hình trong nhiệm vụ rồi bấm <b>“Lưu vào Sổ Báo Cáo”</b>.
       </p>
     </div>
   );
 }
 
 function SampleTable({
-  lab, rows, results, onChange, grade,
+  lab, rows, results, onChange,
 }: {
   lab: LabKind;
   rows: RichTrial[];
   results: Record<string, string>;
   onChange: (i: number, v: string) => void;
-  grade: LessonGrade | null;
 }) {
   const meta = LAB_META[lab];
   const showTheta = lab === "average" || lab === "instant";
   const displayFirst = (r: RichTrial) => lab === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s);
   const displaySecond = (r: RichTrial) => lab === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t);
+  const values = rows.map((_, i) => parseResult(results[`${lab}-${i}`])).filter((v): v is number => v != null);
+  const means = meanGroups(lab, rows, results);
   return (
     <div className="bg-white rounded-2xl border border-[#E2DFD8] p-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
         <h3 className="text-xs font-black uppercase text-[#C85A17]">{meta.title}</h3>
         <span className="text-[10px] font-bold text-[#605248]">
           Công thức: <MathText text={`$${meta.formula}$`} />
         </span>
       </div>
       <div className="overflow-x-auto rounded-xl border border-[#E2DFD8]">
-        <table className="w-full min-w-[440px] text-left text-[11px]">
+        <table className="w-full min-w-[420px] text-left text-[11px]">
           <thead>
             <tr className="bg-[#FAF6F0] border-b border-[#E2DFD8] font-black text-[#321E12]">
               <th className="p-2 text-center w-8">#</th>
               <th className="p-2 text-center">{meta.sLabel}</th>
               <th className="p-2 text-center">{meta.tLabel}</th>
               {showTheta && <th className="p-2 text-center">θ</th>}
-              <th className="p-2 text-center">Thiết lập</th>
-              <th className="p-2 text-center w-28">Kết quả tính ({meta.unit})</th>
-              <th className="p-2 text-center w-16">Đánh giá</th>
+              <th className="p-2 text-center">Điều kiện</th>
+              <th className="p-2 text-center w-32">Kết quả {meta.resultLabel} ({meta.unit})</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => {
-              const raw = results[`${lab}-${i}`];
-              const sr = raw != null && raw.trim() !== "" ? parseFloat(raw) : null;
-              const correct = correctResultOf(lab, r.s, r.t);
-              const ok = sr != null && Math.abs(sr - correct) <= correct * RESULT_TOLERANCE;
-              const filled = sr != null;
-              const rowGrade = grade?.samples.find((sample) => sample.labKind === lab)?.perRow[i];
-              const matchesExpectedTarget = rowGrade?.matchesExpectedTarget !== false;
-              return (
-                <tr key={i} className={`border-b border-[#E2DFD8]/60 font-semibold text-[#605248] ${matchesExpectedTarget ? "" : "bg-rose-50"}`}>
-                  <td className="p-2 text-center text-[#605248]/40 font-black">{i + 1}</td>
-                  <td className="p-2 text-center font-mono">{displayFirst(r).toFixed(lab === "emf" ? 4 : 3)}</td>
-                  <td className="p-2 text-center font-mono">{displaySecond(r).toFixed(lab === "emf" ? 3 : 4)}</td>
-                  {showTheta && <td className="p-2 text-center">{r.theta ?? "—"}°</td>}
-                  <td className="p-2 text-center">
-                    {lab === "emf" ? <span className="text-[8px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-black">R={r.config ?? r.resistance ?? 0} Ω</span> : r.balanced === false
-                      ? <span className="text-[8px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-black">Sai</span>
-                      : <span className="text-[8px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">Đúng</span>}
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number" step="0.001" value={raw ?? ""}
-                      onChange={(e) => onChange(i, e.target.value)}
-                      placeholder="tự tính…"
-                      className="w-full px-1.5 py-1 border border-[#E2DFD8] focus:border-[#C85A17] outline-none rounded-md bg-white font-bold text-center text-[#321E12] text-xs"
-                    />
-                  </td>
-                  <td className="p-2 text-center">
-                    {!matchesExpectedTarget ? <span className="text-[8px] bg-rose-600 text-white px-1.5 py-0.5 rounded font-black">Sai đề</span>
-                      : !filled ? <span className="text-[8px] text-[#605248]/40 font-black">—</span>
-                      : ok ? <span className="text-[8px] bg-emerald-500 text-white px-1.5 py-0.5 rounded font-black">Đúng</span>
-                        : <span className="text-[8px] bg-rose-100 border border-rose-300 text-rose-700 px-1.5 py-0.5 rounded font-black">Lệch</span>}
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b border-[#E2DFD8]/60 font-semibold text-[#605248]">
+                <td className="p-2 text-center text-[#605248]/40 font-black">{i + 1}</td>
+                <td className="p-2 text-center font-mono">{displayFirst(r).toFixed(lab === "emf" ? 4 : 3)}</td>
+                <td className="p-2 text-center font-mono">{displaySecond(r).toFixed(lab === "emf" ? 3 : 4)}</td>
+                {showTheta && <td className="p-2 text-center">{r.theta ?? "—"}°</td>}
+                <td className="p-2 text-center">
+                  {lab === "emf"
+                    ? <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-black">{r.cell === "old" ? "Pin cũ" : r.cell === "new" ? "Pin mới" : "Pin"} · R={r.config ?? r.resistance ?? 0} Ω</span>
+                    : r.balanced === false
+                      ? <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black">Chưa cân bằng</span>
+                      : r.steady === false
+                        ? <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black" title="Thả khi máng/trụ còn rung — số đo dễ lệch">Thả khi còn rung</span>
+                        : <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-black">Cân bằng</span>}
+                </td>
+                <td className="p-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={results[`${lab}-${i}`] ?? ""}
+                    onChange={(e) => onChange(i, e.target.value)}
+                    placeholder="tự tính…"
+                    aria-label={`Kết quả lần đo ${i + 1}`}
+                    className="w-full px-1.5 py-1 border border-[#E2DFD8] focus:border-[#C85A17] outline-none rounded-md bg-white font-bold text-center text-[#321E12] text-xs"
+                  />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      {grade && (() => {
-        const sg = grade.samples.find((s) => s.labKind === lab);
-        if (!sg) return null;
-        return (
-          <p className="text-[10px] font-bold text-[#605248] mt-2">
-            Số liệu {sg.dataScore}/10 · Trình tự {sg.sequenceScore}/10 · Sai số {sg.errorScore}/10 →
-            <b className="text-[#C85A17]"> Điểm mẫu {sg.experimentScore.toFixed(1)}/10</b>
-            {sg.badSetupCount > 0 && <span className="text-rose-600"> (trừ {sg.badSetupCount} lần đo khi chưa cân bằng)</span>}
-            {sg.missingTrials > 0 && <span className="text-rose-600"> (thiếu {sg.missingTrials}/{sg.expectedConfigurationCount} cấu hình {sg.assignmentConstrained ? "đề giáo viên" : "độc lập"})</span>}
-            {sg.unexpectedTrialCount > 0 && <span className="text-rose-700"> ({sg.unexpectedTrialCount} dòng đo sai cấu hình đề)</span>}
-            {sg.duplicateTrialCount > 0 && <span className="text-amber-700"> ({sg.duplicateTrialCount} dòng trùng không tăng độ phủ)</span>}
-          </p>
-        );
-      })()}
+      {means.length > 0 && (
+        <p className="text-[11px] font-bold text-[#605248] mt-2">
+          Giá trị trung bình:{" "}
+          {means.map((g, i) => (
+            <span key={g.label || i}>
+              {i > 0 && " · "}
+              <b className="text-[#321E12]">{g.label ? `${g.label}: ` : ""}{meta.resultLabel}<sub>tb</sub> = {g.mean.toFixed(decimalsOf(lab) + 1)} {meta.unit}</b>
+            </span>
+          ))}
+          <span className="text-[#605248]/70"> (từ {values.length}/{rows.length} kết quả)</span>
+        </p>
+      )}
     </div>
   );
 }
 
-function GradeBreakdown({ grade }: { grade: LessonGrade }) {
-  return (
-    <div className="bg-[#FFF7EF] border border-[#C85A17]/25 rounded-2xl p-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-sm font-black text-[#321E12]">Kết quả chấm</h3>
-        <div className="text-2xl font-black text-[#C85A17]">{grade.totalScore.toFixed(1)}<span className="text-sm text-[#605248]">/10</span></div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
-        {grade.samples.some((sample) => sample.assignmentConstrained) && (
-          <Metric label="Đúng cấu hình đề" value={`${grade.assignmentCoveragePercent}%`} sub="cap điểm tổng theo độ phủ" />
-        )}
-        {grade.samples.map((s) => (
-          <Metric key={s.labKind} label={s.label} value={`${s.experimentScore.toFixed(1)}/10`} sub={`sát ${s.physicalCloseness}%`} />
-        ))}
-        <Metric label="Điểm thí nghiệm" value={`${grade.experimentScore.toFixed(1)}/10`} sub="TB các mẫu" />
-        {grade.hasGraph && grade.graphScore != null && (
-          <Metric label="Điểm đồ thị" value={`${grade.graphScore.toFixed(1)}/10`} sub="tính 30% tổng" />
-        )}
-        <Metric label="Điểm tổng" value={`${grade.totalScore.toFixed(1)}/10`} sub="TN×70% + Đồ thị×30%" highlight />
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, sub, highlight }: { label: string; value: string; sub?: string; highlight?: boolean }) {
-  return (
-    <div className={`rounded-xl p-3 border ${highlight ? "bg-[#C85A17] text-white border-[#C85A17]" : "bg-white border-[#E2DFD8]"}`}>
-      <p className={`text-[9px] font-black uppercase ${highlight ? "text-white/80" : "text-[#605248]"}`}>{label}</p>
-      <p className={`text-base font-black ${highlight ? "text-white" : "text-[#321E12]"}`}>{value}</p>
-      {sub && <p className={`text-[9px] font-bold ${highlight ? "text-white/70" : "text-[#605248]/70"}`}>{sub}</p>}
-    </div>
-  );
-}
-
-function GraphTab({
-  lessonId,
-  trials,
-  graphScore,
-  onScored,
-  onBackToData,
-}: {
-  lessonId: string;
-  trials: RichTrial[];
-  graphScore: number | null;
-  onScored?: (score: number) => void;
-  onBackToData?: () => void;
-}) {
+function GraphTab({ lessonId, trials }: { lessonId: string; trials: RichTrial[] }) {
   const isFreeFall = lessonId === "do-gia-toc-roi-tu-do";
   const isOhm = lessonId === "do-dien-tro-dinh-luat-ohm";
   const isEmf = lessonId === "do-suat-dien-dong-pin-dien-hoa";
@@ -493,24 +429,27 @@ function GraphTab({
   let data: DataPoint[] = [];
   let xLabel = "", yLabel = "", relation = "";
   if (isOhm) {
-    // Đặc tuyến I-U của vật dẫn X (Y vẫn được so sánh đầy đủ trong bảng/báo cáo).
+    // Đặc tuyến I-U của vật dẫn X (Y vẫn có trong bảng/báo cáo).
     data = trials.filter((t) => t.lab === "ohm-x" && (t.current ?? t.t) > 0)
       .map((t) => ({ x: +(t.voltage ?? t.s).toFixed(2), y: +(t.current ?? t.t).toFixed(5) }))
       .sort((a, b) => a.x - b.x);
     xLabel = "U (V) — vật dẫn X"; yLabel = "I (A)"; relation = "$I = U/R_X$";
   } else if (isEmf) {
     // U = E - Ir: tung độ gốc là E, độ lớn hệ số góc là r.
-    data = trials.filter((t) => t.lab === "emf" && (t.current ?? 0) > 0 && (t.voltage ?? 0) > 0)
+    const emfTrials = trials.some((t) => t.lab === "emf" && t.cell === "new")
+      ? trials.filter((t) => t.lab === "emf" && t.cell === "new")
+      : trials.filter((t) => t.lab === "emf");
+    data = emfTrials.filter((t) => (t.current ?? 0) > 0 && (t.voltage ?? 0) > 0)
       .map((t) => ({ x: +(t.current ?? 0).toFixed(5), y: +(t.voltage ?? 0).toFixed(4) }))
       .sort((a, b) => a.x - b.x);
-    xLabel = "I (A)"; yLabel = "U (V)"; relation = "$U = \\mathcal{E} - Ir$";
+    xLabel = "I (A) — pin mới"; yLabel = "U (V)"; relation = "$U = \\mathcal{E} - Ir$";
   } else if (isFreeFall) {
     // s theo t² (độ dốc = g/2, đường thẳng qua gốc).
     data = trials.filter((t) => t.lab === "freefall" && t.t > 0)
       .map((t) => ({ x: +(t.t * t.t).toFixed(4), y: +t.s.toFixed(3) }));
     xLabel = "t² (s²)"; yLabel = "s (m)"; relation = "$s = \\tfrac{1}{2}g\\,t^2$";
   } else {
-    // Bài 6: v = s/t theo s — luyện vẽ (không bắt buộc tính điểm).
+    // Bài 6: v = s/t theo s.
     data = trials.filter((t) => t.t > 0)
       .map((t) => ({ x: +t.s.toFixed(3), y: +(t.s / t.t).toFixed(3) }))
       .sort((a, b) => a.x - b.x);
@@ -524,8 +463,8 @@ function GraphTab({
         <h3 className="text-sm font-black text-[#321E12]">Đồ thị — em tự vẽ từ số liệu</h3>
       </div>
       <p className="text-[11px] font-bold text-[#605248]">
-        Dùng bảng số liệu em đã đo, tự <b>chấm điểm lên lưới</b> rồi bấm “Chấm đồ thị”. Máy sẽ đối chiếu điểm em
-        vẽ với số liệu chuẩn và tính độ tuyến tính (R²). Quan hệ lý thuyết: <MathText text={relation} />.
+        Bấm lên lưới để đặt từng điểm theo bảng số liệu, rồi bấm “Đối chiếu” để hiện điểm số liệu thật và đường
+        khớp qua các điểm em vẽ. Quan hệ lý thuyết: <MathText text={relation} />.
       </p>
 
       {/* Bảng số liệu tham chiếu để HS biết cần vẽ điểm nào */}
@@ -540,24 +479,10 @@ function GraphTab({
       )}
 
       {data.length >= 2 ? (
-        <GraphPlotter data={data} xLabel={xLabel} yLabel={yLabel} onScored={onScored} />
+        <GraphPlotter data={data} xLabel={xLabel} yLabel={yLabel} />
       ) : (
         <div className="text-center py-10 text-[#605248]/60 text-xs font-bold">
-          Cần ít nhất 2 lần đo (Xuất từ phòng Lab) để vẽ đồ thị.
-        </div>
-      )}
-      {graphScore != null && (
-        <div className="bg-[#F3F8F3] border border-emerald-200 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-[11px] font-black text-emerald-700">
-            Đồ thị đã chấm {graphScore}/10. Quay về tab Số liệu để bấm “Chấm điểm & nộp báo cáo”.
-          </p>
-          <button
-            type="button"
-            onClick={onBackToData}
-            className="px-3 py-2 bg-emerald-600 text-white text-[10px] font-black rounded-xl hover:bg-emerald-700 transition-all cursor-pointer"
-          >
-            Về Số liệu
-          </button>
+          Cần ít nhất 2 lần đo (lưu từ Phòng Lab) để vẽ đồ thị.
         </div>
       )}
     </div>
@@ -565,43 +490,42 @@ function GraphTab({
 }
 
 function ReportTab({
-  spec, studentName, grade, aiComment, aiLoading, report, expectedTargets,
+  spec, studentName, samples, results, report, savedAt, canSave, hasAssignment, onSave,
 }: {
   spec: (typeof EXPERIMENT_SPECS)[string] | undefined;
   studentName?: string;
-  grade: LessonGrade | null;
-  aiComment: string;
-  aiLoading: boolean;
+  samples: Partial<Record<LabKind, RichTrial[]>>;
+  results: Record<string, string>;
   report: ExperimentReport | null;
-  expectedTargets?: LabAssignmentPayload["problemSets"];
+  savedAt: string | null;
+  canSave: boolean;
+  hasAssignment?: boolean;
+  onSave: () => void;
 }) {
-  // Nếu chưa chấm ở phiên này nhưng có báo cáo cũ, tái dựng điểm deterministic từ trials
-  // (kèm điểm đồ thị đã lưu trong báo cáo, nếu có).
-  const effectiveGrade = grade
-    ?? (report?.trials?.length
-      ? gradeLesson(
-          report.lessonId,
-          groupByLab(report.trials) as Partial<Record<LabKind, Trial[]>>,
-          { hasGraph: report.graphScore != null, graphScore: report.graphScore, expectedTargets }
-        )
-      : null);
-  const comment = aiComment || report?.aiFeedback || "";
-
-  if (!effectiveGrade) {
+  const labs = Object.keys(samples) as LabKind[];
+  if (!labs.length) {
     return (
       <div className="bg-white border border-[#E2DFD8] rounded-3xl p-10 text-center text-[#605248]">
         <FileText className="w-10 h-10 mx-auto mb-3 text-[#605248]/40" />
-        <p className="text-xs font-bold">Chưa có báo cáo. Hãy chấm điểm ở tab <b>Số liệu</b> trước.</p>
+        <p className="text-xs font-bold">Chưa có số liệu để lập báo cáo. Hãy đo ở <b>Phòng Lab</b> trước.</p>
       </div>
     );
   }
 
-  const today = report?.date || new Date().toLocaleDateString("vi-VN");
+  const today = savedAt || report?.date || new Date().toLocaleDateString("vi-VN");
   const isGrade11 = spec?.id === "do-dien-tro-dinh-luat-ohm" || spec?.id === "do-suat-dien-dong-pin-dien-hoa";
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end print:hidden">
+      <div className="flex justify-end gap-2 flex-wrap print:hidden">
+        {canSave && !savedAt && (
+          <button
+            onClick={onSave}
+            className="px-4 py-2 bg-white border border-[#C85A17]/40 text-[#B24A0C] text-xs font-black rounded-lg hover:bg-[#FFF0E0] transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Save className="w-4 h-4" /> {hasAssignment ? "Lưu & nộp cho giáo viên" : "Lưu báo cáo"}
+          </button>
+        )}
         <button
           onClick={() => window.print()}
           className="px-4 py-2 bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-xs font-black rounded-lg hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
@@ -611,7 +535,7 @@ function ReportTab({
       </div>
 
       <article id="phylab-report" className="bg-white rounded-3xl border border-[#E2DFD8] shadow-sm p-6 md:p-10 space-y-6 print:rounded-none print:border-0 print:shadow-none print:p-0">
-        {/* ===== Quốc hiệu / đầu trang kiểu báo cáo trường học ===== */}
+        {/* ===== Đầu trang kiểu báo cáo trường học ===== */}
         <header className="text-center border-b-2 border-[#321E12] pb-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-0.5 text-[10px] font-black uppercase text-[#605248] print:flex-row">
             <span>Trường THPT Chuyên Lê Hồng Phong</span>
@@ -627,7 +551,7 @@ function ReportTab({
           <p>Họ và tên: <b className="border-b border-dotted border-[#605248]">{studentName?.split(" (")[0] || "—"}</b></p>
           <p>Lớp: <b>{isGrade11 ? "11A1" : "10A1"}</b> · Mã HS: <b>PH-2026-09</b></p>
           <p>Ngày thực hành: <b>{today}</b></p>
-          <p>Lần nộp: <b>{report?.attempt ?? 1}</b></p>
+          <p>Lần lập báo cáo: <b>{report?.attempt ?? 1}</b></p>
         </section>
 
         {/* ===== I. Mục đích ===== */}
@@ -639,98 +563,62 @@ function ReportTab({
         {/* ===== II. Bảng số liệu & kết quả từng mẫu ===== */}
         <section className="space-y-4">
           <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">II. Số liệu đo &amp; kết quả tính</h2>
-          {effectiveGrade.samples.map((s) => (
-            <div key={s.labKind} className="space-y-1.5 break-inside-avoid">
-              <h3 className="text-[11px] font-black text-[#C85A17] uppercase">{s.label} <span className="text-[#605248] normal-case">— công thức <MathText text={`$${LAB_META[s.labKind].formula}$`} /></span></h3>
-              <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full min-w-[520px] print:min-w-0 text-[10px] border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF6F0] font-black text-[#321E12]">
-                    <th className="border border-[#C9C2B6] p-1.5 w-8">Lần</th>
-                    <th className="border border-[#C9C2B6] p-1.5">{LAB_META[s.labKind].sLabel}</th>
-                    <th className="border border-[#C9C2B6] p-1.5">{LAB_META[s.labKind].tLabel}</th>
-                    {(s.labKind === "average" || s.labKind === "instant") && <th className="border border-[#C9C2B6] p-1.5">θ (°)</th>}
-                    <th className="border border-[#C9C2B6] p-1.5">HS tính ({s.unit})</th>
-                    <th className="border border-[#C9C2B6] p-1.5">Theo công thức ({s.unit})</th>
-                    <th className="border border-[#C9C2B6] p-1.5">Sát lý thuyết</th>
-                    <th className="border border-[#C9C2B6] p-1.5">Đánh giá</th>
-                  </tr>
-                </thead>
-                <tbody className="font-semibold text-[#321E12]">
-                  {s.perRow.map((r) => (
-                    <tr key={r.index} className="text-center">
-                      <td className="border border-[#C9C2B6] p-1.5 font-black">{r.index}</td>
-                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{(s.labKind === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s)).toFixed(s.labKind === "emf" ? 4 : 3)}</td>
-                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{(s.labKind === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t)).toFixed(s.labKind === "emf" ? 3 : 4)}</td>
-                      {(s.labKind === "average" || s.labKind === "instant") && <td className="border border-[#C9C2B6] p-1.5">{r.theta ?? "—"}</td>}
-                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.studentResult != null ? r.studentResult.toFixed(3) : "(bỏ trống)"}</td>
-                      <td className="border border-[#C9C2B6] p-1.5 font-mono">{r.correctResult.toFixed(3)}</td>
-                      <td className="border border-[#C9C2B6] p-1.5">{Math.round(r.physCloseness)}%</td>
-                      <td className={`border border-[#C9C2B6] p-1.5 font-black ${r.correct ? "text-emerald-700" : "text-rose-700"}`}>
-                        {!r.matchesExpectedTarget ? "Sai cấu hình đề" : r.correct ? "Đúng" : "Lệch"}{!r.balanced && " · chưa cân bằng"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {labs.map((lab) => {
+            const meta = LAB_META[lab];
+            const rows = samples[lab] || [];
+            const values = rows.map((_, i) => parseResult(results[`${lab}-${i}`]));
+            const means = meanGroups(lab, rows, results);
+            const showTheta = lab === "average" || lab === "instant";
+            return (
+              <div key={lab} className="space-y-1.5 break-inside-avoid">
+                <h3 className="text-[11px] font-black text-[#C85A17] uppercase">{meta.title} <span className="text-[#605248] normal-case">— công thức <MathText text={`$${meta.formula}$`} /></span></h3>
+                <div className="overflow-x-auto print:overflow-visible">
+                  <table className="w-full min-w-[420px] print:min-w-0 text-[10px] border-collapse">
+                    <thead>
+                      <tr className="bg-[#FAF6F0] font-black text-[#321E12]">
+                        <th className="border border-[#C9C2B6] p-1.5 w-8">Lần</th>
+                        <th className="border border-[#C9C2B6] p-1.5">{meta.sLabel}</th>
+                        <th className="border border-[#C9C2B6] p-1.5">{meta.tLabel}</th>
+                        {showTheta && <th className="border border-[#C9C2B6] p-1.5">θ (°)</th>}
+                        <th className="border border-[#C9C2B6] p-1.5">{meta.resultLabel} ({meta.unit})</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-semibold text-[#321E12] text-center">
+                      {rows.map((r, i) => (
+                        <tr key={i}>
+                          <td className="border border-[#C9C2B6] p-1.5 font-black">{i + 1}</td>
+                          <td className="border border-[#C9C2B6] p-1.5 font-mono">{(lab === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s)).toFixed(lab === "emf" ? 4 : 3)}</td>
+                          <td className="border border-[#C9C2B6] p-1.5 font-mono">{(lab === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t)).toFixed(lab === "emf" ? 3 : 4)}</td>
+                          {showTheta && <td className="border border-[#C9C2B6] p-1.5">{r.theta ?? "—"}</td>}
+                          <td className="border border-[#C9C2B6] p-1.5 font-mono">{values[i] != null ? values[i]!.toFixed(decimalsOf(lab)) : "(bỏ trống)"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {means.length > 0 && (
+                  <p className="text-[10px] font-bold text-[#605248]">
+                    Giá trị trung bình:{" "}
+                    {means.map((g, i) => (
+                      <span key={g.label || i}>
+                        {i > 0 && " · "}
+                        <b className="text-[#321E12]">{g.label ? `${g.label}: ` : ""}{meta.resultLabel}<sub>tb</sub> = {g.mean.toFixed(decimalsOf(lab) + 1)} {meta.unit}</b>
+                      </span>
+                    ))}
+                    {rows.some((r) => r.balanced === false) && <span className="text-amber-700"> · có lần đo khi chưa cân bằng</span>}
+                    {rows.some((r) => r.steady === false) && <span className="text-amber-700"> · có lần thả khi còn rung</span>}
+                  </p>
+                )}
               </div>
-              <p className="text-[10px] font-bold text-[#605248]">
-                Giá trị trung bình: <b className="text-[#321E12]">{s.meanResult.toFixed(3)} {s.unit}</b>
-                {" "}· Giá trị lý thuyết: <b className="text-[#321E12]">{s.perRow[0]?.theoretical.toFixed(3)} {s.unit}</b>
-                {s.badSetupCount > 0 && <span className="text-rose-700"> · {s.badSetupCount} lần đo khi chưa cân bằng</span>}
-                {s.missingTrials > 0 && <span className="text-rose-700"> · thiếu {s.missingTrials}/{s.expectedConfigurationCount} cấu hình {s.assignmentConstrained ? "đề giáo viên" : "độc lập"}</span>}
-                {s.unexpectedTrialCount > 0 && <span className="text-rose-700"> · {s.unexpectedTrialCount} dòng sai cấu hình đề</span>}
-                {s.duplicateTrialCount > 0 && <span className="text-amber-700"> · {s.duplicateTrialCount} dòng trùng không tính độ phủ</span>}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
-        {/* ===== III. Bảng điểm ===== */}
+        {/* ===== III. Nhận xét ===== */}
         <section className="space-y-1.5 break-inside-avoid">
-          <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">III. Kết quả chấm điểm</h2>
-          <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full min-w-[440px] print:min-w-0 text-[10px] border-collapse">
-            <thead>
-              <tr className="bg-[#FAF6F0] font-black text-[#321E12]">
-                <th className="border border-[#C9C2B6] p-1.5 text-left">Mẫu</th>
-                <th className="border border-[#C9C2B6] p-1.5">Số liệu (70%)</th>
-                <th className="border border-[#C9C2B6] p-1.5">Trình tự (20%)</th>
-                <th className="border border-[#C9C2B6] p-1.5">Sai số (10%)</th>
-                <th className="border border-[#C9C2B6] p-1.5">Điểm mẫu</th>
-              </tr>
-            </thead>
-            <tbody className="font-semibold text-[#321E12] text-center">
-              {effectiveGrade.samples.map((s) => (
-                <tr key={s.labKind}>
-                  <td className="border border-[#C9C2B6] p-1.5 text-left font-black">{s.label}</td>
-                  <td className="border border-[#C9C2B6] p-1.5">{s.dataScore}/10</td>
-                  <td className="border border-[#C9C2B6] p-1.5">{s.sequenceScore}/10</td>
-                  <td className="border border-[#C9C2B6] p-1.5">{s.errorScore}/10</td>
-                  <td className="border border-[#C9C2B6] p-1.5 font-black">{s.experimentScore.toFixed(1)}/10</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-          <div className="flex items-center justify-between gap-2 flex-wrap bg-[#FFF7EF] border border-[#C85A17]/30 rounded-xl p-3 mt-2 print:rounded-none">
-            <div className="text-[11px] font-bold text-[#605248]">
-              Điểm thí nghiệm: <b className="text-[#321E12]">{effectiveGrade.experimentScore.toFixed(1)}/10</b>
-              {effectiveGrade.hasGraph && effectiveGrade.graphScore != null && (
-                <> · Điểm đồ thị: <b className="text-[#321E12]">{effectiveGrade.graphScore.toFixed(1)}/10</b> · Tổng = TN×70% + Đồ thị×30%</>
-              )}
-            </div>
-            <div className="text-2xl font-black text-[#C85A17]">{effectiveGrade.totalScore.toFixed(1)}<span className="text-sm text-[#605248]">/10</span></div>
-          </div>
-        </section>
-
-        {/* ===== IV. Nhận xét AI ===== */}
-        <section className="space-y-1.5 break-inside-avoid">
-          <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#C85A17]" /> IV. Nhận xét &amp; kết luận (Trợ lý Phylab)
-          </h2>
-          <div className="bg-[#FAF9F6] border border-[#E2DFD8] rounded-xl p-4 text-xs text-[#321E12] font-semibold leading-relaxed whitespace-pre-line min-h-[60px] print:rounded-none">
-            {aiLoading ? "Trợ lý đang viết nhận xét…" : <MathText text={comment || "Chưa có nhận xét."} />}
+          <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">III. Nhận xét &amp; kết luận</h2>
+          <div className="border border-dashed border-[#C9C2B6] rounded-xl p-4 min-h-[90px] text-[10px] font-bold text-[#605248]/60 italic print:rounded-none">
+            (Học sinh tự viết nhận xét về kết quả, nguyên nhân sai số và cách khắc phục.)
           </div>
         </section>
 
@@ -748,35 +636,22 @@ function ReportTab({
         </section>
 
         <footer className="hidden print:block text-center text-[9px] font-bold text-[#605248] border-t border-[#E2DFD8] pt-2">
-          Báo cáo xuất từ Phylab — phòng thí nghiệm vật lí ảo · điểm số chấm tự động (deterministic), nhận xét bởi Trợ lý Phylab.
+          Báo cáo xuất từ Phylab — phòng thí nghiệm vật lí ảo.
         </footer>
       </article>
     </div>
   );
 }
 
-function ReviewTab({
-  lessonId,
-  lessonTitle,
-  assistantSettings,
-}: {
-  lessonId: string;
-  lessonTitle?: string;
-  assistantSettings?: { pronoun?: "anh" | "chị"; answerStyle?: "short" | "detailed" };
-}) {
+function ReviewTab({ lessonId }: { lessonId: string }) {
   const review = getReview(lessonId);
   if (!review) {
     return <div className="bg-white border border-[#E2DFD8] rounded-2xl p-8 text-center text-xs font-bold text-[#605248]">Chưa có bộ ôn tập cho bài này.</div>;
   }
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-      <div className="lg:col-span-2 space-y-6">
-        <FlashcardDeck cards={review.flashcards} />
-        <QuizRunner quizzes={review.quizzes} />
-      </div>
-      <div className="lg:col-span-1">
-        <AiChat lessonTitle={lessonTitle} assistantSettings={assistantSettings} />
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+      <FlashcardDeck cards={review.flashcards} />
+      <QuizRunner quizzes={review.quizzes} />
     </div>
   );
 }
@@ -793,7 +668,7 @@ function FlashcardDeck({ cards }: { cards: ReturnType<typeof getReview> extends 
         <span className="text-[10px] font-black text-[#605248]">{idx + 1}/{cards.length}</span>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={() => go(-1)} className="w-9 h-9 rounded-full bg-white border border-[#E2DFD8] grid place-items-center hover:bg-[#FFF0E0] cursor-pointer flex-shrink-0">
+        <button onClick={() => go(-1)} aria-label="Thẻ trước" className="w-9 h-9 rounded-full bg-white border border-[#E2DFD8] grid place-items-center hover:bg-[#FFF0E0] cursor-pointer flex-shrink-0">
           <ChevronLeft className="w-4 h-4 text-[#605248]" />
         </button>
         <button
@@ -806,7 +681,7 @@ function FlashcardDeck({ cards }: { cards: ReturnType<typeof getReview> extends 
           <p className="text-sm font-black text-[#321E12] leading-snug"><MathText text={flipped ? c.back : c.front} /></p>
           <span className="text-[9px] text-[#605248]/50 font-black mt-3">{flipped ? "↩ bấm xem mặt trước" : "bấm để lật xem đáp án"}</span>
         </button>
-        <button onClick={() => go(1)} className="w-9 h-9 rounded-full bg-white border border-[#E2DFD8] grid place-items-center hover:bg-[#FFF0E0] cursor-pointer flex-shrink-0">
+        <button onClick={() => go(1)} aria-label="Thẻ sau" className="w-9 h-9 rounded-full bg-white border border-[#E2DFD8] grid place-items-center hover:bg-[#FFF0E0] cursor-pointer flex-shrink-0">
           <ChevronRight className="w-4 h-4 text-[#605248]" />
         </button>
       </div>
@@ -865,7 +740,7 @@ function QuizRunner({ quizzes }: { quizzes: NonNullable<ReturnType<typeof getRev
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-black uppercase text-[#C85A17]">Trắc nghiệm</h3>
+        <h3 className="text-xs font-black uppercase text-[#C85A17]">Trắc nghiệm tự kiểm tra</h3>
         <span className="text-[10px] font-black text-[#605248]">Câu {idx + 1}/{quizzes.length}</span>
       </div>
       <div className="bg-white border border-[#E2DFD8] rounded-2xl p-4">
@@ -907,19 +782,4 @@ function QuizRunner({ quizzes }: { quizzes: NonNullable<ReturnType<typeof getRev
       </div>
     </div>
   );
-}
-
-/* ============================ helpers ============================ */
-
-function buildGradeSummary(g: LessonGrade, title: string): string {
-  const lines = [`Bài: ${title}`, `Điểm tổng: ${g.totalScore.toFixed(1)}/10`, `Điểm thí nghiệm: ${g.experimentScore.toFixed(1)}/10`, `Độ phủ đúng cấu hình đề: ${g.assignmentCoveragePercent}%`];
-  g.samples.forEach((s) => {
-    lines.push(
-      `- ${s.label}: ${s.rowCount} dòng / ${s.uniqueConfigurationCount} cấu hình độc lập, TB=${s.meanResult.toFixed(3)}${s.unit}, ` +
-      `Số liệu ${s.dataScore}/10 (sát ${s.dataCloseness}%), Trình tự ${s.sequenceScore}/10 ` +
-      `(${s.badSetupCount} lần chưa cân bằng), Sai số ${s.errorScore}/10 (sát lý thuyết ${s.physicalCloseness}%), ` +
-      `${s.duplicateTrialCount} dòng trùng, ${s.unexpectedTrialCount} dòng sai cấu hình đề.`
-    );
-  });
-  return lines.join("\n");
 }

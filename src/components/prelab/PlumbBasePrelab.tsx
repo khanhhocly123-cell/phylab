@@ -1,87 +1,55 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Lock } from "lucide-react";
+import { Lock, RotateCcw, RotateCw } from "lucide-react";
 
-// Style constants
+/* ============================================================================
+   PlumbBasePrelab — cân bằng giá đỡ 3 chân bằng dây dọi (Bài 11).
+   Như đồ thật: giá có HAI vít chỉnh; mỗi vít nghiêng giá theo một hướng chéo nhau, nên
+   phải vặn luân phiên hai vít để đưa mũi quả dọi về đúng tâm bia (nhìn từ trên xuống).
+   Thẳng đứng rồi mới xiết khóa cả hai vít.
+   ========================================================================== */
+
 const C = {
   orange: "#E8842B",
-  orangeLt: "#F59C3C",
   orangeDk: "#D56A17",
   navy: "#1F4D78",
-  teal: "#2E74B5",
   ink: "#2A2A28",
   sub: "#8a8278",
-  sub2: "#9a9286",
-  cream: "#FBF6EC",
-  peach: "#FDEFE0",
-  peachLt: "#FFF6EC",
   line: "#EFE7D8",
-  card: "#FFFFFF",
   good: "#3E8E3E",
 };
-
 const FONT = "var(--font-nunito), Nunito, system-ui, sans-serif";
 
 const INFO = {
-  rod: {
-    title: "Thanh trục Inox (Ø10mm)",
-    body: "Thanh trục kim loại thẳng làm hướng dẫn lắp đặt máng rơi hoặc nam châm điện. Trục này cần được chỉnh thẳng đứng tuyệt đối để vật rơi không bị chạm vào thành máng hoặc lệch khỏi cổng quang.",
-  },
-  frame: {
-    title: "Khung gang đúc nguyên khối",
-    body: "Khung chịu lực chính bằng gang đúc nặng, tạo độ đầm và vững chãi cho toàn bộ hệ thống giá đỡ, giảm thiểu rung động khi tiến hành thí nghiệm.",
-  },
-  screwLeft: {
-    title: "Vít tinh chỉnh bên trái",
-    body: "Vặn vít bên trái để thay đổi độ cao của chân bên trái, qua đó điều chỉnh góc nghiêng của hệ khung và thanh trục theo phương ngang. Sau khi thăng bằng, bấm để xiết chặt cố định.",
-  },
-  screwRight: {
-    title: "Vít tinh chỉnh bên phải",
-    body: "Vặn vít bên phải để phối hợp nâng/hạ cạnh phải của chân đỡ. Sau khi thăng bằng, bấm để xiết chặt cố định.",
-  },
-  plumbLine: {
-    title: "Dây dọi cơ học thăng bằng",
-    body: "Tận dụng trọng lực để xác định phương thẳng đứng chính xác của Trái Đất. Khi đầu nhọn của quả dọi trùng với tâm bia phía dưới, thanh trục đạt trạng thái thẳng đứng.",
-  },
-  target: {
-    title: "Bia mục tiêu thăng bằng",
-    body: "Vòng tròn tiêu chuẩn nằm ở phần chân khung gang. Mục tiêu của bạn là điều chỉnh các vít sao cho mũi nhọn quả dọi chỉ chính xác vào tâm chữ thập.",
-  },
+  rod: { title: "Thanh trục Inox (Ø10mm)", body: "Thanh trục kim loại dẫn hướng cho máng rơi và nam châm điện. Trục phải thẳng đứng để trụ thép rơi không chạm thành máng và cắt đúng tia cổng quang." },
+  screwLeft: { title: "Vít chỉnh bên trái", body: "Vặn vít làm chân trái cao/thấp → giá nghiêng theo hướng chéo sang phải–lên. Vặn luân phiên với vít phải để đưa quả dọi về tâm." },
+  screwRight: { title: "Vít chỉnh bên phải", body: "Vặn vít làm chân phải cao/thấp → giá nghiêng theo hướng chéo sang trái–lên. Phối hợp hai vít thì đi được mọi hướng." },
+  plumbLine: { title: "Dây dọi", body: "Quả dọi luôn chỉ phương thẳng đứng của Trái Đất. Khi mũi quả dọi trùng tâm bia, thanh trục đã thẳng đứng." },
+  target: { title: "Bia nhìn từ trên xuống", body: "Chấm đỏ là mũi quả dọi. Vặn vít trái đẩy chấm theo mũi tên cam, vít phải theo mũi tên xanh. Đưa chấm vào vòng xanh ở tâm." },
 };
 
-const BC = {
-  cream: "#FBF6EC",
-  stroke: "#888780",
-  ironFrame: "#3A3D40",
-  ironLight: "#565A5E",
-  stainless: "#E2E8F0",
-  stainlessShadow: "#CBD5E1",
-  brass: "#D97706",
-  brassLight: "#F59E0B",
-  brassLocked: "#22C55E",
-  plumbLine: "#EF4444",
-  plumbBob: "#B45309",
-  targetBg: "#E2E8F0",
-  targetCross: "#94A3B8",
-};
-
-/* ── Layout — apparatus sits ON the ground ── */
-const GND = 282;           // ground line Y
-const CX = 220;            // center X
-const HUB_Y = 194;         // center hub top
-const HUB_H = 36;          // hub height
-const ROD_TOP = 28;        // rod top
-const ROD_BOT = HUB_Y + 8; // rod bottom (into hub)
-const ARM_END_Y = HUB_Y + 18; // where arms meet screw columns
-const SCREW_X_L = 100;     // left screw center X
-const SCREW_X_R = 340;     // right screw center X
-const SCREW_TOP = ARM_END_Y - 4;  // screw column top
-const SCREW_BOT = GND - 8; // screw column bottom (just above foot)
+const GND = 282;
+const CX = 190;
+const HUB_Y = 194;
+const HUB_H = 36;
+const ROD_TOP = 28;
+const ROD_BOT = HUB_Y + 8;
+const ARM_END_Y = HUB_Y + 18;
+const SCREW_X_L = 80;
+const SCREW_X_R = 300;
+const SCREW_TOP = ARM_END_Y - 4;
+const SCREW_BOT = GND - 8;
 const PLUMB_TOP = HUB_Y + 10;
 const PLUMB_BOT = GND - 20;
-const TARGET_Y = GND - 2;
-const PILLAR_BOT = GND;    // center pillar bottom
+// Bia nhìn từ trên (góc phải)
+const TV = { x: 382, y: 118, r: 46, k: 4.4 };
+// Mỗi nửa vòng vít đẩy mũi dọi một đoạn theo hướng chéo; vòng xanh = đạt thẳng đứng.
+const DIR_L = { x: 0.87, y: 0.5 };
+const DIR_R = { x: -0.87, y: 0.5 };
+const BASE = { x: 5.2, y: -2.6 };
+const STEP = 0.5;
+const TOL = 0.35;
 
 interface PlumbBasePrelabProps {
   onLocked?: () => void;
@@ -89,256 +57,164 @@ interface PlumbBasePrelabProps {
 
 export default function PlumbBasePrelab({ onLocked }: PlumbBasePrelabProps) {
   const [sel, setSel] = useState<keyof typeof INFO | null>(null);
-  const [tilt, setTilt] = useState(6.5);
+  const [turnL, setTurnL] = useState(0);
+  const [turnR, setTurnR] = useState(0);
   const [leftLocked, setLeftLocked] = useState(false);
   const [rightLocked, setRightLocked] = useState(false);
 
-  const isAligned = Math.abs(tilt) < 0.2;
+  const tilt = { x: BASE.x + DIR_L.x * turnL + DIR_R.x * turnR, y: BASE.y + DIR_L.y * turnL + DIR_R.y * turnR };
+  const off = Math.hypot(tilt.x, tilt.y);
+  const isAligned = off < TOL;
   const bothLocked = leftLocked && rightLocked;
-
-  const handleScrewChange = (val: string) => {
-    if (bothLocked) return;
-    // Nếu đã khóa 1 bên mà chỉnh lệch → mở khóa bên đó
-    if (leftLocked || rightLocked) {
-      setLeftLocked(false);
-      setRightLocked(false);
-    }
-    setTilt(parseFloat(val));
-  };
-
-  const handleLockLeft = () => {
-    setSel("screwLeft");
-    if (!isAligned || bothLocked) return;
-    setLeftLocked(true);
-    if (rightLocked && onLocked) onLocked();
-  };
-
-  const handleLockRight = () => {
-    setSel("screwRight");
-    if (!isAligned || bothLocked) return;
-    setRightLocked(true);
-    if (leftLocked && onLocked) onLocked();
-  };
-
-  const handleUnlock = () => {
-    setLeftLocked(false);
-    setRightLocked(false);
-    setSel(null);
-  };
-
-  const step = bothLocked ? "done" : isAligned ? "lock" : "align";
+  const eTilt = bothLocked ? { x: 0, y: 0 } : tilt;
   const lockedCount = (leftLocked ? 1 : 0) + (rightLocked ? 1 : 0);
+  const step = bothLocked ? "done" : isAligned ? "lock" : "align";
 
-  const info = sel
-    ? INFO[sel]
-    : {
-        title: "Giá đỡ 3 chân & Dây dọi",
-        body: step === "done"
-          ? "Hoàn tất! Cả hai vít đã được xiết chặt, thanh trục cố định thẳng đứng. Giá đỡ sẵn sàng cho thí nghiệm."
-          : "Để kết quả bài đo rơi tự do chính xác, thanh trục inox bắt buộc phải thẳng đứng. Kéo thanh trượt đưa dây dọi về tâm, sau đó bấm cả hai vít để cố định.",
-      };
+  const turn = (side: "L" | "R", dir: number) => {
+    if (bothLocked) return;
+    if (leftLocked || rightLocked) { setLeftLocked(false); setRightLocked(false); }
+    setSel(side === "L" ? "screwLeft" : "screwRight");
+    if (side === "L") setTurnL((v) => Math.max(-10, Math.min(10, +(v + dir * STEP).toFixed(2))));
+    else setTurnR((v) => Math.max(-10, Math.min(10, +(v + dir * STEP).toFixed(2))));
+  };
+  const lock = (side: "L" | "R") => {
+    setSel(side === "L" ? "screwLeft" : "screwRight");
+    if (!isAligned || bothLocked) return;
+    if (side === "L") { setLeftLocked(true); if (rightLocked) onLocked?.(); }
+    else { setRightLocked(true); if (leftLocked) onLocked?.(); }
+  };
+  const unlockAll = () => { setLeftLocked(false); setRightLocked(false); setSel(null); };
 
-  // Effective tilt (0 when locked)
-  const eTilt = bothLocked ? 0 : tilt;
+  const info = sel ? INFO[sel] : {
+    title: "Giá đỡ 3 chân & dây dọi",
+    body: step === "done"
+      ? "Hoàn tất! Cả hai vít đã xiết, thanh trục thẳng đứng. Giá đỡ sẵn sàng cho thí nghiệm."
+      : "Nhìn bia từ trên xuống: vặn hai vít luân phiên để chấm đỏ (mũi quả dọi) đi vào vòng xanh ở tâm, rồi xiết khóa cả hai vít.",
+  };
+  const bob = { x: TV.x + eTilt.x * TV.k, y: TV.y + eTilt.y * TV.k };
+  const clampTV = (p: { x: number; y: number }) => {
+    const dx = p.x - TV.x, dy = p.y - TV.y, d = Math.hypot(dx, dy), max = TV.r + 8;
+    return d > max ? { x: TV.x + (dx * max) / d, y: TV.y + (dy * max) / d } : p;
+  };
+  const bobShown = clampTV(bob);
+
+  const screw = (x: number, side: "L" | "R", locked: boolean, turns: number) => {
+    const dy = side === "L" ? eTilt.x * 0.5 : -eTilt.x * 0.5;
+    return (
+      <g style={{ cursor: isAligned && !bothLocked ? "pointer" : "default" }} onClick={() => lock(side)} transform={`translate(0, ${dy})`}>
+        <rect x={x - 2} y={SCREW_TOP} width="4" height={SCREW_BOT - SCREW_TOP} fill={locked ? "#22C55E" : "#D97706"} />
+        <rect x={x - 11} y={SCREW_TOP - 5} width="22" height="10" rx="2" fill={locked ? "#22C55E" : "#F59E0B"} stroke={locked ? "#16A34A" : "#B45309"} strokeWidth="0.6" />
+        {[0, 1, 2, 3, 4].map((i) => {
+          const phase = ((turns * 4 + i) % 5 + 5) % 5;
+          return <line key={i} x1={x - 9 + phase * 4.5} y1={SCREW_TOP - 4} x2={x - 9 + phase * 4.5} y2={SCREW_TOP + 4} stroke={locked ? "#15803D" : "#92400E"} strokeWidth="0.7" />;
+        })}
+        <polygon points={`${x - 6},${SCREW_BOT} ${x + 6},${SCREW_BOT} ${x + 8},${GND} ${x - 8},${GND}`} fill="#1E293B" />
+        {locked && (
+          <g transform={`translate(${x + 15}, ${SCREW_TOP})`}>
+            <circle r="6" fill="#22C55E" />
+            <polyline points="-3,0 -1,3 4,-3" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </g>
+        )}
+        <text x={x} y={GND + 14} textAnchor="middle" style={{ fontSize: 10, fontWeight: 900, fill: side === "L" ? C.orangeDk : C.navy, fontFamily: FONT }}>{side === "L" ? "Vít trái" : "Vít phải"}</text>
+      </g>
+    );
+  };
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", fontFamily: FONT }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-
-        {/* ── Step indicators ── */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <StepChip n={1} label="Chỉnh thăng bằng" active={step === "align"} done={step === "lock" || step === "done"} />
-          <ChevR color={step === "align" ? "#ccc" : C.navy} />
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <StepChip n={1} label="Đưa mũi dọi vào tâm" active={step === "align"} done={step !== "align"} />
+          <span style={{ color: step === "align" ? "#ccc" : C.navy, fontWeight: 900 }}>›</span>
           <StepChip n={2} label={`Xiết vít (${lockedCount}/2)`} active={step === "lock"} done={step === "done"} />
         </div>
 
-        {/* ── SVG ── */}
-        <div style={{ background: "#f3f1ea", borderRadius: 12, padding: "1rem", position: "relative" }}>
-          <svg
-            width="100%" viewBox="0 0 440 300"
-            role="img" aria-label="Giá đỡ 3 chân dây dọi"
-            style={{ display: "block", overflow: "visible" }}
-          >
-            <rect x="5" y="5" width="430" height="290" rx="4" fill={BC.cream} stroke={BC.stroke} strokeWidth="0.5" />
+        <div style={{ background: "#f3f1ea", borderRadius: 12, padding: "0.75rem" }}>
+          <svg width="100%" viewBox="0 0 440 300" role="img" aria-label="Giá đỡ 3 chân, dây dọi và bia nhìn từ trên" style={{ display: "block", overflow: "visible" }}>
+            <rect x="5" y="5" width="430" height="290" rx="6" fill="#FBF6EC" stroke="#888780" strokeWidth="0.5" />
+            <line x1="20" y1={GND} x2="330" y2={GND} stroke="#475569" strokeWidth="1.5" strokeDasharray="4 4" />
 
-            {/* Ground */}
-            <line x1="30" y1={GND} x2="410" y2={GND} stroke="#475569" strokeWidth="1.5" strokeDasharray="4 4" />
-
-            {/* ── ROD (rotates with tilt) ── */}
-            <g
-              transform={`rotate(${eTilt * 0.4}, ${CX}, ${HUB_Y + HUB_H / 2})`}
-              style={{ cursor: "pointer" }} onClick={() => setSel("rod")}
-            >
-              <rect x={CX - 6} y={ROD_TOP} width="12" height={ROD_BOT - ROD_TOP} fill={BC.stainless} />
-              <rect x={CX + 3} y={ROD_TOP} width="3" height={ROD_BOT - ROD_TOP} fill={BC.stainlessShadow} />
-              <ellipse cx={CX} cy={ROD_TOP} rx="6" ry="2" fill={BC.stainless} />
+            {/* Thanh trục nghiêng theo độ lệch */}
+            <g transform={`rotate(${eTilt.x * 0.45}, ${CX}, ${HUB_Y + HUB_H / 2})`} style={{ cursor: "pointer" }} onClick={() => setSel("rod")}>
+              <rect x={CX - 6} y={ROD_TOP} width="12" height={ROD_BOT - ROD_TOP} fill="#E2E8F0" />
+              <rect x={CX + 3} y={ROD_TOP} width="3" height={ROD_BOT - ROD_TOP} fill="#CBD5E1" />
             </g>
-
-            {/* ── FRAME ── */}
-            <g style={{ cursor: "pointer" }} onClick={() => setSel("frame")}>
-              {/* Hub */}
-              <rect x={CX - 18} y={HUB_Y} width="36" height={HUB_H} rx="4" fill={BC.ironFrame} />
-              <ellipse cx={CX} cy={HUB_Y} rx="18" ry="5" fill={BC.ironLight} />
-
-              {/* Left arm — curves from hub down to left screw column */}
-              <path d={`M ${CX - 18} ${HUB_Y + 14} C ${CX - 60} ${HUB_Y + 14}, ${SCREW_X_L + 30} ${ARM_END_Y - 4}, ${SCREW_X_L + 8} ${ARM_END_Y} L ${SCREW_X_L + 8} ${ARM_END_Y + 12} C ${SCREW_X_L + 30} ${ARM_END_Y + 6}, ${CX - 60} ${HUB_Y + 24}, ${CX - 18} ${HUB_Y + 24} Z`} fill={BC.ironFrame} />
-
-              {/* Right arm */}
-              <path d={`M ${CX + 18} ${HUB_Y + 14} C ${CX + 60} ${HUB_Y + 14}, ${SCREW_X_R - 30} ${ARM_END_Y - 4}, ${SCREW_X_R - 8} ${ARM_END_Y} L ${SCREW_X_R - 8} ${ARM_END_Y + 12} C ${SCREW_X_R - 30} ${ARM_END_Y + 6}, ${CX + 60} ${HUB_Y + 24}, ${CX + 18} ${HUB_Y + 24} Z`} fill={BC.ironFrame} />
-
-              {/* Screw housings (where screws go through) */}
-              <rect x={SCREW_X_L - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill={BC.ironFrame} />
-              <rect x={SCREW_X_R - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill={BC.ironFrame} />
-
-              {/* Center pillar down to target */}
-              <path d={`M ${CX - 8} ${HUB_Y + HUB_H - 4} L ${CX - 8} ${PILLAR_BOT} L ${CX + 8} ${PILLAR_BOT} L ${CX + 8} ${HUB_Y + HUB_H - 4} Z`} fill="#4B5257" opacity="0.12" />
-              <path d={`M ${CX - 6} ${HUB_Y + HUB_H - 4} L ${CX - 6} ${PILLAR_BOT} L ${CX + 6} ${PILLAR_BOT} L ${CX + 6} ${HUB_Y + HUB_H - 4} Z`} fill={BC.ironFrame} />
+            {/* Khung gang */}
+            <g>
+              <rect x={CX - 18} y={HUB_Y} width="36" height={HUB_H} rx="4" fill="#3A3D40" />
+              <path d={`M ${CX - 18} ${HUB_Y + 14} C ${CX - 60} ${HUB_Y + 14}, ${SCREW_X_L + 30} ${ARM_END_Y - 4}, ${SCREW_X_L + 8} ${ARM_END_Y} L ${SCREW_X_L + 8} ${ARM_END_Y + 12} C ${SCREW_X_L + 30} ${ARM_END_Y + 6}, ${CX - 60} ${HUB_Y + 24}, ${CX - 18} ${HUB_Y + 24} Z`} fill="#3A3D40" />
+              <path d={`M ${CX + 18} ${HUB_Y + 14} C ${CX + 60} ${HUB_Y + 14}, ${SCREW_X_R - 30} ${ARM_END_Y - 4}, ${SCREW_X_R - 8} ${ARM_END_Y} L ${SCREW_X_R - 8} ${ARM_END_Y + 12} C ${SCREW_X_R - 30} ${ARM_END_Y + 6}, ${CX + 60} ${HUB_Y + 24}, ${CX + 18} ${HUB_Y + 24} Z`} fill="#3A3D40" />
+              <rect x={SCREW_X_L - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill="#3A3D40" />
+              <rect x={SCREW_X_R - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill="#3A3D40" />
+              <rect x={CX - 6} y={HUB_Y + HUB_H - 4} width="12" height={GND - HUB_Y - HUB_H + 4} fill="#3A3D40" />
             </g>
-
-            {/* ── LEFT SCREW (column from arm to foot) ── */}
-            <g
-              style={{ cursor: isAligned && !bothLocked ? "pointer" : (bothLocked ? "default" : "not-allowed") }}
-              onClick={handleLockLeft}
-              transform={`translate(0, ${eTilt * 0.5})`}
-            >
-              {/* Shaft */}
-              <rect x={SCREW_X_L - 2} y={SCREW_TOP} width="4" height={SCREW_BOT - SCREW_TOP} fill={leftLocked ? BC.brassLocked : BC.brass} />
-              {/* Knob */}
-              <rect x={SCREW_X_L - 10} y={SCREW_TOP - 4} width="20" height="8" rx="1.5" fill={leftLocked ? BC.brassLocked : BC.brassLight} stroke={leftLocked ? "#16A34A" : "#B45309"} strokeWidth="0.4" />
-              {/* Knurling lines */}
-              {[0, 3, 6, 9, 12, 15].map(dx => (
-                <line key={dx} x1={SCREW_X_L - 9 + dx} y1={SCREW_TOP - 3} x2={SCREW_X_L - 9 + dx} y2={SCREW_TOP + 3} stroke={leftLocked ? "#15803D" : "#92400E"} strokeWidth="0.4" />
-              ))}
-              {/* Foot */}
-              <polygon points={`${SCREW_X_L - 6},${SCREW_BOT} ${SCREW_X_L + 6},${SCREW_BOT} ${SCREW_X_L + 8},${GND} ${SCREW_X_L - 8},${GND}`} fill="#1E293B" />
-              {/* Lock badge */}
-              {leftLocked && (
-                <g transform={`translate(${SCREW_X_L + 14}, ${SCREW_TOP})`}>
-                  <circle cx="0" cy="0" r="6" fill="#22C55E" />
-                  <polyline points="-3,0 -1,3 4,-3" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </g>
-              )}
-            </g>
-
-            {/* ── RIGHT SCREW ── */}
-            <g
-              style={{ cursor: isAligned && !bothLocked ? "pointer" : (bothLocked ? "default" : "not-allowed") }}
-              onClick={handleLockRight}
-              transform={`translate(0, ${-eTilt * 0.5})`}
-            >
-              <rect x={SCREW_X_R - 2} y={SCREW_TOP} width="4" height={SCREW_BOT - SCREW_TOP} fill={rightLocked ? BC.brassLocked : BC.brass} />
-              <rect x={SCREW_X_R - 10} y={SCREW_TOP - 4} width="20" height="8" rx="1.5" fill={rightLocked ? BC.brassLocked : BC.brassLight} stroke={rightLocked ? "#16A34A" : "#B45309"} strokeWidth="0.4" />
-              {[0, 3, 6, 9, 12, 15].map(dx => (
-                <line key={dx} x1={SCREW_X_R - 9 + dx} y1={SCREW_TOP - 3} x2={SCREW_X_R - 9 + dx} y2={SCREW_TOP + 3} stroke={rightLocked ? "#15803D" : "#92400E"} strokeWidth="0.4" />
-              ))}
-              <polygon points={`${SCREW_X_R - 6},${SCREW_BOT} ${SCREW_X_R + 6},${SCREW_BOT} ${SCREW_X_R + 8},${GND} ${SCREW_X_R - 8},${GND}`} fill="#1E293B" />
-              {rightLocked && (
-                <g transform={`translate(${SCREW_X_R + 14}, ${SCREW_TOP})`}>
-                  <circle cx="0" cy="0" r="6" fill="#22C55E" />
-                  <polyline points="-3,0 -1,3 4,-3" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </g>
-              )}
-            </g>
-
-            {/* ── TARGET ── */}
-            <g style={{ cursor: "pointer" }} onClick={() => setSel("target")} transform={`translate(${CX}, ${TARGET_Y})`}>
-              <ellipse cx="0" cy="0" rx="14" ry="5" fill={BC.targetBg} stroke={BC.stroke} strokeWidth="0.5" />
-              <ellipse cx="0" cy="0" rx="7" ry="2.5" fill="none" stroke={isAligned || bothLocked ? C.good : BC.targetCross} strokeWidth="0.8" />
-              <line x1="-12" y1="0" x2="12" y2="0" stroke={isAligned || bothLocked ? C.good : BC.targetCross} strokeWidth="0.5" />
-              <line x1="0" y1="-4" x2="0" y2="4" stroke={isAligned || bothLocked ? C.good : BC.targetCross} strokeWidth="0.5" />
-            </g>
-
-            {/* ── PLUMB LINE ── */}
+            {screw(SCREW_X_L, "L", leftLocked, turnL)}
+            {screw(SCREW_X_R, "R", rightLocked, turnR)}
+            {/* Dây dọi (nhìn ngang) */}
             <g style={{ cursor: "pointer" }} onClick={() => setSel("plumbLine")}>
-              <line
-                x1={CX} y1={PLUMB_TOP}
-                x2={CX + eTilt * 1.6} y2={PLUMB_BOT}
-                stroke={bothLocked ? C.good : BC.plumbLine} strokeWidth="1"
-              />
-              <g transform={`translate(${CX + eTilt * 1.6}, ${PLUMB_BOT})`}>
-                <polygon
-                  points="-4,0 4,0 0,13"
-                  fill={isAligned || bothLocked ? C.good : BC.plumbBob}
-                  stroke={isAligned || bothLocked ? "#2E7D32" : "#92400E"}
-                  strokeWidth="0.5"
-                />
-                <circle cx="0" cy="0" r="1.5" fill="none" stroke={isAligned || bothLocked ? "#2E7D32" : BC.plumbBob} strokeWidth="0.8" />
-              </g>
+              <line x1={CX} y1={PLUMB_TOP} x2={CX + eTilt.x * 1.6} y2={PLUMB_BOT} stroke={bothLocked ? C.good : "#EF4444"} strokeWidth="1" />
+              <polygon points={`${CX + eTilt.x * 1.6 - 4},${PLUMB_BOT} ${CX + eTilt.x * 1.6 + 4},${PLUMB_BOT} ${CX + eTilt.x * 1.6},${PLUMB_BOT + 13}`} fill={isAligned || bothLocked ? C.good : "#B45309"} />
             </g>
 
-            {/* ── Status LED ── */}
-            <circle cx={CX} cy="15" r="5" fill={bothLocked ? C.good : isAligned ? "#F59E0B" : "#EF4444"} />
-            <text x={CX + 10} y="19" style={{ fontSize: 10, fontWeight: 700, fill: bothLocked ? "#2E7D32" : isAligned ? "#92400E" : "#C0392B", fontFamily: FONT }}>
-              {bothLocked ? "ĐÃ CỐ ĐỊNH" : isAligned ? "THĂNG BẰNG — Xiết vít!" : "LỆCH TÂM TRỤC"}
-            </text>
+            {/* Bia nhìn từ trên xuống */}
+            <g style={{ cursor: "pointer" }} onClick={() => setSel("target")}>
+              <text x={TV.x} y={TV.y - TV.r - 14} textAnchor="middle" style={{ fontSize: 10.5, fontWeight: 900, fill: C.ink, fontFamily: FONT }}>Nhìn từ trên xuống</text>
+              <circle cx={TV.x} cy={TV.y} r={TV.r} fill="#fff" stroke="#CBD5E1" strokeWidth="1.5" />
+              <circle cx={TV.x} cy={TV.y} r={TV.r * 0.62} fill="none" stroke="#E2E8F0" strokeWidth="1.2" />
+              <circle cx={TV.x} cy={TV.y} r={TOL * TV.k + 2} fill={isAligned || bothLocked ? "#DCFCE7" : "#F0FDF4"} stroke={C.good} strokeWidth="1.5" />
+              <line x1={TV.x - TV.r} y1={TV.y} x2={TV.x + TV.r} y2={TV.y} stroke="#E2E8F0" />
+              <line x1={TV.x} y1={TV.y - TV.r} x2={TV.x} y2={TV.y + TV.r} stroke="#E2E8F0" />
+              {/* hướng mỗi vít đẩy mũi dọi */}
+              <line x1={TV.x} y1={TV.y} x2={TV.x + DIR_L.x * 30} y2={TV.y + DIR_L.y * 30} stroke={C.orange} strokeWidth="2" strokeDasharray="3 2" />
+              <line x1={TV.x} y1={TV.y} x2={TV.x + DIR_R.x * 30} y2={TV.y + DIR_R.y * 30} stroke={C.navy} strokeWidth="2" strokeDasharray="3 2" />
+              <circle cx={bobShown.x} cy={bobShown.y} r="5.5" fill={isAligned || bothLocked ? C.good : "#EF4444"} stroke="#fff" strokeWidth="1.8">
+                {!isAligned && <animate attributeName="r" values="5;7;5" dur="1.2s" repeatCount="indefinite" />}
+              </circle>
+              <text x={TV.x} y={TV.y + TV.r + 16} textAnchor="middle" style={{ fontSize: 10, fontWeight: 900, fill: isAligned || bothLocked ? C.good : "#B91C1C", fontFamily: FONT }}>
+                {bothLocked ? "ĐÃ CỐ ĐỊNH" : isAligned ? "THẲNG ĐỨNG — xiết vít!" : `lệch ${off.toFixed(1)} mm`}
+              </text>
+            </g>
           </svg>
+        </div>
 
-          {/* Badge */}
-          <div style={{ position: "absolute", bottom: 20, right: 20, background: "rgba(255,255,255,0.9)", padding: "4px 10px", borderRadius: 6, border: `0.5px solid ${bothLocked ? C.good : "#ccc"}`, fontSize: 11, color: "#444" }}>
-            {bothLocked
-              ? <span style={{ fontWeight: "bold", color: C.good, display: "inline-flex", alignItems: "center", gap: 3 }}><Lock style={{ width: 12, height: 12 }} /> Đã cố định</span>
-              : <>Độ lệch: <span style={{ fontWeight: "bold", color: isAligned ? C.good : "#EF4444" }}>{tilt.toFixed(1)}°</span></>
-            }
+        {/* Hai vít: vặn luân phiên; thẳng đứng rồi thì xiết khóa */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {([["L", "Vít trái", C.orangeDk, leftLocked], ["R", "Vít phải", C.navy, rightLocked]] as const).map(([side, label, color, locked]) => (
+            <div key={side} style={{ background: "#fff", border: `1.5px solid ${locked ? C.good : C.line}`, borderRadius: 12, padding: "8px 10px" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 900, color, marginBottom: 6 }}>{label}{locked ? " · đã xiết" : ""}</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" onClick={() => turn(side, -1)} disabled={bothLocked} aria-label={`${label}: vặn ngược chiều kim đồng hồ`} style={turnBtn}>
+                  <RotateCcw size={15} strokeWidth={2.6} />
+                </button>
+                <button type="button" onClick={() => turn(side, 1)} disabled={bothLocked} aria-label={`${label}: vặn cùng chiều kim đồng hồ`} style={turnBtn}>
+                  <RotateCw size={15} strokeWidth={2.6} />
+                </button>
+                <button type="button" onClick={() => lock(side)} disabled={!isAligned || locked || bothLocked}
+                  style={{ ...turnBtn, flex: 1, fontSize: 12, fontWeight: 900, background: isAligned && !locked ? "#FEF3C7" : "#fff", color: locked ? C.good : isAligned ? "#92400E" : C.sub, opacity: !isAligned && !locked ? 0.6 : 1 }}>
+                  <Lock size={13} strokeWidth={2.6} /> {locked ? "Đã khóa" : "Xiết khóa"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: bothLocked ? "#F0FDF4" : "#fff", border: bothLocked ? `1px solid ${C.good}` : "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 800, color: bothLocked ? "#166534" : C.navy }}>{info.title}</h3>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: bothLocked ? "#1e5e3a" : "#444" }}>{info.body}</p>
           </div>
-        </div>
-
-        {/* ── Slider ── */}
-        <div style={{ background: bothLocked ? "#F0FDF4" : "#fff", border: bothLocked ? `1px solid ${C.good}` : "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px", transition: "all 0.2s" }}>
-          {bothLocked ? (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: "#166534", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
-                Cả hai vít đã xiết — sẵn sàng thí nghiệm!
-              </span>
-              <button
-                onClick={handleUnlock}
-                style={{ fontSize: 12, fontWeight: 800, color: C.navy, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: FONT }}
-              >
-                Chỉnh lại
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>Bước 1: Kéo slider chỉnh thăng bằng</span>
-                {isAligned && (
-                  <span style={{ fontSize: 12, color: "#D97706", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 
-                    Thăng bằng!
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-                <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>Trái</span>
-                <input
-                  type="range" min="-15" max="15" step="0.1"
-                  value={tilt} onChange={(e) => handleScrewChange(e.target.value)}
-                  style={{ flex: 1, accentColor: isAligned ? "#F59E0B" : BC.brass }}
-                />
-                <span style={{ fontSize: 12, color: "#666", fontWeight: 700 }}>Phải</span>
-              </div>
-              {isAligned && (
-                <div style={{ marginTop: 6, padding: "8px 12px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, fontSize: 12.5, color: "#92400E", fontWeight: 700, lineHeight: 1.5 }}>
-                  Bước 2: Bấm vào <strong>núm vít vàng bên trái</strong> và <strong>bên phải</strong> trên hình để xiết cố định ({lockedCount}/2).
-                </div>
-              )}
-            </div>
+          {bothLocked && (
+            <button type="button" onClick={unlockAll} style={{ fontSize: 12, fontWeight: 800, color: C.navy, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: FONT, flexShrink: 0 }}>
+              Chỉnh lại
+            </button>
           )}
-        </div>
-
-        {/* ── Info ── */}
-        <div style={{ background: bothLocked ? "#F0FDF4" : "#fff", border: bothLocked ? `1px solid ${C.good}` : "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px" }}>
-          <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 800, color: bothLocked ? "#166534" : C.navy, fontFamily: FONT }}>
-            {info.title}
-          </h3>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: bothLocked ? "#1e5e3a" : "#444", fontFamily: FONT }}>
-            {info.body}
-          </p>
         </div>
       </div>
     </div>
   );
 }
+
+const turnBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, minWidth: 40, height: 36, borderRadius: 10, border: "1px solid #E2DFD8", background: "#fff", color: "#321E12", cursor: "pointer", fontFamily: FONT };
 
 function StepChip({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
   const bg = done ? "#DCFCE7" : active ? "#FEF3C7" : "#F3F4F6";
@@ -346,15 +222,8 @@ function StepChip({ n, label, active, done }: { n: number; label: string; active
   const border = done ? "#86EFAC" : active ? "#FCD34D" : "#E5E7EB";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 12, fontWeight: 700, color }}>
-      {done
-        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 12 10 16 18 8" /></svg>
-        : <span style={{ width: 18, height: 18, borderRadius: "50%", background: active ? "#F59E0B" : "#D1D5DB", color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800 }}>{n}</span>
-      }
+      <span style={{ width: 18, height: 18, borderRadius: "50%", background: done ? "#22C55E" : active ? "#F59E0B" : "#D1D5DB", color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800 }}>{done ? "✓" : n}</span>
       {label}
     </div>
   );
-}
-
-function ChevR({ color }: { color: string }) {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 6 15 12 9 18" /></svg>;
 }

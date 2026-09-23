@@ -8,6 +8,8 @@ import { useTTS } from "./useTTS";
 import LabBench from "./LabBench.jsx";
 import FreeFallBench from "./FreeFallBench.jsx";
 import ElectricalBench from "./ElectricalBench";
+import EmfBench from "./EmfBench";
+import { ballDiameterMm } from "../../engine/physics.js";
 
 export interface LabExportPayload {
   lab: string;                 // "average" | "instant" | "freefall"
@@ -15,16 +17,10 @@ export interface LabExportPayload {
   trials: Array<Record<string, unknown>>;
 }
 
-interface AssistantSettings {
-  pronoun?: "anh" | "chị";
-  answerStyle?: "short" | "detailed";
-}
-
 interface LabRoomProps {
   spec: ExperimentSpec;
   measuredD: number;           // MÉT (từ Prelab caliper của page.tsx)
   studentName?: string;        // để ra đề theo từng học sinh
-  assistantSettings?: AssistantSettings;
   /** Đề GIÁO VIÊN giao (assignment lớp học) — override đề seeded/AI khi có. */
   assignedSets?: LabAssignmentPayload["problemSets"] | null;
   onExportNote: (payload: LabExportPayload) => void;
@@ -33,14 +29,14 @@ interface LabRoomProps {
 }
 
 /**
- * LabRoom — Khung phòng Lab: chọn engine theo bài, cấp TTS + gom số liệu xuất Note.
+ * LabRoom — Khung phòng Lab: chọn engine theo bài, cấp TTS (đọc bước tiếp theo) + gom số liệu xuất Note.
  * Giữ shell RealPhyLab; engine bên trong là bản kéo-thả-nối-dây + vật lý thật của φLab.
  */
-export default function LabRoom({ spec, measuredD, studentName, assistantSettings, assignedSets, onExportNote, onReplayPrelab, onExitLab }: LabRoomProps) {
+export default function LabRoom({ spec, measuredD, studentName, assignedSets, onExportNote, onReplayPrelab, onExitLab }: LabRoomProps) {
   const { speak, stop, muted, toggleMute } = useTTS();
   const isFreeFall = spec.id === "do-gia-toc-roi-tu-do";
-  const isElectrical = spec.id === "do-dien-tro-dinh-luat-ohm"
-    || spec.id === "do-suat-dien-dong-pin-dien-hoa";
+  const isOhm = spec.id === "do-dien-tro-dinh-luat-ohm";
+  const isEmf = spec.id === "do-suat-dien-dong-pin-dien-hoa";
 
   // Rời lab (unmount) -> tắt hẳn voice, tránh trợ lý còn đọc chồng khi sang màn khác.
   useEffect(() => () => stop(), [stop]);
@@ -78,16 +74,25 @@ export default function LabRoom({ spec, measuredD, studentName, assistantSetting
     };
   }, []);
 
-  // page.tsx giữ measuredD theo mét; engine Lab 6 dùng mm.
-  const measuredMm = measuredD > 1 ? measuredD : measuredD * 1000;
+  // Viên bi của từng học sinh (Prelab bắt đọc đúng thước kẹp) — cùng một viên ở Prelab và Lab.
+  // Chưa có tên thì dùng số đọc từ Prelab (page.tsx giữ theo mét; engine Lab 6 dùng mm).
+  const measuredMm = studentName ? ballDiameterMm(studentName) : measuredD > 1 ? measuredD : measuredD * 1000;
 
   return (
     <div className="lab-session relative w-full flex flex-col overflow-hidden bg-white h-full min-h-0">
-      {isElectrical ? (
-        <ElectricalBench
-          key={spec.id}
-          lessonId={spec.id}
+      {isEmf ? (
+        <EmfBench
           studentName={studentName}
+          assignedSets={assignedSets}
+          speak={speak}
+          muted={muted}
+          onToggleMute={toggleMute}
+          onExportNote={onExportNote}
+          onReplayPrelab={onReplayPrelab}
+          onBack={onExitLab}
+        />
+      ) : isOhm ? (
+        <ElectricalBench
           assignedSets={assignedSets}
           speak={speak}
           muted={muted}
@@ -98,9 +103,7 @@ export default function LabRoom({ spec, measuredD, studentName, assistantSetting
         />
       ) : isFreeFall ? (
         <FreeFallBench
-          studentName={studentName}
           assignedSets={assignedSets}
-          assistantSettings={assistantSettings}
           speak={speak}
           muted={muted}
           onToggleMute={toggleMute}
@@ -111,9 +114,7 @@ export default function LabRoom({ spec, measuredD, studentName, assistantSetting
       ) : (
         <LabBench
           measuredD={measuredMm}
-          studentName={studentName}
           assignedSets={assignedSets}
-          assistantSettings={assistantSettings}
           speak={speak}
           muted={muted}
           onToggleMute={toggleMute}

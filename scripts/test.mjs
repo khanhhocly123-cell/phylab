@@ -1,5 +1,8 @@
-import { accel, velAt, computeTime } from "../src/engine/physics.js";
-import { freeFallTime, gFromMeasurement, computeFallTime } from "../src/engine/physicsFreeFall.js";
+import { accel, velAt, computeTime, ballDiameterMm } from "../src/engine/physics.js";
+import { freeFallTime, gFromMeasurement, computeFallTime, fitFreeFall } from "../src/engine/physicsFreeFall.js";
+import { ohmCircuit, heatedResistance, stepHeat } from "../src/engine/physicsElectric.ts";
+import { solveDC } from "../src/engine/circuit.js";
+import { CANONICAL_LAYOUT, planWires, analyzeBoard, solveBoard } from "../src/components/lab/electric/emfBoard.js";
 import { normalizeVi, retrieveAnswer, buildRagContext } from "../src/lib/labKnowledge.ts";
 
 let passed = 0;
@@ -40,6 +43,57 @@ assert("gFromMeasurement should be near 9.8", Math.abs(gMeasured - 9.8) < 1e-5);
 
 const tFallComp = computeFallTime({ s: 0.40, withNoise: false });
 assert("computeFallTime should be valid", tFallComp.valid);
+
+// 2b. Sai số "ổn định mà không đơ": lặp lại cùng cấu hình thì lệch vài ms, không bay số
+const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+{
+  const rng = seeded(42);
+  const ts = Array.from({ length: 40 }, () => computeFallTime({ s: 0.4, rng }).raw);
+  const mean = ts.reduce((a, b) => a + b, 0) / ts.length;
+  const sd = Math.sqrt(ts.reduce((a, b) => a + (b - mean) ** 2, 0) / (ts.length - 1));
+  assert("Rơi tự do lặp 40 lần: số đo không giống hệt nhau (σ ≥ 0,5 ms)", sd >= 0.0005);
+  assert("… nhưng vẫn ổn định (σ ≤ 3 ms, mọi lần trong ±8 ms)", sd <= 0.003 && ts.every((t) => Math.abs(t - mean) < 0.008));
+  const unsteady = Array.from({ length: 40 }, () => computeFallTime({ s: 0.4, steady: false, rng }).raw);
+  assert("Thả khi trụ còn đung đưa → t lớn hơn rõ rệt", unsteady.reduce((a, b) => a + b, 0) / 40 > mean + 0.0015);
+  const pts = [0.2, 0.4, 0.6, 0.8].map((sv) => ({ s: sv, t: freeFallTime(sv, { withNoise: false }) }));
+  assert("fitFreeFall với số liệu lý thuyết cho g = 9,8", Math.abs(fitFreeFall(pts).g - 9.8) < 1e-6);
+}
+{
+  const rng = seeded(7);
+  const ab = Array.from({ length: 30 }, () => computeTime({ mode: "A<->B", thetaDeg: 20, sE: 0.3, sF: 0.55, dMm: 18.2, rng }).raw);
+  const unb = Array.from({ length: 30 }, () => computeTime({ mode: "A<->B", thetaDeg: 20, sE: 0.3, sF: 0.55, dMm: 18.2, balanced: false, rng }).raw);
+  const avg = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  assert("Máng chưa cân bằng → bi chậm hơn (t trung bình lớn hơn)", avg(unb) > avg(ab) * 1.01);
+  const d = ballDiameterMm("Khánh (TestUser101)");
+  assert("Đường kính bi theo tên: 15–22 mm, bội 0,05 mm, cố định", d >= 15 && d <= 22 && Math.abs(d / 0.05 - Math.round(d / 0.05)) < 1e-6 && d === ballDiameterMm("Khánh (TestUser101)"));
+}
+
+// 2c. Điện: vật dẫn nóng lên, vôn kế đo khác số trên núm, bộ giải mạch
+{
+  const cold = ohmCircuit(6, "X", 0), hot = ohmCircuit(6, "X", 1);
+  assert("Ohm: U đo trên vật dẫn nhỏ hơn số trên núm (sụt áp ampe kế)", cold.voltage < 6 && cold.voltage > 5.8);
+  assert("Ohm: vật dẫn nóng → R tăng, I giảm", heatedResistance("X", 1) > 120 && hot.current < cold.current);
+  assert("Ohm: đóng K lâu ở 10 V thì nóng lên, mở K thì nguội", stepHeat(0, 0.8, 10, true) > 0.4 && stepHeat(0.5, 0, 10, false) < 0.2);
+  const V = solveDC({ nodeCount: 3, conductances: [{ a: 1, b: 2, g: 1 / 100 }, { a: 2, b: 0, g: 1 / 100 }], sources: [{ from: 0, to: 1, i: 10 / 1e-3 }, { from: 1, to: 0, i: 0 }] });
+  assert("solveDC: nút giữa cầu phân áp ≈ nửa điện áp", V[1] > 0 && Math.abs(V[2] - V[1] / 2) / V[1] < 0.01);
+}
+{
+  const placements = { ...CANONICAL_LAYOUT };
+  const wires = planWires(placements, (meter) => (meter === "ammeter" ? { x: 1100, y: 300 } : { x: -150, y: 300 }));
+  assert("Bảng mạch: bố trí mẫu chỉ cần 4 dây đồng hồ (pin–K–R₀–biến trở nối qua mạng)", wires.length === 4);
+  assert("Bảng mạch: mạch mẫu đúng sơ đồ", analyzeBoard({ placements, wires }).valid);
+  const cell = { emf: 1.5, r: 1.2 };
+  const sol = solveBoard({ placements, wires, switchClosed: true, rheostat: 50, cell, modes: { ammeter: "mA", voltmeter: "V" } });
+  const I = 1.5 / (1.2 + 0.02 + 10 + 50 + 2);
+  assert("Bảng mạch: ampe kế chỉ đúng I = E/(r + R₀ + R + R_A)", Math.abs(sol.ammeter.value - I * 1000) < 0.01);
+  assert("Bảng mạch: vôn kế chỉ đúng U = E − I·r", Math.abs(sol.voltmeter.value - (1.5 - I * 1.2)) < 1e-4);
+  const open = solveBoard({ placements, wires, switchClosed: false, rheostat: 50, cell, modes: { ammeter: "mA", voltmeter: "V" } });
+  assert("Bảng mạch: K mở → không có dòng, vôn kế chỉ đúng E", Math.abs(open.ammeter.value) < 1e-3 && Math.abs(open.voltmeter.value - 1.5) < 1e-4);
+  const reversed = wires.map((w) => (w.b.t === "jack" && w.b.meter === "ammeter" ? { ...w, b: { ...w.b, jack: w.b.jack === "mA" ? "COM" : "mA" } } : w));
+  const bad = analyzeBoard({ placements, wires: reversed });
+  assert("Bảng mạch: đảo dây ampe kế → báo lỗi đúng chỗ", !bad.valid && bad.issue.key === "ammeter-reversed");
+  assert("Bảng mạch: thiếu dây → báo mạch hở", analyzeBoard({ placements, wires: [] }).issue.key === "open");
+}
 
 // 3. RAG tests
 assert("normalizeVi should strip diacritics", normalizeVi("Học sinh giỏi Vật Lý") === "hoc sinh gioi vat ly");

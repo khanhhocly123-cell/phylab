@@ -46,7 +46,7 @@ function applyAssistantPersona(text: string, settings: Required<AssistantSetting
   if (!text) return text;
   const selfUpper = settings.pronoun === "anh" ? "Anh" : "Chị";
   const self = settings.pronoun;
-  let out = text
+  const out = text
     .replace(/(^|[\s"'([{])Chúng tôi(?=$|[\s,.!?;:)\]}])/g, `$1${selfUpper}`)
     .replace(/(^|[\s"'([{])chúng tôi(?=$|[\s,.!?;:)\]}])/g, `$1${self}`)
     .replace(/(^|[\s"'([{])Tôi(?=$|[\s,.!?;:)\]}])/g, `$1${selfUpper}`)
@@ -76,7 +76,14 @@ function quickActionsFor(query: string, labContext: string): QuickAction[] {
   const q = query.toLowerCase();
   const ctx = labContext.toLowerCase();
   const assembled = ctx.includes('"assembled":true');
-  const labId = ctx.includes('"labid":"b11"') ? "b11" : "b6";
+  const labId = ctx.includes('"labid":"b26"')
+    ? "b26"
+    : ctx.includes('"labid":"b23"')
+      ? "b23"
+      : ctx.includes('"labid":"b11"')
+        ? "b11"
+        : "b6";
+  const isElectrical = labId === "b23" || labId === "b26";
   const actions: QuickAction[] = [];
   const add = (title: string, payload: string) => {
     if (!actions.some((a) => a.payload === payload)) actions.push({ title, payload, type: "lab_action" });
@@ -94,19 +101,20 @@ function quickActionsFor(query: string, labContext: string): QuickAction[] {
   const wireProblem = /dây|day|nối|noi|cắm|cam|jack|ổ|o cam|cổng|cong/.test(q);
   const screwProblem = /vít|vit|cố định|co dinh|siết|siet|cân bằng|can bang|dây dọi|day doi/.test(q);
   const powerProblem = /nguồn|nguon|bật|bat|không lên|khong len|đồng hồ|dong ho/.test(q);
-  const modeProblem = /mode|chế độ|che do|a↔b|a<->b/.test(q);
+  const modeProblem = /mode|chế độ|che do|nấc|nac|thang đo|thang do|núm|num|a↔b|a<->b|miliampe|vôn kế|von ke|ampe kế|ampe ke/.test(q);
   const resetProblem = /reset|về 0|ve 0|0\.000|số đo cũ|so do cu/.test(q);
+  const switchProblem = /khóa k|khoa k|công tắc|cong tac|đóng k|dong k|mở k|mo k/.test(q);
 
   if (wireProblem) {
-    add("Tự động nối dây", "auto_wire");
+    add(isElectrical ? "Nối mạch theo sơ đồ" : "Tự động nối dây", "auto_wire");
   }
   if (screwProblem) {
     add("Tự động cố định vít", "auto_fix_screw");
   }
   if (assemblyProblem) {
-    if (assembled) {
+    if (assembled && !isElectrical) {
       add(labId === "b11" ? "Tự động gắn lại trụ thép" : "Tự động đặt lại bi", "auto_reset_object");
-    } else {
+    } else if (!assembled) {
       add("Tự động lắp bước này", "auto_place_next");
     }
   }
@@ -114,7 +122,10 @@ function quickActionsFor(query: string, labContext: string): QuickAction[] {
     add("Bật nguồn đồng hồ", "auto_power");
   }
   if (modeProblem) {
-    add("Chọn đúng MODE", "auto_mode");
+    add(isElectrical ? "Đặt ĐO1 mA · ĐO2 V" : "Chọn đúng MODE", "auto_mode");
+  }
+  if (switchProblem && isElectrical) {
+    add("Mở khóa K an toàn", "auto_reset");
   }
   if (resetProblem) {
     add("Reset số đo", "auto_reset");

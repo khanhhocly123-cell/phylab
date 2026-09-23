@@ -244,8 +244,9 @@ export default function MyClassTab({ studentName, myClass, loading, onRefresh, o
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {done ? (
+                      // Bài Lab: phần chấm phía học sinh đang tạm gỡ → chỉ báo đã nộp, không hiện điểm.
                       <span className="inline-flex items-center gap-1 text-base font-black text-[#137333]">
-                        <CheckCircle2 className="w-4.5 h-4.5" /> {st.score?.toFixed(1)}
+                        <CheckCircle2 className="w-4.5 h-4.5" /> {a.kind === "lab" ? <span className="text-xs">Đã nộp</span> : st.score?.toFixed(1)}
                       </span>
                     ) : reason ? (
                       <Lock className="w-5 h-5 text-[#605248]/50" />
@@ -267,7 +268,7 @@ export default function MyClassTab({ studentName, myClass, loading, onRefresh, o
       {assignments.some((s) => s.assignment.kind === "lab" && s.score == null) && (
         <p className="text-xs font-bold text-[#605248] bg-[#FFF2E6]/60 border border-[#C85A17]/10 rounded-xl px-4 py-3">
           💡 Với bài Lab giáo viên giao: khi em vào phòng Lab, <strong>Đề bài sẽ là đề của giáo viên</strong> (không
-          phải đề Trợ lý AI). Đo xong, chấm điểm ở Sổ Báo Cáo là bài tự động được nộp cho giáo viên.
+          phải đề tự sinh). Đo xong, bấm <strong>“Lưu &amp; nộp cho giáo viên”</strong> trong Sổ Báo Cáo để nộp bài.
         </p>
       )}
 

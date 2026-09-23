@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Check, Volume2, VolumeX, Play, BookOpen, ChevronUp, ChevronDown, Hand, ZoomIn, ZoomOut, MessageSquare } from "lucide-react";
-import { MathText } from "../Latex";
+import { Check, SlidersHorizontal, X, ZoomIn, ZoomOut, Zap } from "lucide-react";
 import { C, FONT } from "../../engine/tokens.js";
-import { FREEFALL, computeFallTime, gFromMeasurement } from "../../engine/physicsFreeFall.js";
-import { guide, ask, smartbotReady } from "../../engine/smartbot.js";
-import { generateProblemSet, buildAssignedSet } from "../../lib/problemGen";
+import { FREEFALL, computeFallTime, gFromMeasurement, fitFreeFall } from "../../engine/physicsFreeFall.js";
+import {
+  LabTopBar, NextStepCard, ChecklistCard, FinishButton, MobileLabSheet, LabToast, LabDialog, ProgressPills, NudgeSlider,
+  panelCard, sectionHead, sectionTitle, countPill, btnSecondary, btnSoft,
+} from "./LabChrome.jsx";
+import LiveGraph, { niceRange } from "./LiveGraph.jsx";
+import { labSound } from "./labSound.js";
+import { useAnimStore, useAnim } from "./animStore.js";
 
 /* Assets phục vụ qua thư mục public (không import kiểu Vite trong Next). */
 const railPng = "/lab/bai11/rail.png";
@@ -19,15 +22,16 @@ const switchOffPng = "/lab/bai11/switch_off.png";
 const mc964FrontSvg = "/lab/bai11/mc964_front.svg";
 
 /* ============================================================================
-   FreeFallBench — Engine Lab 11 "Thực hành đo gia tốc rơi tự do" (port từ Vite).
+   FreeFallBench — Lab 11 "Thực hành đo gia tốc rơi tự do".
    Cảnh DỌC: máng đứng trên giá đỡ 3 chân; nam châm điện giữ trụ thép ở đỉnh;
    cổng quang trượt dọc máng để đổi quãng rơi s. Nhấn công tắc kép → ngắt điện
    nam châm → trụ thép rơi tự do + đồng hồ đếm; trụ cắt tia cổng quang → dừng.
    Điện: công tắc/nam châm → ổ A, cổng quang → ổ B, MODE A↔B (SGK Bài 11).
-   Đo:  g = 2s / t².   Mô hình vật lý ở engine/physicsFreeFall.js.
 
-   Khác bản gốc: nhận prop `speak(text)` để đọc chỉ dẫn (TTS của RealPhyLab);
-   ô hỏi đáp `ask()` gọi /api/vnpt/chat.
+   ĐO TỰ DO: học sinh tự chọn s, đo lặp tuỳ ý. Mỗi lần thả được diễn CHẬM ×4 theo đúng
+   s = ½gt² (đồng hồ chạy mượt, dừng đúng lúc trụ cắt tia), điểm (t², s) trượt trên đồ thị
+   rồi "bật" thành điểm đo; đường thẳng qua gốc cho "g của em" ± sai số, càng đo càng chắc.
+   Thả khi trụ còn đung đưa / quên Reset → số liệu xấu thấy ngay, bench nói rõ vì sao.
    ========================================================================== */
 
 const VBW = 900, VBH = 520, FLOOR = 452;
@@ -44,6 +48,7 @@ const Y0 = railFracY(0.045);                  // vị trí thả (đỉnh thư�
 const SCALE_BOTTOM = railFracY(0.62);         // đáy vùng thước đọc được (trên khối kẹp)
 const PXM_V = (SCALE_BOTTOM - Y0) / FREEFALL.s.max; // px mỗi mét sao cho s_max chạm đáy thước
 const gateY = (s) => Y0 + s * PXM_V;
+const Y_REST = FLOOR - 24;                    // trụ thép rơi hẳn xuống chân đế
 
 const MODES = ["A", "B", "A+B", "A<->B", "T"];
 const MODE_LABEL = { "A": "A", "B": "B", "A+B": "A+B", "A<->B": "A↔B", "T": "T" };
@@ -57,8 +62,30 @@ const TOOLS = [
   { k: "clock",  name: "Đồng hồ MC964", sub: "±0.001 s",            img: mc964FrontSvg },
 ];
 
+const SLOW = 4;                                    // hoạt ảnh rơi chậm ×4 (đồng hồ vẫn đếm thời gian thật)
+const REQ = { positions: 5, spread: 0.30 };       // ≥ 5 vị trí cổng, trải ≥ 30 cm
+const SWING = { amp: 6, decay: 0.42, freq: 2.1 }; // trụ vừa gắn còn đung đưa (độ, s, Hz)
+
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-const TONE = { welcome: C.navy, nudge: C.orange, ok: C.good, success: C.good, done: C.good };
+const cm = (m) => `${(m * 100).toFixed(0)} cm`;
+const posKey = (s) => Math.round(s * 100);
+const mean = (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
+const reducedMotion = () => document.hidden || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** Gom các lần đo theo vị trí cổng quang (cm). */
+function groupPositions(trials) {
+  const map = new Map();
+  trials.forEach((t) => {
+    const key = posKey(t.s);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(t);
+  });
+  return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([key, items]) => {
+    const tMean = mean(items.map((i) => i.t));
+    const ts = items.map((i) => i.t);
+    return { cm: key, s: key / 100, items, tMean, gMean: gFromMeasurement(key / 100, tMean), spreadMs: (Math.max(...ts) - Math.min(...ts)) * 1000 };
+  });
+}
 
 // vị trí đồng hồ + ổ cắm (viewBox)
 const CLK = { x: 600, y: 336 };
@@ -74,17 +101,11 @@ const magnetTerm = { x: RAILX - 30, y: Y0 - 4 };
 
 const zeroDisplay = (scale) => (0).toFixed((FREEFALL.scales[scale] || FREEFALL.scales.fine).dp);
 
-export default function FreeFallBench({ studentName, assignedSets, assistantSettings, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
-  // Đề bài: GIÁO VIÊN giao (assignment lớp học) > seeded THEO TỪNG HỌC SINH.
-  const set = useMemo(
-    () => assignedSets?.freefall?.length
-      ? buildAssignedSet("freefall", assignedSets)
-      : generateProblemSet(studentName || "Học sinh", "do-gia-toc-roi-tu-do", "freefall"),
-    [studentName, assignedSets]
-  );
-  const suggestedFall = useMemo(
-    () => set.freefall.map((f) => f.s),
-    [set]
+export default function FreeFallBench({ assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+  // Mốc giáo viên giao (nếu có) là các quãng rơi BẮT BUỘC; ngoài ra học sinh đo tự do.
+  const teacherTargets = useMemo(
+    () => [...new Set((assignedSets?.freefall || []).map((item) => +Number(item.s).toFixed(2)).filter((v) => v > 0))].sort((a, b) => a - b),
+    [assignedSets]
   );
 
   const [placed, setPlaced] = useState(() => new Set());
@@ -94,6 +115,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
   const [rolling, setRolling] = useState(false);
   const [fallY, setFallY] = useState(Y0);               // vị trí trụ thép khi rơi
   const [cylDrag, setCylDrag] = useState(null);         // {x,y} khi HS kéo trụ thép lên gắn lại
+  const [settled, setSettled] = useState(true);
 
   const [mode, setMode] = useState("A+B");              // trung tính — HS tự chỉnh núm
   const [scale, setScale] = useState("fine");
@@ -105,33 +127,32 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
 
   const [led, setLed] = useState(zeroDisplay("fine"));
   const [trials, setTrials] = useState([]);
+  const [lastRun, setLastRun] = useState(null);         // lần thả vừa xong (chưa ghi)
+  const [liveFall, setLiveFall] = useState(null);       // điểm (t², quãng đã rơi) trượt trên đồ thị
+  const [gateFlash, setGateFlash] = useState(0);        // tia cổng quang vừa bị cắt
+  // Giá trị đổi từng khung hình khi trụ rơi — chỉ bàn thí nghiệm, số đồng hồ và đồ thị nghe.
+  const anim = useAnimStore({ fallY: Y0, led: zeroDisplay("fine"), live: null, swing: 0 });
+  const [quickArmed, setQuickArmed] = useState(false);
   const [toast, setToast] = useState(null);
+  const [dialog, setDialog] = useState(null);
   const [dragTool, setDragTool] = useState(null);
   const [flyTool, setFlyTool] = useState(null);
   const [justRolled, setJustRolled] = useState(false);
 
-  const [chatQ, setChatQ] = useState("");
-  const [chatA, setChatA] = useState(null);
-  const [chatBusy, setChatBusy] = useState(false);
-  const [chatHistory, setChatHistory] = useState([
-    { role: "assistant", text: "Cần hỗ trợ thao tác nào? Hỏi mình nhé." }
-  ]);
-  const chatScrollRef = useRef(null);
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [chatHistory]);
   const [isMobile, setIsMobile] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false); // Google Maps bottom sheet
+  const [viewportW, setViewportW] = useState(1280);
+  const [sheetOpen, setSheetOpen] = useState(false); // sheet hướng dẫn + số liệu trên mobile
   const [zoomMode, setZoomMode] = useState("full"); // "full", "rail", "clock"
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [ballDrag, setBallDrag] = useState(null); // {x,y} screen khi kéo bi về
-  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const rafRef = useRef(null);
+  const swingRaf = useRef(null);
   const mainRef = useRef(null);
   const lastMeasurementRef = useRef(null);
+  const toastTimer = useRef(null);
+  const lastSpoken = useRef("");
+  const milestones = useRef(new Set());
+  const nextId = useRef(1);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -142,6 +163,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
         || window.matchMedia("(max-height: 600px) and (max-width: 1024px)").matches
       );
       setIsPortrait(window.innerHeight >= window.innerWidth);
+      setViewportW(window.innerWidth);
     };
     updateViewport();
     window.addEventListener("resize", updateViewport);
@@ -155,51 +177,47 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
   const isNextTool = (k) => activeGroup.includes(k) && reqSet.has(k) && !placed.has(k);
   const assembled = required.every((k) => placed.has(k));
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(() => () => {
+    cancelAnimationFrame(rafRef.current);
+    cancelAnimationFrame(swingRaf.current);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
 
-  const flash = (m) => { setToast(m); setTimeout(() => setToast(null), 2400); };
+  /** flash("chữ") hoặc flash({ text, kind: "win" | "warn" }). */
+  const flash = (m, duration = 2600) => {
+    const next = typeof m === "string" ? { text: m } : m;
+    setToast((old) => ({ ...next, id: (old?.id || 0) + 1 }));
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), duration);
+  };
+  const sound = (name) => { if (!muted) labSound[name]?.(); };
+
   // Mạch bài 11: công tắc→nam châm (magnetWire) + công tắc→ổ A + cổng quang→ổ B.
-  const wiredOK = magnetWire && wires.A === "switch" && wires.B === "gate";
+  const clockWired = wires.A === "switch" && wires.B === "gate";
+  const wiredOK = magnetWire && clockWired;
   const modeOK = mode === "A<->B";
   const setupDone = assembled && balanced && wiredOK && power && modeOK;
   const zeroLed = zeroDisplay(scale);
   const isReset = led === zeroLed;
-  const currentTargets = set.freefall;
-  const isTeacherAssigned = Boolean(assignedSets?.freefall?.length);
-  const currentTaskIndex = clamp(activeTaskIndex, 0, Math.max(0, currentTargets.length - 1));
-  const currentTask = currentTargets[currentTaskIndex];
-  const isTargetMeasured = (target) => !!target && trials.some((t) => Math.abs(t.s - target.s) < 1e-6);
-  const currentTaskTrial = currentTask ? trials.find((t) => Math.abs(t.s - currentTask.s) < 1e-6) : null;
 
-  useEffect(() => {
-    setActiveTaskIndex(0);
-  }, [studentName]);
+  /* ---------------- Số liệu: vị trí, "g của em", yêu cầu ---------------- */
+  const groups = useMemo(() => groupPositions(trials), [trials]);
+  const fit = useMemo(() => fitFreeFall(trials), [trials]);
+  const spread = groups.length ? groups[groups.length - 1].s - groups[0].s : 0;
+  const teacherMissing = teacherTargets.filter((ts) => !groups.some((g) => Math.abs(g.s - ts) < 0.005));
+  const reqMet = groups.length >= REQ.positions && spread >= REQ.spread - 1e-9 && teacherMissing.length === 0;
+  const quickUnlocked = trials.length >= 2;
+  const currentGroup = groups.find((g) => g.cm === posKey(s));
 
-  useEffect(() => {
-    if (!currentTargets.length) return;
-    const next = currentTargets.findIndex((target) => !isTargetMeasured(target));
-    if (next >= 0 && next !== activeTaskIndex) setActiveTaskIndex(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trials.length, currentTargets.length]);
-
-  // Đổi quãng rơi sau khi đo sẽ làm phép đo cũ mất hiệu lực.
   function placeTool(k) {
     if (placed.has(k)) return;
     if (!isNextTool(k)) { flash(`Lắp theo thứ tự — bước này: ${activeGroup.map((x) => TOOLS.find((t) => t.k === x)?.name).join(" / ")}.`); return; }
     setPlaced((p) => new Set(p).add(k));
   }
-  function targetVB(k) {
-    switch (k) {
-      case "rail":   return { x: RAILX, y: (Y0 + FLOOR) / 2 };
-      case "magnet": return { x: RAILX, y: Y0 - 14 };
-      case "switch": return { x: SWITCH.x + SWITCH_W / 2, y: SWITCH.y + SWITCH_H / 2 };
-      case "gate":   return { x: RAILX, y: gateY(s) };
-      case "clock":  return { x: CLK.x + 50, y: CLK.y + 40 };
-      default:       return { x: VBW / 2, y: VBH / 2 };
-    }
-  }
   function flyToPlace(k, x, y) {
-    const tgt = targetVB(k), dur = 340;
+    // Tab bị ẩn (rAF dừng) hoặc HS bật "giảm chuyển động" → lắp ngay, không bay.
+    if (reducedMotion()) { placeTool(k); return; }
+    const tgt = targetOf(k, s), dur = 340;
     let t0 = null;
     const step = (now) => {
       if (t0 === null) t0 = now;
@@ -214,7 +232,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     if (placed.has(k)) return; e.preventDefault();
     try {
       e.target.setPointerCapture(e.pointerId);
-    } catch (err) {}
+    } catch { /* trình duyệt không hỗ trợ capture */ }
     let moved = false;
     let lastX = e.clientX;
     let lastY = e.clientY;
@@ -228,31 +246,25 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     const up = (ev) => {
       try {
         e.target.releasePointerCapture(e.pointerId);
-      } catch (err) {}
+      } catch { /* đã nhả */ }
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
       setDragTool(null);
       if (!isNextTool(k)) { flash(`Lắp theo thứ tự — bước này: ${activeGroup.map((x) => TOOLS.find((t) => t.k === x)?.name).join(" / ")}.`); return; }
       const svg = mainRef.current?.querySelector("svg");
-      const tgt = targetVB(k);
+      const tgt = targetOf(k, s);
       if (!svg || !moved) { flyToPlace(k, tgt.x, tgt.y - 60); return; }
-      
+
       const clientX = (ev.clientX !== undefined && ev.clientX !== 0) ? ev.clientX : lastX;
       const clientY = (ev.clientY !== undefined && ev.clientY !== 0) ? ev.clientY : lastY;
       const r = svg.getBoundingClientRect();
-      const vbox_x_origin = 0;
-      const vbox_y_origin = 0;
-      const vbox_width = VBW;
-      const vbox_height = VBH;
-      
-      const scale = Math.min(r.width / vbox_width, r.height / vbox_height);
-      const offset_x = (r.width - vbox_width * scale) / 2;
-      const offset_y = (r.height - vbox_height * scale) / 2;
-      
-      const vbx = vbox_x_origin + (clientX - r.left - offset_x) / scale;
-      const vby = vbox_y_origin + (clientY - r.top - offset_y) / scale;
-      
+      const scale = Math.min(r.width / VBW, r.height / VBH);
+      const offset_x = (r.width - VBW * scale) / 2;
+      const offset_y = (r.height - VBH * scale) / 2;
+      const vbx = (clientX - r.left - offset_x) / scale;
+      const vby = (clientY - r.top - offset_y) / scale;
+
       if (isMobile && clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
         flyToPlace(k, vbx, vby);
         return;
@@ -266,235 +278,198 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     window.addEventListener("pointercancel", up);
   }
 
-  const steps = useMemo(() => {
-    return assembled ? [
-      { k: "balance", t: "Vặn vít cân bằng giá đỡ (dây dọi)", done: balanced },
-      { k: "wireMag", t: "Nối dây công tắc kép → nam châm điện", done: magnetWire },
-      { k: "wire", t: "Nối công tắc→A, cổng quang→B (mặt sau)", done: wires.A === "switch" && wires.B === "gate" },
-      { k: "power", t: "Bật nguồn đồng hồ (mặt sau)", done: power },
-      { k: "mode", t: "Chọn MODE A↔B", done: modeOK },
-      { k: "reset", t: "Reset trước khi thả", done: isReset },
-      { k: "release", t: "Nhấn vào hộp công tắc kép để thả trụ thép", done: !magnetOn && led !== zeroLed },
-    ] : required.map((k) => ({ k, t: `Lắp: ${TOOLS.find((t) => t.k === k).name}`, done: placed.has(k) }));
-  }, [assembled, balanced, magnetWire, wires.A, wires.B, power, modeOK, isReset, magnetOn, led, zeroLed, required, placed]);
+  function resetTimer() { cancelAnimationFrame(rafRef.current); lastMeasurementRef.current = null; setRolling(false); setLed(zeroDisplay(scale)); setJustRolled(false); setLastRun(null); setLiveFall(null); }
 
-  // Auto zoom based on current task/step
-  const nextStepKey = useMemo(() => {
-    if (!assembled) return "assembling";
-    const nextStep = steps.find(s => !s.done);
-    return nextStep ? nextStep.k : "done";
-  }, [assembled, steps]);
-
-  const progressPercent = useMemo(() => {
-    if (!assembled) {
-      return Math.round((placed.size / required.length) * 100);
-    }
-    const doneSteps = steps.filter(s => s.done).length;
-    return Math.round((doneSteps / steps.length) * 100);
-  }, [assembled, placed.size, required.length, steps]);
-
-  const nextStepText = useMemo(() => {
-    if (!assembled) {
-      const missing = required.find(k => !placed.has(k));
-      const toolName = missing ? TOOLS.find(t => t.k === missing)?.name : "";
-      return toolName ? `Lắp ${toolName.toLowerCase()}` : "Lắp ráp thiết bị";
-    }
-    const nextStep = steps.find(s => !s.done);
-    return nextStep ? nextStep.t : "Đã hoàn thành thực hành";
-  }, [assembled, placed, required, steps]);
-
-  useEffect(() => {
-    if (!isMobile) return;
-    if (assembled && ["release", "record"].includes(nextStepKey)) return;
-    let target = "full";
-    if (assembled) {
-      if (nextStepKey === "balance") {
-        target = "rail";
-      } else if (["wireMag", "wire", "power", "mode", "reset"].includes(nextStepKey)) {
-        target = "clock";
-      }
-    }
-    const timer = setTimeout(() => {
-      setZoomMode(target);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [assembled, isMobile, nextStepKey]);
-
-  function resetTimer() { cancelAnimationFrame(rafRef.current); lastMeasurementRef.current = null; setRolling(false); setLed(zeroDisplay(scale)); setJustRolled(false); }
-  function magnetHold() { if (rolling) return; setMagnetOn(true); setFallY(Y0); setCylDrag(null); }
+  /** Trụ vừa gắn vào nam châm thì đung đưa ~1,3 s rồi mới đứng yên. */
+  function startSwing() {
+    cancelAnimationFrame(swingRaf.current);
+    if (reducedMotion()) { anim.set({ swing: 0 }); setSettled(true); return; }
+    setSettled(false);
+    let t0 = null;
+    const loop = (now) => {
+      if (t0 === null) t0 = now;
+      const el = (now - t0) / 1000;
+      if (el * 1000 >= FREEFALL.settleMs) { anim.set({ swing: 0 }); setSettled(true); return; }
+      anim.set({ swing: SWING.amp * Math.exp(-el / SWING.decay) * Math.cos(2 * Math.PI * SWING.freq * el) });
+      swingRaf.current = requestAnimationFrame(loop);
+    };
+    swingRaf.current = requestAnimationFrame(loop);
+  }
+  function magnetHold() {
+    if (rolling) return;
+    setMagnetOn(true); setFallY(Y0); setCylDrag(null);
+    startSwing();
+  }
 
   function release() {
     if (rolling) return;
+    if (!magnetOn) { flash("Trụ thép đã rơi — kéo trụ lên gắn lại vào nam châm rồi mới thả tiếp."); return; }
     if (!assembled) { flash("Hãy lắp đủ dụng cụ (kể cả đồng hồ) trước khi thả."); return; }
     if (!balanced) { flash("Chưa cân bằng giá đỡ — vặn vít cho dây dọi thẳng đã."); return; }
     if (!power) { flash("Chưa bật nguồn đồng hồ (mặt sau)."); return; }
     if (!magnetWire) { flash("Chưa nối dây công tắc kép → nam châm điện."); return; }
-    if (!(wires.A === "switch" && wires.B === "gate")) { flash("Chưa nối dây: công tắc→ổ A, cổng quang→ổ B."); return; }
-    const matchesTeacherTarget = currentTargets.some((target) => Math.abs(s - target.s) < 0.005);
-    if (set.seed === "teacher" && !matchesTeacherTarget) {
-      const wanted = currentTask ? `${(currentTask.s * 100).toFixed(0)}cm` : "quãng đường trong đề";
-      flash(`Đề giáo viên yêu cầu s=${wanted} — chỉnh đúng trước khi thả trụ.`);
-      return;
-    }
-    setMagnetOn(false); runFall();
+    if (!clockWired) { flash("Chưa nối dây: công tắc→ổ A, cổng quang→ổ B."); return; }
+    const steadyNow = settled;
+    cancelAnimationFrame(swingRaf.current);
+    anim.set({ swing: 0 }); setSettled(true);
+    setMagnetOn(false);
+    runFall(steadyNow);
   }
 
-  function runFall() {
-    if (rolling) return;
-    const measuredConfig = { s, scale, mode, balanced };
-    lastMeasurementRef.current = null;
-    const res = computeFallTime({ s, balanced, scale });
+  function runFall(steadyNow) {
+    const counts = mode === "A<->B";                  // chỉ MODE A↔B đo được thời gian rơi
+    const res = computeFallTime({ s, balanced, steady: steadyNow, scale });
     const sc = FREEFALL.scales[scale];
-    const yGate = gateY(s);
-    const yRest = FLOOR - 24;                          // trụ thép rơi HẲN xuống chân đế
     const base = parseFloat(led) || 0;                // CỘNG DỒN nếu HS chưa Reset (giống MC964 thật)
-    const measured = res.valid ? res.raw : 0;
-    const finalShown = Math.round((base + measured) / sc.res) * sc.res;
-    const uGate = clamp((yGate - Y0) / (yRest - Y0), 0.001, 1); // mốc chuyển động khi qua cổng
-    setRolling(true); setJustRolled(false);           // KHÔNG xoá LED — để cộng dồn
-    const dur = 1100, t0 = performance.now();
+    const tMeas = res.raw;
+    const finalShown = counts ? Math.round((base + tMeas) / sc.res) * sc.res : base;
+    const delay = res.run.delay;
+    const tauEnd = delay + Math.sqrt((2 * (Y_REST - Y0) / PXM_V) / FREEFALL.g);
+    const config = { s, scale, mode, balanced, steady: steadyNow };
+    lastMeasurementRef.current = null;
+    setRolling(true); setJustRolled(false); setLastRun(null);
+    anim.set({ fallY: Y0, led: base.toFixed(sc.dp), live: null });
+
+    const finish = () => {
+      anim.set({ fallY: Y_REST, led: finalShown.toFixed(sc.dp), live: counts ? { x: finalShown ** 2, y: s, done: true } : null });
+      setFallY(Y_REST);
+      setLed(finalShown.toFixed(sc.dp));
+      setRolling(false);
+      setJustRolled(counts);
+      lastMeasurementRef.current = counts ? config : null;
+      setLastRun(counts ? { s, t: finalShown, steady: steadyNow, accumulated: base > 0 } : null);
+      setLiveFall(counts ? { x: finalShown ** 2, y: s, done: true } : null);
+      if (!counts) flash({ text: `MODE ${MODE_LABEL[mode]} không đo được thời gian rơi — lật mặt trước, chọn MODE A↔B.`, kind: "warn" }, 3600);
+    };
+    if (reducedMotion()) { finish(); return; }
+
+    let t0 = null;
+    let stopped = false;
     const tick = (now) => {
-      const p = Math.min(1, (now - t0) / dur);
-      const u = p * p;                                // gia tốc: nhanh dần
-      setFallY(Y0 + (yRest - Y0) * u);
-      if (res.valid && mode !== "T") {
-        const prog = clamp(u / uGate, 0, 1);          // đồng hồ chỉ đếm tới khi trụ qua cổng
-        const jitter = prog > 0 && prog < 1 ? (0.9 + 0.2 * Math.random()) : 1;
-        setLed((base + measured * prog * jitter).toFixed(sc.dp));
+      if (t0 === null) t0 = now;
+      const tau = Math.min(tauEnd, (now - t0) / 1000 / SLOW);   // thời gian vật lý kể từ lúc ngắt nam châm
+      const ft = Math.max(0, tau - delay);
+      const fallen = 0.5 * FREEFALL.g * ft * ft;
+      const frame = { fallY: Math.min(Y_REST, Y0 + fallen * PXM_V) };
+      if (counts) {
+        if (tau < tMeas) {
+          frame.led = (base + tau).toFixed(sc.dp);
+          frame.live = { x: tau ** 2, y: Math.min(fallen, s) };
+        } else if (!stopped) {
+          stopped = true;
+          frame.led = finalShown.toFixed(sc.dp);
+          frame.live = { x: finalShown ** 2, y: s, done: true };
+          setGateFlash((n) => n + 1);
+          sound("stop");
+        }
       }
-      if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      else {
-        setLed(res.valid ? finalShown.toFixed(sc.dp) : base.toFixed(sc.dp));
-        setRolling(false);
-        setJustRolled(res.valid);
-        lastMeasurementRef.current = res.valid ? measuredConfig : null;
-      }
+      anim.set(frame);
+      if (tau < tauEnd) rafRef.current = requestAnimationFrame(tick);
+      else finish();
     };
     rafRef.current = requestAnimationFrame(tick);
   }
 
+  // Mốc thành tích nhỏ — để việc lấy số liệu có "nhịp" và có điều để khám phá.
+  function celebrate(next, trial) {
+    const hit = (key) => { if (milestones.current.has(key)) return false; milestones.current.add(key); return true; };
+    const gs = groupPositions(next);
+    const f = fitFreeFall(next);
+    const same = gs.find((g) => g.cm === posKey(trial.s));
+    const spreadNext = gs.length ? gs[gs.length - 1].s - gs[0].s : 0;
+    const metNext = gs.length >= REQ.positions && spreadNext >= REQ.spread - 1e-9
+      && teacherTargets.every((ts) => gs.some((g) => Math.abs(g.s - ts) < 0.005));
+    const msgs = [
+      next.length === 1 && hit("first") && "📍 Lần đo đầu tiên đã lên đồ thị s–t²!",
+      next.length === 2 && hit("quick") && "⚡ Em đã thạo quy trình — mở khóa nút “Đo nhanh”!",
+      gs.length === 2 && hit("line") && "📈 Hai vị trí → đường thẳng qua gốc O đã hiện. Độ dốc của nó chính là g/2!",
+      same.items.length === 3 && hit("repeat") && `🔁 Đo lặp 3 lần ở ${cm(same.s)}: t lệch nhau ${same.spreadMs.toFixed(0)} ms — đó là sai số ngẫu nhiên. Lấy trung bình cho chắc!`,
+      !trial.steady && hit("unsteady") && "🌀 Lần này thả khi trụ còn đung đưa — điểm viền đỏ lệch khỏi đường thẳng. Xoá rồi đo lại nhé!",
+      spreadNext >= 0.4 && hit("spread") && "🎯 Các điểm trải rộng ≥ 40 cm — đường thẳng rất chắc chắn.",
+      metNext && hit("enough") && `✅ Đủ ${REQ.positions} vị trí: g ≈ ${f.g.toFixed(2)} m/s². Lưu vào Sổ Báo Cáo được rồi!`,
+      metNext && Math.abs(f.g - FREEFALL.g) / FREEFALL.g < 0.01 && hit("close") && "🏆 g của em lệch dưới 1% so với 9,80 m/s² — chuẩn như phòng thí nghiệm!",
+    ].filter(Boolean);
+    if (msgs.length) { flash({ text: msgs[msgs.length - 1], kind: "win" }, 4400); sound("win"); }
+    else { flash(`Đã ghi: s = ${cm(trial.s)} · t = ${trial.t.toFixed(3)} s → g = ${trial.g.toFixed(2)} m/s²`); sound("record"); }
+  }
+
   function recordTrial() {
     if (rolling) return;
-    if (!justRolled) { flash("Mỗi lượt thả chỉ được ghi một lần — hãy Reset, chỉnh quãng đường rồi đo lại."); return; }
-    if (led === zeroLed) { flash("Chưa có số đo — thả trụ thép trước."); return; }
-    const measuredConfig = lastMeasurementRef.current;
-    if (!measuredConfig
-      || Math.abs(measuredConfig.s - s) >= 0.005
-      || measuredConfig.scale !== scale
-      || measuredConfig.mode !== mode
-      || measuredConfig.balanced !== balanced) {
-      flash("Quãng rơi đã đổi sau phép đo — hãy Reset và đo lại trước khi ghi.");
+    if (!justRolled || !lastRun) { flash("Mỗi lượt thả chỉ ghi một lần — gắn trụ, Reset rồi thả lại."); return; }
+    if (lastRun.accumulated) {
+      flash({ text: "Số trên đồng hồ đã CỘNG DỒN lần đo trước (quên Reset trước khi thả). Bỏ lần này: Reset rồi đo lại.", kind: "warn" }, 4200);
+      sound("warn");
       setJustRolled(false);
       return;
     }
-    const matchesTeacherTarget = currentTargets.some((target) => Math.abs(measuredConfig.s - target.s) < 0.005);
-    if (set.seed === "teacher" && !matchesTeacherTarget) {
-      const wanted = currentTask ? `${(currentTask.s * 100).toFixed(0)}cm` : "quãng đường trong đề";
-      flash(`Sai cấu hình đề giáo viên — hãy chỉnh quãng rơi đúng ${wanted} rồi đo lại.`);
+    const cfg = lastMeasurementRef.current;
+    if (!cfg || Math.abs(cfg.s - s) >= 0.005 || cfg.scale !== scale || cfg.mode !== mode || cfg.balanced !== balanced) {
+      flash("Quãng rơi đã đổi sau phép đo — hãy đo lại trước khi ghi.");
+      setJustRolled(false);
       return;
     }
     const t = parseFloat(led);
-    setTrials((tr) => [...tr, {
-      id: tr.length + 1,
-      lab: "freefall",
-      s: +measuredConfig.s.toFixed(3),
-      t,
-      g: gFromMeasurement(measuredConfig.s, t),
-      balanced: measuredConfig.balanced,
-    }]);
+    const trial = { id: nextId.current++, lab: "freefall", s: +cfg.s.toFixed(3), t, g: gFromMeasurement(cfg.s, t), balanced: cfg.balanced, steady: cfg.steady };
+    const next = [...trials, trial];
+    setTrials(next);
     lastMeasurementRef.current = null;
     setJustRolled(false);
-    flash(`Đã ghi lần đo #${trials.length + 1}.`);
+    setLiveFall(null);
+    celebrate(next, trial);
   }
+  /** Bỏ lần vừa thả (không ghi) — như bấm Reset. */
+  function discardRun() { resetTimer(); flash("Đã bỏ lần đo vừa rồi."); }
+  function removeTrial(id) { setTrials((old) => old.filter((t) => t.id !== id)); }
+
+  /** ⚡ Đo nhanh: tự gắn trụ, Reset, chờ trụ đứng yên rồi thả (mở khóa sau 2 lần đo tay). */
+  function quickMeasure() {
+    if (!quickUnlocked || rolling || justRolled || quickArmed) return;
+    if (!setupDone) { flash("Hoàn tất thiết lập trước khi đo nhanh."); return; }
+    resetTimer();
+    if (!magnetOn) magnetHold();
+    setQuickArmed(true);
+  }
+  useEffect(() => {
+    if (!quickArmed || rolling || !magnetOn || !settled) return;
+    const id = setTimeout(() => { setQuickArmed(false); release(); }, 160);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickArmed, rolling, magnetOn, settled]);
+
+  function saveTrials() { onExportNote?.({ lab: "freefall", trials }); }
   function exportNote() {
-    if (!trials.length) { flash("Chưa có số liệu để xuất."); return; }
-    onExportNote?.({ lab: "freefall", trials }); flash("Đã gửi số liệu sang Sổ Báo Cáo.");
+    if (!trials.length) { flash("Chưa có số liệu để lưu."); return; }
+    if (reqMet) { saveTrials(); return; }
+    setDialog({
+      title: "Chưa đủ số liệu — vẫn lưu?",
+      message: `Mới đo ${groups.length}/${REQ.positions} vị trí, trải ${cm(spread)}/${cm(REQ.spread)}${teacherMissing.length ? `, còn thiếu mốc GV ${teacherMissing.map(cm).join(", ")}` : ""}. Có thể lưu bây giờ và đo bổ sung sau.`,
+      actions: [{ label: "Đo tiếp cho đủ", tone: "primary" }, { label: `Vẫn lưu ${trials.length} số đo`, onClick: saveTrials }],
+    });
   }
-  // Thoát phòng lab — hỏi xác nhận nếu còn số liệu chưa xuất Note.
+  // Thoát phòng lab — còn số liệu chưa lưu thì hỏi ngay trong Lab (không dùng window.confirm).
   function handleExit() {
     if (!onBack) return;
-    if (trials.length > 0 && !window.confirm(`Bạn có ${trials.length} lần đo chưa xuất sang Sổ Báo Cáo. Thoát phòng lab và bỏ số liệu này?`)) return;
-    onBack();
+    if (!trials.length) { onBack(); return; }
+    setDialog({
+      title: "Thoát phòng Lab?",
+      message: `Em có ${trials.length} số đo chưa lưu vào Sổ Báo Cáo.`,
+      actions: [
+        { label: "Lưu vào Sổ Báo Cáo rồi thoát", tone: "primary", onClick: saveTrials },
+        { label: "Thoát, bỏ số liệu", tone: "danger", onClick: onBack },
+        { label: "Ở lại đo tiếp" },
+      ],
+    });
   }
-  async function askBot(q) {
-    const text = (q ?? chatQ).trim();
-    if (!text || chatBusy) return;
-    setChatQ("");
-    
-    // Thêm câu hỏi của user vào history
-    setChatHistory((prev) => [...prev, { role: "user", text }]);
-    setChatBusy(true);
-    
-    // Thêm placeholder cho câu trả lời của AI
-    setChatHistory((prev) => [...prev, { role: "assistant", text: "" }]);
-    
-    try {
-      const reply = await ask(text, {
-        assistantSettings,
-        labContext: buildSmartBotContext(),
-        onToken: (piece) => {
-          setChatHistory((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.role === "assistant") {
-              last.text += piece;
-            }
-            return copy;
-          });
-        }
-      });
-      if (reply?.buttons?.length) {
-        setChatHistory((prev) => {
-          const copy = [...prev];
-          const last = copy[copy.length - 1];
-          if (last && last.role === "assistant") {
-            copy[copy.length - 1] = { ...last, actions: reply.buttons };
-          }
-          return copy;
-        });
-      }
-    } catch {
-      setChatHistory((prev) => {
-        const copy = [...prev];
-        const last = copy[copy.length - 1];
-        if (last && last.role === "assistant") {
-          last.text = "Không kết nối được trợ lý. Thử lại sau nhé.";
-        }
-        return copy;
-      });
-    } finally {
-      setChatBusy(false);
-    }
+  function clearTrials() {
+    if (!trials.length) return;
+    setDialog({
+      title: `Xóa toàn bộ ${trials.length} số đo?`,
+      message: "Không hoàn tác được.",
+      actions: [{ label: "Giữ lại", tone: "primary" }, { label: "Xóa hết", tone: "danger", onClick: () => setTrials([]) }],
+    });
   }
 
-  function buildSmartBotContext() {
-    return {
-      screen: "lab",
-      labId: "b11",
-      lab: "freefall",
-      assembled,
-      activeGroupNames: activeGroup.map((k) => TOOLS.find((t) => t.k === k)?.name).filter(Boolean),
-      placedCount,
-      requiredCount: required.length,
-      balanced,
-      power,
-      wiredOK,
-      modeOK,
-      isReset,
-      rolling,
-      magnetOn,
-      objectAtBottom: !magnetOn && !rolling && fallY > Y0,
-      trialsCount: trials.length,
-      targetCount,
-      currentTask: currentTask ? {
-        index: currentTaskIndex + 1,
-        s: currentTask.s,
-        measured: isTargetMeasured(currentTask),
-      } : null,
-      nextStepText,
-    };
-  }
-
+  // "Làm giúp bước này" — cứu học sinh khi bị kẹt ở một bước lắp/thiết lập.
   function runAssistantAction(payload) {
     if (payload === "auto_place_next") {
       const next = activeGroup.find((k) => reqSet.has(k) && !placed.has(k));
@@ -540,6 +515,7 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
         flash("Chưa lắp đồng hồ nên chưa thể chọn MODE.");
         return;
       }
+      setFace("front");
       setMode("A<->B");
       flash("Đã chọn MODE A↔B");
       return;
@@ -563,23 +539,6 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
     }
   }
 
-  const renderAssistantActions = (msg) => (
-    msg.actions?.length ? (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-        {msg.actions.map((action) => (
-          <button
-            key={`${action.payload}-${action.title}`}
-            type="button"
-            onClick={() => runAssistantAction(action.payload)}
-            style={{ border: `1px solid ${C.orange}`, background: "#FFF7EF", color: C.orangeDk, borderRadius: 9, padding: "6px 9px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: FONT }}
-          >
-            {action.title}
-          </button>
-        ))}
-      </div>
-    ) : null
-  );
-
   const evVB = (e, el) => { const svg = el.closest("svg"); const r = svg.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * VBW, y: (e.clientY - r.top) / r.height * VBH, svg }; };
 
   // kéo cổng quang dọc máng -> đổi s
@@ -592,25 +551,25 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
   }, [rolling]);
 
   // kéo trụ thép (đã rơi xuống chân đế) lên gắn lại vào nam châm điện
-  const dragCyl = useCallback((e) => {
+  const dragCyl = (e) => {
     if (rolling || magnetOn) return; e.stopPropagation();
-    const startX = e.clientX, startY = e.clientY, startTime = Date.now();
+    const startX = e.clientX, startY = e.clientY, startTime = e.timeStamp;
     const { svg } = evVB(e, e.currentTarget);
     const move = (ev) => { const p = evVB(ev, svg); setCylDrag({ x: p.x, y: p.y }); };
     const up = (ev) => {
-      const isClick = Math.hypot(ev.clientX - startX, ev.clientY - startY) < 10 && (Date.now() - startTime) < 300;
+      const isClick = Math.hypot(ev.clientX - startX, ev.clientY - startY) < 10 && (ev.timeStamp - startTime) < 300;
       if (isMobile && isClick) {
-        setMagnetOn(true); setFallY(Y0); setCylDrag(null);
+        magnetHold();
         flash("Đã gắn trụ thép lại vào nam châm");
       } else {
         const p = evVB(ev, svg);
-        if (Math.hypot(p.x - RAILX, p.y - Y0) < 64) { setMagnetOn(true); setFallY(Y0); }
+        if (Math.hypot(p.x - RAILX, p.y - Y0) < 64) magnetHold();
         setCylDrag(null);
       }
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
-  }, [rolling, magnetOn, isMobile]);
+  };
 
   // kéo dây: cầm đầu dây rồi thả vào đích.
   //  - src "switch"/"gate" -> thả vào ổ A/B (mặt sau đồng hồ)
@@ -625,23 +584,11 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
       const isClick = Math.hypot(ev.clientX - startX, ev.clientY - startY) < 10 && (Date.now() - startTime) < 300;
       if (isMobile && isClick) {
         if (src === "switchMag") {
-          setMagnetWire((prev) => {
-            const next = !prev;
-            flash(next ? "Đã nối dây công tắc → nam châm" : "Đã rút dây công tắc → nam châm");
-            return next;
-          });
+          setMagnetWire((prev) => !prev);
         } else if (src === "switch") {
-          setWires((w) => {
-            const next = w.A === "switch" ? null : "switch";
-            flash(next ? "Đã nối dây công tắc → ổ A" : "Đã rút dây công tắc");
-            return { ...w, A: next };
-          });
+          setWires((w) => ({ ...w, A: w.A === "switch" ? null : "switch" }));
         } else if (src === "gate") {
-          setWires((w) => {
-            const next = w.B === "gate" ? null : "gate";
-            flash(next ? "Đã nối dây cổng quang → ổ B" : "Đã rút dây cổng quang");
-            return { ...w, B: next };
-          });
+          setWires((w) => ({ ...w, B: w.B === "gate" ? null : "gate" }));
         }
       } else {
         const p = evVB(ev, svg);
@@ -658,288 +605,356 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
-  }, [rolling, isMobile]);
+  }, [isMobile]);
   const unplug = (sock) => setWires((w) => ({ ...w, [sock]: null }));
 
-  const targetCount = suggestedFall.length;
-  const placedCount = required.filter((k) => placed.has(k)).length;
-  const tip = guide({
-    labId: "b11", lab: "freefall", assembled,
-    activeGroupNames: activeGroup.map((k) => TOOLS.find((t) => t.k === k)?.name).filter(Boolean),
-    placedCount, requiredCount: required.length,
-    balanced, power, wiredOK, modeOK, isReset, rolling,
-    ballAtEnd: !magnetOn && !rolling && fallY > Y0, justMeasured: justRolled,
-    trialsCount: trials.length, targetCount,
-    assistantSettings,
-  });
-  const tone = TONE[tip.tone] || C.navy;
-
-  // TTS: đọc chỉ dẫn khi nội dung đổi (TTS của RealPhyLab)
-  const lastSpoken = useRef("");
-  useEffect(() => {
-    if (speak && tip.text && tip.text !== lastSpoken.current) {
-      lastSpoken.current = tip.text;
-      speak(tip.text);
+  /* ======================= BƯỚC TIẾP THEO (một nguồn sự thật) ======================= */
+  const cylAtBottom = !magnetOn && !rolling && fallY > Y0;
+  const onTeacherTarget = teacherMissing.some((ts) => Math.abs(ts - s) < 0.005);
+  const nextToolNames = activeGroup
+    .filter((k) => reqSet.has(k) && !placed.has(k))
+    .map((k) => TOOLS.find((t) => t.k === k)?.name)
+    .filter(Boolean);
+  // Gợi ý vị trí mới cách xa các vị trí đã đo nhất.
+  const suggestS = (() => {
+    if (!groups.length) return null;
+    let best = null;
+    for (let v = 20; v <= 80; v += 5) {
+      const d = Math.min(...groups.map((g) => Math.abs(g.cm - v)));
+      if (!best || d > best.d) best = { v, d };
     }
-  }, [tip.text, speak]);
+    return best && best.d >= 5 ? best.v / 100 : null;
+  })();
+  const liveG = lastRun ? gFromMeasurement(lastRun.s, lastRun.t) : null;
 
-  const renderSideContent = (showParts = { assistant: true, progress: true, data: true }) => (
-    <>
-      {/* PHẦN 1 — TRỢ LÝ */}
-      {showParts.assistant && (
-        isMobile ? (
-          /* Mobile Cozy Tech Q&A Chat Section */
-          <section style={{ ...cardStyle, background: "#FFFDF9", border: "1px solid #EFE8DF", borderRadius: 16, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #F0E6D8", paddingBottom: 6 }}>
-              <MessageSquare className="w-4 h-4 text-[#C85A17]" />
-              <b style={{ color: C.ink, fontSize: 12.5 }}>Trợ lý Phylab</b>
-              {chatBusy && <span style={{ fontSize: 10, color: C.orange, marginLeft: "auto" }}>Đang trả lời...</span>}
-            </div>
+  let next;
+  if (!assembled) {
+    next = {
+      key: "assemble",
+      title: `Lắp ${nextToolNames.join(" / ") || "dụng cụ"}`,
+      hint: isMobile
+        ? "Chạm dụng cụ đang sáng ở khay bên trái để lắp vào bàn."
+        : "Kéo dụng cụ đang sáng ở khay bên trái thả vào vòng (+) trên bàn — hoặc bấm vào nó để lắp nhanh.",
+    };
+  } else if (!balanced) {
+    next = { key: "balance", title: "Cân bằng giá đỡ", hint: "Bấm con vít vàng ở khối kẹp chân máng để dây dọi thẳng đứng — vít chuyển xanh là xong.", assist: "auto_fix_screw" };
+  } else if (!magnetWire) {
+    next = {
+      key: "wireMag",
+      title: "Nối dây công tắc kép → nam châm",
+      hint: isMobile ? "Chạm chốt tím bên trái hộp công tắc kép để nối tới nam châm điện." : "Kéo chốt tím bên trái hộp công tắc kép thả vào đầu nối NC cạnh nam châm điện.",
+      assist: "auto_wire",
+    };
+  } else if (!clockWired) {
+    next = {
+      key: "wire",
+      title: "Nối dây vào đồng hồ: công tắc → A, cổng quang → B",
+      hint: isMobile
+        ? "Chạm chốt xanh bên phải công tắc (→ ổ A) và chốt đỏ của cổng quang (→ ổ B)."
+        : "Kéo chốt xanh bên phải công tắc vào ổ A, chốt đỏ của cổng quang vào ổ B ở mặt sau đồng hồ.",
+      assist: "auto_wire",
+    };
+  } else if (!power) {
+    next = { key: "power", title: "Bật nguồn đồng hồ MC964", hint: "Ở mặt sau đồng hồ, bấm công tắc nguồn để chuyển sang I (màu xanh).", assist: "auto_power" };
+  } else if (!modeOK) {
+    next = { key: "mode", title: "Chọn MODE A↔B", hint: "Lật về mặt trước đồng hồ, bấm núm MODE tới nấc A↔B (từ lúc thả đến lúc trụ qua cổng).", assist: "auto_mode" };
+  } else if (rolling) {
+    next = { key: "rolling", title: "Đang đo… (chiếu chậm ×4)", hint: "Đồng hồ đếm từ lúc ngắt nam châm và dừng đúng lúc trụ thép cắt tia cổng quang." };
+  } else if (justRolled && lastRun) {
+    next = lastRun.accumulated
+      ? { key: "record", title: "Số đo bị cộng dồn!", hint: `Đồng hồ hiện ${led} s vì chưa Reset trước khi thả. Bấm “Bỏ lần này” (Reset) rồi đo lại.`, assist: "auto_reset" }
+      : {
+          key: "record",
+          title: "Ghi số liệu vừa đo",
+          hint: `t = ${led} s → g = ${liveG.toFixed(2)} m/s².${lastRun.steady ? "" : " ⚠ Trụ còn đung đưa lúc thả — số đo dễ lệch, nên bỏ lần này."}`,
+          primaryLabel: "Ghi số liệu",
+        };
+  } else if (reqMet) {
+    next = { key: "done", title: "Đã đủ số liệu — g của em đã rõ", hint: "Lưu vào Sổ Báo Cáo để vẽ đồ thị s–t² và lập báo cáo. Muốn g chính xác hơn thì đo thêm.", primaryLabel: "Lưu vào Sổ Báo Cáo", primaryShort: "Lưu" };
+  } else if (cylAtBottom) {
+    next = {
+      key: "cylback",
+      title: "Gắn trụ thép lên nam châm",
+      hint: isMobile ? "Chạm vào trụ thép ở chân đế để gắn lại lên nam châm." : "Kéo trụ thép ở chân đế thả lại vào nam châm điện ở đỉnh máng.",
+      assist: "auto_reset_object",
+    };
+  } else if (!isReset) {
+    next = { key: "reset", title: "Reset đồng hồ về 0", hint: "Bấm nút Reset đỏ ở mặt trước đồng hồ trước mỗi lần thả — nếu không, số đo sẽ cộng dồn.", assist: "auto_reset" };
+  } else if (!settled) {
+    next = { key: "settle", title: "Chờ trụ thép đứng yên…", hint: "Trụ vừa gắn còn đung đưa. Thả lúc này trụ dễ xoay, quệt vào cổng quang → t lệch. Đợi khoảng 1 giây." };
+  } else if (teacherMissing.length && !onTeacherTarget) {
+    next = {
+      key: "config",
+      title: `Đặt s = ${cm(teacherMissing[0])} (mốc giáo viên)`,
+      hint: isMobile ? "Mở nút điều chỉnh ở cạnh phải bàn để tăng/giảm s từng cm." : "Kéo cổng quang dọc máng tới đúng vạch, hoặc bấm chip mốc trong bảng Điều khiển.",
+    };
+  } else {
+    const n = currentGroup?.items.length || 0;
+    next = {
+      key: "release",
+      title: `Thả trụ thép ở s = ${cm(s)}${n ? ` (lần ${n + 1})` : ""}`,
+      hint: n
+        ? `Vị trí này đã đo ${n} lần — đo lặp giúp thấy sai số ngẫu nhiên.${suggestS ? ` Vị trí mới gợi ý: ${cm(suggestS)}.` : ""} Còn ${Math.max(0, REQ.positions - groups.length)} vị trí nữa.`
+        : `Bấm hộp công tắc kép để thả. Đã đo ${groups.length}/${REQ.positions} vị trí (trải ≥ ${cm(REQ.spread)}).`,
+    };
+  }
+  const phase = !assembled ? 0 : !setupDone ? 1 : !reqMet ? 2 : 3;
+  // Nút chính của bước hiện tại: ghi số liệu vừa đo, hoặc lưu sang Sổ Báo Cáo khi đã đo đủ.
+  const handlePrimary = () => (next.key === "record" ? recordTrial() : exportNote());
+  const speechText = `${next.title}. ${next.hint || ""}`.trim();
+  const speechKey = `${next.key}|${next.key === "release" ? "" : next.title}`;
 
-            {/* Chat History Log */}
-            <div ref={chatScrollRef} style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
-              {chatHistory.map((msg, idx) => (
-                <div 
-                  key={idx} 
-                  style={{
-                    alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                    background: msg.role === "user" ? "#FBE6D4" : "#F5F0E6",
-                    border: msg.role === "user" ? "1px solid #F3DEC8" : "1px solid #EAE1D0",
-                    color: msg.role === "user" ? "#6A3B18" : "#443930",
-                    borderRadius: msg.role === "user" ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
-                    padding: "8px 12px",
-                    fontSize: 12,
-                    maxWidth: "85%",
-                    lineHeight: 1.4,
-                    wordBreak: "break-word"
-                  }}
-                >
-                  {msg.text ? <MathText text={msg.text} /> : <span style={{ color: C.sub }}>...</span>}
-                  {msg.role === "assistant" && renderAssistantActions(msg)}
-                </div>
-              ))}
-            </div>
+  // TTS: đọc bước tiếp theo mỗi khi bước đổi (không đọc lại khi chỉ số liệu trong gợi ý đổi).
+  useEffect(() => {
+    if (!speak || ["rolling", "settle"].includes(next.key) || quickArmed || speechKey === lastSpoken.current) return;
+    lastSpoken.current = speechKey;
+    speak(speechText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speechKey, speak]);
 
-            {/* Chat input form */}
-            <form onSubmit={(e) => { e.preventDefault(); askBot(); }} style={{ display: "flex", gap: 6, marginTop: 4 }}>
-              <input 
-                value={chatQ} 
-                onChange={(e) => setChatQ(e.target.value)} 
-                placeholder="Hỏi trợ lý về thí nghiệm…"
-                style={{ 
-                  flex: 1, 
-                  minWidth: 0, 
-                  border: "1px solid #E1D3B6", 
-                  borderRadius: 10, 
-                  padding: "8px 12px", 
-                  fontSize: 12, 
-                  fontFamily: FONT, 
-                  outline: "none", 
-                  background: "#ffffff", 
-                  color: C.ink 
-                }} 
-              />
-              <button 
-                type="submit" 
-                disabled={chatBusy || !chatQ.trim()} 
-                style={{ 
-                  background: C.orange, 
-                  color: "#ffffff", 
-                  border: "none", 
-                  borderRadius: 10, 
-                  padding: "8px 14px", 
-                  fontSize: 12, 
-                  fontWeight: "bold", 
-                  cursor: "pointer", 
-                  opacity: chatBusy || !chatQ.trim() ? 0.5 : 1,
-                  fontFamily: FONT
-                }}
-              >
-                Hỏi
-              </button>
-            </form>
-          </section>
-        ) : (
-          <section style={cardStyle}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: C.orange, color: "#fff", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14 }}>φ</div>
-              <b style={{ color: C.ink, fontSize: 14.5 }}>Trợ lý Phylab</b>
-              {speak && (
-                <button onClick={onToggleMute} title={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-label={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-pressed={muted}
-                  style={{ marginLeft: "auto", border: `1px solid ${muted ? "#C0392B" : C.line}`, background: muted ? "#FDECEA" : "#fff", borderRadius: 8, width: 28, height: 28, cursor: "pointer", display: "grid", placeItems: "center", color: muted ? "#C0392B" : C.orange }}>
-                  {muted ? <VolumeX className="w-4 h-4 text-[#C0392B]" /> : <Volume2 className="w-4 h-4 text-[#C85A17]" />}
-                </button>
-              )}
-              <span style={{ marginLeft: speak ? 6 : "auto", fontSize: 9.5, color: smartbotReady() ? C.good : C.sub, border: `1px solid ${smartbotReady() ? C.good : C.line}`, borderRadius: 20, padding: "1px 7px" }}>{smartbotReady() ? "VNPT" : "offline"}</span>
-            </div>
-            <div style={{ padding: "10px 12px", borderRadius: 10, background: C.bg, borderLeft: `3px solid ${tone}`, color: C.ink, fontSize: 14, lineHeight: 1.5, display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ flex: 1 }}><MathText text={tip.text} /></span>
-              {speak && tip.text && (
-                <button type="button" onClick={() => speak(tip.text)} title="Nghe đọc" style={{ border: "none", background: "none", cursor: "pointer", padding: "2px 4px", display: "inline-flex", alignItems: "center" }}>
-                  <Play className="w-3.5 h-3.5 text-[#C85A17] fill-[#C85A17]/10" />
-                </button>
-              )}
-            </div>
-            {chatHistory.length > 1 && (
-              <div ref={chatScrollRef} style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto", marginTop: 6, paddingRight: 4 }}>
-                {chatHistory.slice(1).map((msg, idx) => (
-                  <div key={idx} style={{ padding: "8px 11px", borderRadius: 8, background: C.bg, border: `1px solid ${C.line}`, fontSize: 13.5, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 10, color: C.sub, fontWeight: "bold" }}>
-                      {msg.role === "user" ? "Bạn:" : "Trợ lý Phylab:"}
-                    </span>
-                    <span style={{ color: C.ink, lineHeight: 1.45 }}>
-                      {msg.text ? <MathText text={msg.text} /> : "..."}
-                    </span>
-                    {msg.role === "assistant" && renderAssistantActions(msg)}
-                  </div>
-                ))}
-              </div>
-            )}
-            <form onSubmit={(e) => { e.preventDefault(); askBot(); }} style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <input value={chatQ} onChange={(e) => setChatQ(e.target.value)} placeholder="Hỏi trợ lý về thí nghiệm…"
-                style={{ flex: 1, minWidth: 0, border: `1px solid ${C.line}`, borderRadius: 9, padding: "8px 11px", fontSize: 13.5, fontFamily: FONT, outline: "none", background: "#ffffff", color: C.ink }} />
-              <button type="submit" disabled={chatBusy || !chatQ.trim()} style={{ ...btnNavy, padding: "8px 14px", fontSize: 13.5, opacity: chatBusy || !chatQ.trim() ? 0.5 : 1 }}>Hỏi</button>
-            </form>
-            {onReplayPrelab && (
-              <button onClick={onReplayPrelab} style={{ ...btnGhost, color: C.orangeDk, fontSize: 11.5, marginTop: 8, display: "flex", alignItems: "center", gap: 4, width: "100%", justifyContent: "center", border: `1px dashed ${C.line}`, borderRadius: 8, padding: "5px 0" }}>
-                <BookOpen className="w-3.5 h-3.5 text-[#C85A17]" /> Xem lại giới thiệu dụng cụ (Prelab)
-              </button>
-            )}
-          </section>
-        )
+  // Mobile: tự zoom tới vùng cần thao tác của bước hiện tại.
+  useEffect(() => {
+    if (!isMobile) return;
+    let target = null;
+    if (!assembled) target = "full";
+    else if (next.key === "balance") target = "rail";
+    else if (["wire", "power", "mode"].includes(next.key)) target = "clock";
+    else if (["wireMag", "config", "release", "cylback", "reset", "rolling", "record"].includes(next.key)) target = "full";
+    if (!target) return;
+    const timer = setTimeout(() => setZoomMode(target), 0);
+    return () => clearTimeout(timer);
+  }, [assembled, isMobile, next.key]);
+
+  /* ============================ GIAO DIỆN ============================ */
+  const setupItems = [
+    { key: "balance", text: "Cân bằng giá đỡ (dây dọi thẳng đứng)", done: balanced },
+    { key: "wireMag", text: "Nối dây công tắc kép → nam châm", done: magnetWire },
+    { key: "wire", text: "Nối công tắc → ổ A, cổng quang → ổ B", done: clockWired },
+    { key: "power", text: "Bật nguồn đồng hồ (mặt sau)", done: power },
+    { key: "mode", text: "Chọn MODE A↔B (mặt trước)", done: modeOK },
+  ];
+  const placedCount = required.filter((k) => placed.has(k)).length;
+  const fixed = scale === "fine" ? 3 : 2;
+
+  /* "g của em" — ước lượng từ đồ thị, sai số co lại khi đo thêm */
+  const gDev = fit ? (fit.g - FREEFALL.g) / FREEFALL.g : 0;
+  const hasLine = Boolean(fit) && groups.length >= 2;
+  const gTip = !hasLine ? null
+    : trials.some((t) => !t.steady) ? "Điểm viền đỏ (thả khi trụ còn đung đưa) kéo lệch g — xoá rồi đo lại."
+      : gDev < -0.004 ? "💡 g hơi nhỏ hơn 9,80 vì nam châm còn từ dư: trụ rời chậm ~1 ms nên t hơi lớn. Đo ở s lớn thì ảnh hưởng nhỏ hơn."
+        : null;
+  const canRecord = justRolled && !rolling && lastRun && !lastRun.accumulated;
+
+  /* Thẻ ĐO: số trên đồng hồ + kết quả tính ngay + tiến độ (viên nhỏ) + nút phụ — gọn, không cần cuộn */
+  const measureCard = (
+    <section style={{ ...panelCard, padding: 10, border: `1.5px solid ${canRecord ? `${C.orange}88` : C.line}`, background: canRecord ? "#FFF8F0" : "#fff" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={miniLabel}>Đồng hồ MC964</div>
+          <div style={{ fontFamily: "monospace", fontSize: 26, fontWeight: 900, color: canRecord ? C.orangeDk : C.ink, lineHeight: 1.1 }}>
+            <AnimLed anim={anim} rolling={rolling} led={led} /><span style={{ fontSize: 12, color: C.sub, marginLeft: 3, fontFamily: FONT }}>s</span>
+          </div>
+        </div>
+        <div style={{ textAlign: "right", minWidth: 0 }}>
+          <div style={miniLabel}>{justRolled && lastRun ? `Lần này · s = ${cm(lastRun.s)}` : "g của em (đồ thị)"}</div>
+          <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 900, lineHeight: 1.15, whiteSpace: "nowrap", color: justRolled && lastRun?.accumulated ? "#B91C1C" : C.navy }}>
+            {justRolled && lastRun
+              ? (lastRun.accumulated ? "cộng dồn!" : `g = ${liveG.toFixed(2)}`)
+              : hasLine ? `${fit.g.toFixed(2)}${fit.sigma != null ? ` ±${Math.max(0.01, fit.sigma).toFixed(2)}` : ""}` : "—"}
+          </div>
+          {!justRolled && hasLine && (
+            <div style={{ fontSize: 10.5, fontWeight: 900, color: Math.abs(gDev) < 0.01 ? C.good : C.orangeDk }}>{gDev >= 0 ? "+" : ""}{(gDev * 100).toFixed(1)}% so với 9,80</div>
+          )}
+          {justRolled && lastRun && !lastRun.steady && !lastRun.accumulated && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B91C1C" }}>⚠ trụ còn đung đưa</div>}
+        </div>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <ProgressPills items={[
+          { key: "pos", label: "Vị trí ", value: `${groups.length}/${REQ.positions}`, done: groups.length >= REQ.positions, current: groups.length < REQ.positions },
+          { key: "spread", label: "Trải ", value: `${Math.round(spread * 100)}/${Math.round(REQ.spread * 100)} cm`, done: spread >= REQ.spread - 1e-9 },
+          ...(teacherTargets.length
+            ? [{ key: "gv", label: "Mốc GV ", value: `${teacherTargets.length - teacherMissing.length}/${teacherTargets.length}`, done: !teacherMissing.length, title: `Giáo viên giao: ${teacherTargets.map(cm).join(", ")}` }]
+            : []),
+        ]} />
+      </div>
+      {gTip && !justRolled && <div style={{ fontSize: 11, color: "#6b6258", fontWeight: 700, lineHeight: 1.4, marginTop: 7 }}>{gTip}</div>}
+      {setupDone && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+          {justRolled ? (
+            <button type="button" onClick={discardRun} style={{ ...btnSecondary, padding: "6px 10px", fontSize: 11.5, borderColor: C.line, color: C.sub }}>Bỏ lần này</button>
+          ) : quickUnlocked ? (
+            <button type="button" onClick={quickMeasure} disabled={rolling || quickArmed} title="Tự gắn trụ, Reset, chờ trụ đứng yên rồi thả"
+              style={{ ...btnSoft, padding: "6px 10px", opacity: rolling || quickArmed ? 0.5 : 1 }}>
+              <Zap size={13} strokeWidth={2.6} /> {quickArmed ? "Đang chuẩn bị…" : "Đo nhanh"}
+            </button>
+          ) : (
+            <span style={{ fontSize: 10.5, color: C.sub, fontWeight: 700 }}>⚡ Ghi 2 lần bằng tay để mở khóa “Đo nhanh”.</span>
+          )}
+        </div>
       )}
-
-      {/* PHẦN 2 — TIẾN TRÌNH */}
-      {showParts.progress && (
-        <section style={cardStyle}>
-          <div style={sideTitle}>Tiến trình {assembled ? "— quy trình đo" : "— lắp ráp"}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {steps.map((st, i) => (
-              <div key={st.k} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: isMobile ? 12.5 : 13.5, transition: "opacity .3s", opacity: st.done ? 0.55 : 1 }}>
-                <span style={{ width: 18, height: 18, borderRadius: 6, border: `1.6px solid ${st.done ? C.good : C.line}`, background: st.done ? C.good : "#fff", color: st.done ? "#fff" : C.sub, display: "grid", placeItems: "center", fontSize: 10, fontWeight: "bold", flexShrink: 0 }}>
-                  {st.done ? <Check className="w-2.5 h-2.5 stroke-[3] text-white" /> : i + 1}
-                </span>
-                <span style={{ color: st.done ? C.sub : C.ink, textDecoration: st.done ? "line-through" : "none", display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  {st.t}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* PHẦN 3 — GHI SỐ LIỆU */}
-      {showParts.data && (
-        <section style={cardStyle}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={sideTitle}>Ghi số liệu ({trials.length})</div>
-            {trials.length > 0 && <button onClick={() => setTrials([])} style={{ ...btnGhost, fontSize: 11 }}>Xóa hết</button>}
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "2px 0 8px" }}>
-            <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub }}>số đo</span>
-            <b style={{ fontFamily: "monospace", fontSize: isMobile ? 28 : 24, color: justRolled ? C.orangeDk : C.ink }}>{led}</b>
-            <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub }}>s</span>
-            {justRolled && <span style={{ fontSize: isMobile ? 12.5 : 11, color: C.sub, marginLeft: "auto" }}>g ≈ <b style={{ color: C.ink }}>{gFromMeasurement(s, parseFloat(led)).toFixed(2)}</b></span>}
-          </div>
-          <div data-lab-scroll style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: isMobile ? 200 : 140, overflow: "auto" }}>
-            {trials.map((t) => (
-              <div key={t.id} style={{ fontSize: isMobile ? 13.5 : 13, color: C.sub, display: "flex", justifyContent: "space-between", padding: isMobile ? "7px 10px" : "4px 8px", background: C.bg, borderRadius: 6 }}>
-                <span>#{t.id} s={(t.s * 100).toFixed(0)}cm</span>
-                <span style={{ color: C.ink, fontWeight: 700 }}>{t.t.toFixed(scale === "fine" ? 3 : 2)}s · g={t.g.toFixed(2)}</span>
-              </div>
-            ))}
-            {!trials.length && <div style={{ fontSize: isMobile ? 12 : 13, color: C.sub2 || C.sub, fontStyle: "italic" }}>Chưa có lần đo. Reset → thả trụ thép → Ghi số liệu.</div>}
-          </div>
-          <button disabled={!justRolled || rolling} onClick={recordTrial} style={{ ...btnNavy, width: "100%", marginBottom: 8, opacity: justRolled && !rolling ? 1 : 0.5, cursor: justRolled && !rolling ? "pointer" : "not-allowed" }}>Ghi số liệu</button>
-          <button onClick={exportNote} style={{ ...btnBig, width: "100%" }}>Xuất sang Sổ Báo Cáo</button>
-        </section>
-      )}
-    </>
+    </section>
   );
 
-  const renderAssignmentCard = () => (
-    <section data-lab-assignment style={{ ...cardStyle, background: "#FFF8F1", border: `1.5px solid ${C.orange}55` }}>
-      <div style={{ ...sideTitle, color: C.orangeDk, marginBottom: 4 }}>
-        {isTeacherAssigned ? "Đề giáo viên giao" : "Cấu hình cần đo"}
+  const controlsCard = (
+    <section style={{ ...panelCard, padding: 10 }}>
+      <NudgeSlider
+        label="Cổng quang"
+        valueText={`s = ${cm(s)}`}
+        value={s}
+        min={FREEFALL.s.min}
+        max={FREEFALL.s.max}
+        step={0.01}
+        disabled={rolling}
+        ariaLabel="Quãng rơi s (m)"
+        nudges={[{ label: "−1", delta: -0.01 }, { label: "+1", delta: 0.01 }]}
+        onChange={(v, isDelta) => setS((old) => clamp(+(isDelta ? old + v : v).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))}
+        extra={(teacherTargets.length > 0 || suggestS) ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7, alignItems: "center" }}>
+            {teacherTargets.length > 0 && <span style={{ fontSize: 10.5, fontWeight: 900, color: C.navy }}>Mốc GV:</span>}
+            {teacherTargets.map((ts) => {
+              const done = groups.some((g) => Math.abs(g.s - ts) < 0.005);
+              return <button type="button" key={ts} disabled={rolling} onClick={() => setS(ts)} style={{ ...choiceButton, ...(done ? { color: C.good, borderColor: `${C.good}88` } : {}) }}>{done ? "✓ " : ""}{cm(ts)}</button>;
+            })}
+            {!teacherTargets.length && suggestS && (
+              <button type="button" disabled={rolling} onClick={() => setS(suggestS)} style={{ ...choiceButton, color: C.orangeDk, borderColor: `${C.orange}66` }}>Vị trí mới gợi ý: {cm(suggestS)}</button>
+            )}
+          </div>
+        ) : null}
+      />
+    </section>
+  );
+
+  /* Số liệu gọn: mỗi vị trí một dòng — các lần đo là "viên" nhỏ (bấm × để xoá) */
+  const dataCard = (
+    <section style={{ ...panelCard, padding: 10, flexShrink: 1, minHeight: 96, display: "flex", flexDirection: "column" }}>
+      <div style={{ ...sectionHead, marginBottom: 6 }}>
+        <span style={sectionTitle}>Số liệu · {trials.length} lần · {groups.length} vị trí</span>
+        {trials.length > 0 && <button type="button" onClick={clearTrials} style={linkBtn}>Xóa hết</button>}
       </div>
-      <div style={{ fontSize: isMobile ? 11 : 12, color: C.sub, lineHeight: 1.4, marginBottom: 8 }}>
-        Đo đúng từng quãng rơi dưới đây; mỗi dòng là một yêu cầu riêng.
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-        {currentTargets.map((target, index) => {
-          const used = isTargetMeasured(target);
-          return (
-            <div key={`${target.s}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "7px 9px", borderRadius: 8, border: `1px solid ${used ? C.good : C.line}`, background: used ? "#F3F8F3" : "#fff", fontSize: isMobile ? 11.5 : 12.5, color: C.ink }}>
-              <b>Câu {index + 1}: s={(target.s * 100).toFixed(0)}cm</b>
-              <span style={{ color: used ? C.good : C.sub, fontWeight: 800, whiteSpace: "nowrap" }}>{used ? "✓ Đã đo" : "Chưa đo"}</span>
-            </div>
-          );
-        })}
+      <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+        {groups.map((g) => (
+          <div key={g.cm} style={{ display: "grid", gridTemplateColumns: "42px minmax(0,1fr) auto", alignItems: "center", gap: 6, padding: "4px 6px", borderRadius: 8, fontSize: 11.5, background: g.cm === posKey(s) ? "#FFF6EC" : C.bg }}>
+            <b style={{ color: C.ink }}>{g.cm} cm</b>
+            <span style={{ display: "flex", flexWrap: "wrap", gap: 3, minWidth: 0 }}>
+              {g.items.map((t) => (
+                <span key={t.id} style={{ ...chip, borderColor: t.steady ? C.line : "#FCA5A5", color: t.steady ? C.ink : "#B91C1C" }} title={`g = ${t.g.toFixed(2)} m/s²`}>
+                  {t.t.toFixed(fixed)}
+                  <button type="button" onClick={() => removeTrial(t.id)} aria-label={`Xoá lần đo t = ${t.t.toFixed(fixed)} s ở s = ${g.cm} cm`} style={chipX}>×</button>
+                </span>
+              ))}
+            </span>
+            <span style={{ whiteSpace: "nowrap", color: C.sub, fontWeight: 800 }} title={`t̄ = ${g.tMean.toFixed(4)} s`}>g <b style={{ color: C.navy }}>{g.gMean.toFixed(2)}</b></span>
+          </div>
+        ))}
+        {!trials.length && <div style={{ fontSize: 12, color: C.sub, fontStyle: "italic", padding: "2px 2px 4px" }}>Chưa có lần đo — thả trụ thép rồi bấm Ghi.</div>}
       </div>
     </section>
   );
 
-  const renderGuidanceContent = () => (
-    <>
-      {renderAssignmentCard()}
-      {renderSideContent({ assistant: false, progress: true, data: true })}
-      {renderSideContent({ assistant: true, progress: false, data: false })}
-    </>
+  /* Đồ thị s–t² trực tiếp */
+  const tsq = trials.map((t) => t.t ** 2);
+  const xRange = niceRange([0, ...tsq, liveFall?.x ?? 0, fit ? (2 * s) / fit.g : 0, ((2 * s) / FREEFALL.g) * 1.06, 0.16], { min: 0, pad: 0.1 });
+  const kFit = fit ? fit.g / 2 : 0;
+  const xFitEnd = tsq.length ? Math.max(...tsq) : 0;
+  const graphSeries = [{
+    id: "ff",
+    color: C.navy,
+    points: trials.map((t) => ({ x: t.t ** 2, y: t.s, key: t.id, warn: !t.steady })),
+    lines: hasLine
+      ? [{ x1: 0, y1: 0, x2: xFitEnd, y2: kFit * xFitEnd }, { x1: xFitEnd, y1: kFit * xFitEnd, x2: xRange.max, y2: kFit * xRange.max, dashed: true }]
+      : [],
+    tags: hasLine ? [{ x: xFitEnd * 0.55, y: kFit * xFitEnd * 0.55, text: `g ≈ ${fit.g.toFixed(2)} m/s²`, pill: true, dy: -18 }] : [],
+  }];
+  const graphLive = liveFall && justRolled ? { x: liveFall.x, y: liveFall.y, color: C.orange, label: `t = ${led} s` } : null;
+  const graphGhost = hasLine && !rolling && !justRolled && setupDone && !currentGroup
+    ? { x: (2 * s) / fit.g, y: s, label: `dự đoán ở ${cm(s)}` }
+    : null;
+  const renderGraph = (compact, tall = false) => (
+    <LiveFallGraph
+      anim={anim}
+      rolling={rolling}
+      x={{ label: "t² (s²)", min: xRange.min, max: xRange.max, ticks: xRange.ticks, fmt: (v) => v.toFixed(2) }}
+      y={{ label: "s (m)", min: 0, max: 0.9, ticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], fmt: (v) => v.toFixed(1) }}
+      series={graphSeries}
+      guides={setupDone ? [{ axis: "y", value: s, color: C.orangeDk, label: `cổng quang: s = ${cm(s)}` }] : []}
+      live={graphLive}
+      ghost={graphGhost}
+      legend={false}
+      empty="Thả trụ thép — điểm (t², s) sẽ trượt lên đồ thị."
+      compact={compact}
+      tall={tall}
+      ariaLabel="Đồ thị quãng rơi s theo bình phương thời gian t²"
+    />
+  );
+  const stageGraph = (
+    <section style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 15, padding: "8px 10px 2px", minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <b style={{ fontSize: 13, color: C.ink, whiteSpace: "nowrap" }}>Đồ thị s–t² trực tiếp</b>
+        <span style={{ fontSize: 11.5, color: C.sub, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {hasLine ? `Đường thẳng qua O: độ dốc = g/2 → g ≈ ${fit.g.toFixed(2)} m/s²` : "Mỗi lần ghi là một điểm; đủ 2 vị trí sẽ hiện đường thẳng."}
+        </span>
+      </div>
+      <div style={{ flex: 1, minHeight: 0 }}>{renderGraph(isMobile, isMobile && isPortrait)}</div>
+    </section>
+  );
+  const graphCard = (
+    <section style={{ ...panelCard, padding: 10 }}>
+      <div style={{ height: 210 }}>{renderGraph(true)}</div>
+    </section>
   );
 
-  const renderMobileSheetContent = () => (
+  const measuring = setupDone || trials.length > 0;
+  const panelContent = (
     <>
-      {renderAssignmentCard()}
-      {renderSideContent({ assistant: false, progress: !setupDone, data: setupDone })}
-      {renderSideContent({ assistant: true, progress: false, data: false })}
+      <NextStepCard phase={phase} next={next} onSpeak={speak && !muted ? () => speak(speechText) : null} onPrimary={handlePrimary} onAssist={runAssistantAction} />
+      {assembled && !setupDone && <ChecklistCard title="Thiết lập trước khi đo" items={setupItems} currentKey={next.key} />}
+      {measuring && measureCard}
+      {measuring && !isMobile && controlsCard}
+      {isMobile && measuring && !isPortrait && graphCard}
+      {measuring && dataCard}
     </>
   );
+  const finishButton = <FinishButton count={trials.length} allDone={reqMet} onFinish={exportNote} />;
+  const showTray = !assembled;
+  // Điện thoại dọc: bàn (đúng tỉ lệ) ở trên, đồ thị bên dưới, sheet hướng dẫn ở đáy.
+  const portraitStack = isMobile && isPortrait;
+  const sceneAspect = zoomMode === "clock" ? 190 / 330 : zoomMode === "rail" ? 440 / 500 : 540 / 645;
+  const sceneH = Math.round(Math.max(140, viewportW - (showTray ? 92 : 0) - 8) * sceneAspect);
+  const showStageGraph = measuring && (!isMobile || isPortrait);
 
   return (
     <div className="phy-screen" data-lab-engine="freefall" style={{ flex: 1, minHeight: 0, overflow: "hidden", background: C.bg, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
-      <div data-lab-header style={{
-        display: "grid",
-        gridTemplateColumns: isMobile && !isPortrait
-          ? "auto minmax(0, 1fr) auto"
-          : "minmax(0, 1fr) auto minmax(0, 1fr)",
-        gridTemplateRows: isPortrait ? "auto auto" : "auto",
-        alignItems: "center",
-        columnGap: isMobile ? 6 : 12,
-        rowGap: isPortrait ? 3 : 0,
-        padding: isMobile ? "4px 6px" : "7px 14px",
-        borderBottom: `1px solid ${C.line}`,
-        background: "#fff",
-        flexShrink: 0,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 8, minWidth: 0, justifySelf: "start" }}>
-          {onBack && <button onClick={handleExit} style={{ ...btnGhost, padding: isMobile ? "0 5px" : undefined }}>← Thoát</button>}
-          {onReplayPrelab && <button onClick={() => onReplayPrelab?.()} style={{ ...btnGhost, color: C.navy, fontSize: isMobile ? 11 : 12, padding: isMobile ? "0 5px" : undefined }}>{isMobile ? "Prelab" : "Xem lại Prelab"}</button>}
-        </div>
-
-        <div style={{ gridColumn: isPortrait ? "1 / -1" : "2", gridRow: isPortrait ? "2" : "1", textAlign: "center", minWidth: 0, fontSize: isMobile ? 12 : 13, fontWeight: 800, color: C.ink, whiteSpace: "nowrap" }}>
-          {isMobile ? "Bài 11 · Rơi tự do" : "Bài 11 — Đo gia tốc rơi tự do"}
-        </div>
-
-        <div data-lab-meta style={{ gridColumn: "3", gridRow: "1", justifySelf: "end", fontSize: isMobile ? 11 : 12, color: C.sub, whiteSpace: "nowrap" }}>g lý thuyết = <b style={{ color: C.ink }}>{FREEFALL.g} m/s²</b></div>
-      </div>
+      <LabTopBar
+        isMobile={isMobile}
+        isPortrait={isPortrait}
+        title="Bài 11 — Đo gia tốc rơi tự do"
+        shortTitle="Bài 11 · Rơi tự do"
+        onExit={handleExit}
+        onPrelab={onReplayPrelab}
+        muted={muted}
+        onToggleMute={speak ? onToggleMute : null}
+        meta={fit && groups.length >= 2 ? <>g của em ≈ <b style={{ color: C.navy }}>{fit.g.toFixed(2)} m/s²</b></> : <>g chuẩn = <b style={{ color: C.ink }}>9,80 m/s²</b></>}
+      />
 
       <div data-lab-layout data-orientation={isPortrait ? "portrait" : "landscape"} style={isMobile
-        ? { flex: 1, display: "grid", gridTemplateColumns: isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr)", minHeight: 0, overflow: "hidden", position: "relative" }
-        : { flex: 1, display: "grid", gridTemplateColumns: "clamp(190px, 12vw, 230px) minmax(0, 1fr) clamp(300px, 21vw, 380px)", minHeight: 0, overflow: "hidden" }
+        ? { flex: 1, display: "grid", gridTemplateColumns: showTray ? (isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr)") : "minmax(0, 1fr)", minHeight: 0, overflow: "hidden", position: "relative" }
+        : { flex: 1, display: "grid", gridTemplateColumns: showTray ? "clamp(190px, 12vw, 230px) minmax(0, 1fr) clamp(310px, 22vw, 390px)" : "minmax(0, 1fr) clamp(310px, 22vw, 390px)", minHeight: 0, overflow: "hidden" }
       }>
-        {/* TRÁI: dụng cụ */}
+        {/* TRÁI: khay dụng cụ — tự ẩn khi đã lắp đủ để nhường chỗ cho bàn thí nghiệm */}
+        {showTray && (
           <aside data-lab-tooltray data-lab-scroll style={isMobile
             ? { background: "#fff", borderRight: `1px solid ${C.line}`, padding: isPortrait ? 4 : 6, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 5, overflowY: "auto", overflowX: "hidden", minWidth: 0 }
             : { borderRight: `1px solid ${C.line}`, background: "#fff", overflow: "auto", padding: 10 }
           }>
-            {isMobile && (
+            {isMobile ? (
               <div style={{ flexShrink: 0, borderRadius: 9, background: C.peachLt, color: C.orangeDk, padding: "5px 4px", fontSize: isPortrait ? 9 : 10, fontWeight: 900, lineHeight: 1.15, textAlign: "center" }}>
                 DỤNG CỤ · {placedCount}/{required.length}
               </div>
-            )}
-            {!isMobile && <div style={sideTitle}>Dụng cụ ({placedCount}/{required.length})</div>}
-            {isMobile && assembled && isPortrait && (
-              <div style={{ borderRadius: 10, padding: "8px 4px", background: "#F3F8F3", color: C.good, fontSize: 10, fontWeight: 900, textAlign: "center" }}>✓ Đã lắp đủ</div>
+            ) : (
+              <div style={{ ...sectionHead, marginBottom: 10 }}>
+                <span style={sectionTitle}>Khay dụng cụ</span>
+                <span style={countPill}>{placedCount}/{required.length}</span>
+              </div>
             )}
             {TOOLS.map((t) => {
               const done = placed.has(t.k), isNext = isNextTool(t.k);
@@ -951,17 +966,17 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
                   }}
                   onClick={() => {
                     if (isMobile && isNext && !done) {
-                      const target = targetVB(t.k);
+                      const target = targetOf(t.k, s);
                       flyToPlace(t.k, target.x, target.y - 60);
                     }
                   }}
                   style={{ display: "flex", flexDirection: isMobile && isPortrait ? "column" : "row", alignItems: "center", gap: isMobile ? (isPortrait ? 2 : 6) : 9, padding: isMobile ? (isPortrait ? "5px 3px" : "4px 5px") : "8px 10px", borderRadius: 10, marginBottom: isMobile ? 0 : 6, cursor: done ? "default" : (isMobile ? "pointer" : "grab"), touchAction: isMobile ? "manipulation" : "none", flexShrink: 0, minWidth: 0, width: "100%",
-                    border: `1.5px solid ${done ? C.good : isNext ? C.orange : C.line}`, background: done ? "#F3F8F3" : "#fff", opacity: done ? 0.7 : 1, boxShadow: isNext ? `0 0 0 3px ${C.orange}22` : "none" }}>
+                    border: `1.5px solid ${done ? C.good : isNext ? C.orange : C.line}`, background: done ? "#F3F8F3" : "#fff", opacity: done ? 0.7 : isNext ? 1 : 0.62, boxShadow: isNext ? `0 0 0 3px ${C.orange}22` : "none" }}>
                   <div style={{ width: isMobile ? 24 : 44, height: isMobile ? 24 : 44, display: "grid", placeItems: "center", background: C.bg, borderRadius: 8, flexShrink: 0 }}>
                     <img src={t.img} alt="" style={{ maxWidth: isMobile ? 18 : 34, maxHeight: isMobile ? 18 : 34, objectFit: "contain" }} />
                   </div>
-                  <div style={{ minWidth: 0, textAlign: isPortrait ? "center" : "left", flex: 1, width: isPortrait ? "100%" : "auto" }}>
-                    <div style={{ fontSize: isMobile ? (isPortrait ? 9.5 : 10.5) : 13.5, fontWeight: 700, color: C.ink, whiteSpace: isPortrait ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.15 }}>{t.name}</div>
+                  <div style={{ minWidth: 0, textAlign: isMobile && isPortrait ? "center" : "left", flex: 1, width: isMobile && isPortrait ? "100%" : "auto" }}>
+                    <div style={{ fontSize: isMobile ? (isPortrait ? 9.5 : 10.5) : 13.5, fontWeight: 700, color: C.ink, whiteSpace: isMobile && isPortrait ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.15 }}>{t.name}</div>
                     <div style={{ fontSize: isMobile ? 8.5 : 10.5, color: done ? C.good : isNext ? C.orangeDk : C.sub }}>
                       {done ? (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><Check className="w-2.5 h-2.5 stroke-[3]" /> Đã lắp</span>
@@ -979,41 +994,47 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
               );
             })}
           </aside>
+        )}
 
-        {/* GIỮA: workbench */}
-        <main ref={mainRef} data-lab-stage style={{ position: "relative", overflow: "hidden", overscrollBehavior: "none", touchAction: "manipulation", padding: isMobile ? 4 : 10, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: 0, paddingBottom: isMobile ? 4 : 10 }}>
-
-
-          <FallScene
-            placed={placed} s={s} balanced={balanced} magnetOn={magnetOn} rolling={rolling} fallY={fallY} cylDrag={cylDrag}
-            wires={wires} magnetWire={magnetWire} wireDrag={wireDrag} face={face} led={led} mode={mode} scale={scale} power={power}
-            dropTarget={!assembled ? activeGroup.filter((k) => reqSet.has(k) && !placed.has(k)) : []} flyTool={flyTool}
-            onDragGate={dragGate} onDragCyl={dragCyl} onDragWire={dragWire} onUnplug={unplug}
-            onRelease={() => (magnetOn ? release() : flash("Trụ thép đã rơi — kéo trụ thép lên gắn lại vào nam châm rồi mới thả tiếp."))}
-            onToggleBalance={() => setBalanced((b) => !b)}
-            onFlip={() => setFace((f) => (f === "front" ? "back" : "front"))}
-            onCycleMode={() => setMode((m) => MODES[(MODES.indexOf(m) + 1) % MODES.length])}
-            onReset={resetTimer} onToggleScale={() => setScale((sc) => (sc === "fine" ? "coarse" : "fine"))}
-            onTogglePower={() => setPower((p) => !p)}
-            onCanvasTap={() => {
-              if (isMobile && sheetOpen) setSheetOpen(false);
-            }}
-            isMobile={isMobile}
-            isPortrait={isPortrait}
-            zoomMode={zoomMode}
-            setZoomMode={setZoomMode}
-            highlightStep={nextStepKey}
-          />
+        {/* GIỮA: workbench + đồ thị trực tiếp */}
+        <main ref={mainRef} data-lab-stage style={{ position: "relative", overflow: "hidden", overscrollBehavior: "none", touchAction: "manipulation", padding: isMobile ? 4 : 10, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, flex: 1, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -6, gap: isMobile ? 6 : 8, paddingBottom: isMobile ? 4 : 10 }}>
+          <div style={portraitStack ? { flex: "0 0 auto", height: sceneH, display: "flex", flexDirection: "column", position: "relative" } : { flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }}>
+            <FallScene
+              anim={anim}
+              placed={placed} s={s} balanced={balanced} magnetOn={magnetOn} rolling={rolling} fallY={fallY} cylDrag={cylDrag} settled={settled}
+              wires={wires} magnetWire={magnetWire} wireDrag={wireDrag} face={face} led={led} mode={mode} scale={scale} power={power}
+              dropTarget={!assembled ? activeGroup.filter((k) => reqSet.has(k) && !placed.has(k)) : []} flyTool={flyTool} gateFlash={gateFlash}
+              onDragGate={dragGate} onDragCyl={dragCyl} onDragWire={dragWire} onUnplug={unplug}
+              onRelease={() => (magnetOn ? release() : flash("Trụ thép đã rơi — kéo trụ thép lên gắn lại vào nam châm rồi mới thả tiếp."))}
+              onToggleBalance={() => setBalanced((b) => !b)}
+              onFlip={() => setFace((f) => (f === "front" ? "back" : "front"))}
+              onCycleMode={() => setMode((m) => MODES[(MODES.indexOf(m) + 1) % MODES.length])}
+              onReset={resetTimer} onToggleScale={() => setScale((sc) => (sc === "fine" ? "coarse" : "fine"))}
+              onTogglePower={() => setPower((p) => !p)}
+              onCanvasTap={() => {
+                if (isMobile && sheetOpen) setSheetOpen(false);
+              }}
+              isMobile={isMobile}
+              isPortrait={isPortrait}
+              zoomMode={zoomMode}
+              setZoomMode={setZoomMode}
+              highlightStep={next.key}
+            />
+          </div>
+          {showStageGraph && (
+            <div style={portraitStack ? { flex: "1 1 0", minHeight: 0, paddingBottom: 62 } : { flex: "0 0 clamp(190px, 34%, 300px)", minHeight: 0 }}>{stageGraph}</div>
+          )}
           {isMobile && assembled && (
             <div data-lab-quick-controls style={{ position: "absolute", top: isPortrait ? 8 : 4, right: 0, zIndex: 36, pointerEvents: "none", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
               {!controlsOpen && (
                 <button
                   type="button"
                   onClick={() => { setSheetOpen(false); setControlsOpen(true); }}
-                  style={{ pointerEvents: "auto", width: 34, height: 58, borderRadius: "14px 0 0 14px", border: `1px solid ${C.orange}`, borderRight: "none", background: "#FFF7EF", color: C.orangeDk, fontSize: 20, fontWeight: 900, boxShadow: "0 6px 18px rgba(50,30,18,0.16)" }}
-                  aria-label="Mở điều khiển nhanh"
+                  style={{ pointerEvents: "auto", width: 38, height: 52, borderRadius: "14px 0 0 14px", border: `1px solid ${C.orange}`, borderRight: "none", background: "#FFF7EF", color: C.orangeDk, display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(50,30,18,0.16)" }}
+                  aria-label="Mở điều chỉnh nhanh"
+                  title="Điều chỉnh nhanh"
                 >
-                  &gt;
+                  <SlidersHorizontal size={18} strokeWidth={2.4} />
                 </button>
               )}
               <div
@@ -1038,338 +1059,58 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 900, color: C.ink }}>Điều chỉnh nhanh</span>
                   <button
                     type="button"
                     onClick={() => setControlsOpen(false)}
-                    style={{ width: 30, height: 30, borderRadius: 10, border: `1px solid ${C.orange}`, background: "#FFF7EF", color: C.orangeDk, fontSize: 18, fontWeight: 900 }}
-                    aria-label="Ẩn điều khiển nhanh"
+                    style={{ width: 30, height: 30, borderRadius: 10, border: `1px solid ${C.line}`, background: "#fff", color: C.sub, display: "grid", placeItems: "center" }}
+                    aria-label="Đóng điều chỉnh nhanh"
                   >
-                    &lt;
+                    <X size={16} />
                   </button>
-                  <span style={{ flex: 1, fontSize: 12, fontWeight: 900, color: C.ink }}>Điều khiển nhanh</span>
                 </div>
-                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2, scrollSnapType: "x proximity" }}>
-                  <button
-                    type="button"
-                    onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng giá đỡ."); }}
-                    disabled={!placed.has("rail")}
-                    style={{ minWidth: 118, border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 12, padding: "9px 10px", fontSize: 11, fontWeight: 900, opacity: placed.has("rail") ? 1 : 0.45 }}
-                  >
-                    Cố định vít
-                  </button>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, minWidth: 240 }}>
-                    {[
-                      ["full", "Toàn cảnh"],
-                      ["rail", "Máng/cổng"],
-                      ["clock", "Đồng hồ"],
-                    ].map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setZoomMode(key)}
-                        style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 10, padding: "8px 6px", fontSize: 11, fontWeight: 900 }}
-                      >
-                        {label}
-                      </button>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                  {[
+                    ["full", "Toàn cảnh"],
+                    ["rail", "Máng/cổng"],
+                    ["clock", "Đồng hồ"],
+                  ].map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setZoomMode(key)}
+                      style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 10, padding: "8px 6px", fontSize: 11, fontWeight: 900 }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng giá đỡ."); }}
+                  disabled={!placed.has("rail")}
+                  style={{ border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 12, padding: "9px 10px", fontSize: 11.5, fontWeight: 900, opacity: placed.has("rail") ? 1 : 0.45 }}
+                >
+                  {balanced ? "✓ Giá đỡ đã cân bằng" : "Cố định vít cân bằng"}
+                </button>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg }}>
+                  <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Cổng quang · s = {cm(s)}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                    {[-5, -1, 1, 5].map((d) => (
+                      <button key={d} type="button" disabled={!placed.has("gate") || rolling} onClick={() => setS((v) => clamp(+(v + d / 100).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>{d > 0 ? `+${d}` : `−${-d}`}</button>
                     ))}
                   </div>
-                  <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg, minWidth: 180 }}>
-                    <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Cổng quang · s={(s * 100).toFixed(0)}cm</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                      <button type="button" disabled={!placed.has("gate")} onClick={() => setS((v) => clamp(+(v - 0.01).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>-1cm</button>
-                      <button type="button" disabled={!placed.has("gate")} onClick={() => setS((v) => clamp(+(v + 0.01).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>+1cm</button>
-                    </div>
-                  </div>
                 </div>
+                {(teacherMissing[0] || suggestS) && (
+                  <button type="button" disabled={rolling} onClick={() => setS(teacherMissing[0] ?? suggestS)} style={{ ...mobileAdjustBtn, width: "100%" }}>
+                    {teacherMissing[0] ? `Tới mốc GV: ${cm(teacherMissing[0])}` : `Vị trí mới gợi ý: ${cm(suggestS)}`}
+                  </button>
+                )}
               </div>
             </div>
           )}
-          {false && isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
-              {assembled && (
-                <section style={{ position: "relative", zIndex: controlsOpen ? 45 : 35, minHeight: 44, marginTop: -2 }}>
-                  {controlsOpen && (
-                    <div
-                      onClick={() => setControlsOpen(false)}
-                      style={{ position: "fixed", inset: 0, zIndex: 44, background: "rgba(50,30,18,0.24)", backdropFilter: "blur(1.5px)", WebkitBackdropFilter: "blur(1.5px)" }}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setControlsOpen((v) => !v)}
-                    style={{ position: "absolute", left: 0, top: 0, zIndex: 47, width: 46, height: 44, borderRadius: "0 16px 16px 0", border: `1px solid ${C.orange}`, borderLeft: "none", background: "#FFF7EF", color: C.orangeDk, fontSize: 21, fontWeight: 900, boxShadow: "0 8px 22px rgba(50,30,18,0.16)" }}
-                    aria-label={controlsOpen ? "Ẩn điều khiển nhanh" : "Mở điều khiển nhanh"}
-                  >
-                    {controlsOpen ? "<" : ">"}
-                  </button>
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      top: 0,
-                      zIndex: 46,
-                      background: "#fff",
-                      border: `1px solid ${C.line}`,
-                      borderRadius: 18,
-                      padding: "16px 14px 16px 58px",
-                      boxShadow: "0 18px 42px rgba(50,30,18,0.22)",
-                      transform: controlsOpen ? "translateY(0) scale(1)" : "translateY(-10px) scale(0.97)",
-                      opacity: controlsOpen ? 1 : 0,
-                      pointerEvents: controlsOpen ? "auto" : "none",
-                      transition: "transform 240ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease",
-                    }}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: 900, color: C.ink, marginBottom: 12 }}>Điều khiển nhanh</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
-                      {[
-                        ["full", "Toàn cảnh"],
-                        ["rail", "Máng/cổng"],
-                        ["clock", "Đồng hồ"],
-                      ].map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setZoomMode(key)}
-                          style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 12, padding: "12px 10px", fontSize: 12, fontWeight: 900 }}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <button
-                        type="button"
-                        onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng giá đỡ."); }}
-                        disabled={!placed.has("rail")}
-                        style={{ border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 14, padding: "13px 10px", fontSize: 12, fontWeight: 900, opacity: placed.has("rail") ? 1 : 0.45 }}
-                      >
-                        Cố định vít
-                      </button>
-                      <div style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 10, background: C.bg }}>
-                        <div style={{ fontSize: 11.5, color: C.sub, fontWeight: 900, marginBottom: 8 }}>s={(s * 100).toFixed(0)}cm</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          <button type="button" disabled={!placed.has("gate")} onClick={() => setS((v) => clamp(+(v - 0.01).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>-1cm</button>
-                          <button type="button" disabled={!placed.has("gate")} onClick={() => setS((v) => clamp(+(v + 0.01).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>+1cm</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              )}
-              {false && assembled && (
-                <section style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 16, padding: controlsOpen ? 12 : "10px 12px", display: "flex", flexDirection: "column", gap: controlsOpen ? 10 : 0, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 900, color: C.ink }}>Điều khiển dễ bấm</span>
-                    <button
-                      type="button"
-                      onClick={() => setControlsOpen((v) => !v)}
-                      style={{ border: `1px solid ${C.orange}`, background: controlsOpen ? "#FFF7EF" : "#fff", color: C.orangeDk, borderRadius: 10, padding: "7px 10px", fontSize: 11, fontWeight: 900 }}
-                    >
-                      {controlsOpen ? "Ẩn" : "Mở"}
-                    </button>
-                  </div>
-                  {controlsOpen && (
-                  <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2, scrollSnapType: "x proximity" }}>
-                    <button
-                      type="button"
-                      onClick={() => { setBalanced(true); flash("Đã cố định vít cân bằng giá đỡ."); }}
-                      disabled={!placed.has("rail")}
-                      style={{ minWidth: 118, border: `1px solid ${balanced ? C.good : C.orange}`, background: balanced ? "#F3F8F3" : "#FFF7EF", color: balanced ? C.good : C.orangeDk, borderRadius: 12, padding: "9px 10px", fontSize: 11, fontWeight: 900, opacity: placed.has("rail") ? 1 : 0.45 }}
-                    >
-                      Cố định vít
-                    </button>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, minWidth: 240 }}>
-                    {[
-                      ["full", "Toàn cảnh"],
-                      ["rail", "Máng/cổng"],
-                      ["clock", "Đồng hồ"],
-                    ].map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setZoomMode(key)}
-                        style={{ border: `1px solid ${zoomMode === key ? C.orange : C.line}`, background: zoomMode === key ? "#FFF2E6" : "#fff", color: zoomMode === key ? C.orangeDk : C.ink, borderRadius: 10, padding: "8px 6px", fontSize: 11, fontWeight: 900 }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: C.bg, minWidth: 180 }}>
-                    <div style={{ fontSize: 10.5, color: C.sub, fontWeight: 900, marginBottom: 6 }}>Cổng quang · s={(s * 100).toFixed(0)}cm</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                      <button type="button" disabled={!placed.has("gate")} onClick={() => setS((v) => clamp(+(v - 0.01).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>-1cm</button>
-                      <button type="button" disabled={!placed.has("gate")} onClick={() => setS((v) => clamp(+(v + 0.01).toFixed(2), FREEFALL.s.min, FREEFALL.s.max))} style={mobileAdjustBtn}>+1cm</button>
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 7, minWidth: 330 }}>
-                    {[
-                      { title: "Nối dây", body: "Chạm chốt công tắc/nam châm/cổng quang để nối đúng các dây tín hiệu.", active: !wiredOK },
-                      { title: "Đồng hồ", body: "Zoom Đồng hồ, lật mặt sau để bật nguồn; mặt trước chọn A↔B và Reset.", active: !power || !modeOK || !isReset },
-                      { title: "Thả trụ", body: "Khi trụ đang ở nam châm và số đo 0.000, bấm công tắc kép để thả.", active: isReset && wiredOK && power && modeOK },
-                    ].map((hint) => (
-                      <button
-                        key={hint.title}
-                        type="button"
-                        onClick={() => setZoomMode(hint.title === "Đồng hồ" ? "clock" : "rail")}
-                        style={{ textAlign: "left", border: `1px solid ${hint.active ? C.orange : C.line}`, background: hint.active ? "#FFF7EF" : "#fff", borderRadius: 12, padding: "9px 8px", color: C.ink, minHeight: 92 }}
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 999, background: hint.active ? C.orange : C.bg, color: hint.active ? "#fff" : C.sub, fontSize: 10, fontWeight: 900, marginBottom: 6 }}>
-                          {hint.title === "Thả trụ" ? <Play className="w-3 h-3" /> : <Hand className="w-3 h-3" />}
-                        </span>
-                        <div style={{ fontSize: 10.5, fontWeight: 900, marginBottom: 3 }}>{hint.title}</div>
-                        <div style={{ fontSize: 9.5, lineHeight: 1.25, color: C.sub }}>{hint.body}</div>
-                      </button>
-                    ))}
-                  </div>
-                  </div>
-                  )}
-                </section>
-              )}
-              {/* Progress bar and next step indicator */}
-              {!assembled && (
-              <section style={{
-                background: "#fff",
-                border: `1px solid ${C.line}`,
-                borderRadius: 16,
-                padding: 12,
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-                boxShadow: "0 2px 8px rgba(50,30,18,0.03)"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, fontWeight: "bold", color: C.ink }}>
-                    {assembled ? "Tiến trình thực hành" : "Tiến trình lắp ráp"}
-                  </span>
-                  <span style={{ fontSize: 11, fontWeight: "bold", color: C.orange }}>
-                    {progressPercent}%
-                  </span>
-                </div>
-                <div style={{ width: "100%", height: 6, background: C.bg, borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ width: `${progressPercent}%`, height: "100%", background: C.orange, borderRadius: 3, transition: "width 0.3s ease" }} />
-                </div>
-                <div style={{ fontSize: 11, color: C.sub, fontWeight: "bold" }}>
-                  Tiếp theo: {nextStepText}
-                </div>
-              </section>
-              )}
-
-              {/* Trợ lý Phylab — LUÔN hiển thị (trước đây bị ẩn sau khi lắp xong). */}
-              <section style={{
-                background: "#fff",
-                border: `1px solid ${C.line}`,
-                borderRadius: 16,
-                padding: 12,
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-                boxShadow: "0 2px 8px rgba(50,30,18,0.03)"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 7, background: C.orange, color: "#fff", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13 }}>φ</div>
-                  <b style={{ color: C.ink, fontSize: 13.5 }}>Trợ lý Phylab</b>
-
-                  {speak && (
-                    <button onClick={onToggleMute} title={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-label={muted ? "Bật tiếng trợ lý" : "Tắt tiếng trợ lý"} aria-pressed={muted}
-                      style={{ marginLeft: "auto", border: `1px solid ${muted ? "#C0392B" : C.line}`, background: muted ? "#FDECEA" : "#fff", borderRadius: 8, width: 28, height: 28, cursor: "pointer", display: "grid", placeItems: "center", color: muted ? "#C0392B" : C.orange }}>
-                      {muted ? <VolumeX className="w-4 h-4 text-[#C0392B]" /> : <Volume2 className="w-4 h-4 text-[#C85A17]" />}
-                    </button>
-                  )}
-                </div>
-
-                <div style={{
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  background: C.bg,
-                  borderLeft: `3px solid ${tone}`,
-                  color: C.ink,
-                  fontSize: 13.5,
-                  lineHeight: 1.5,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6
-                }}>
-                  <span style={{ flex: 1 }}><MathText text={tip.text} /></span>
-                  {speak && tip.text && (
-                    <button type="button" onClick={() => speak(tip.text)} title="Nghe đọc" style={{ border: "none", background: "none", cursor: "pointer", padding: "2px 4px", display: "inline-flex", alignItems: "center" }}>
-                      <Play className="w-3.5 h-3.5 text-[#C85A17] fill-[#C85A17]/10" />
-                    </button>
-                  )}
-                </div>
-                <div style={{ fontSize: 11.5, color: C.sub, textAlign: "center" }}>
-                  Cần hỏi thêm? Mở <b style={{ color: C.orange }}>Trợ lý Phylab</b> ở thanh dưới cùng để chat.
-                </div>
-              </section>
-
-              {assembled && (
-                /* Sau khi lắp xong: hiện ĐỀ BÀI + bảng ghi số liệu ngay trong luồng chính. */
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {setupDone && (
-                    <section style={{ background: "#FFFDF9", border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 9, boxShadow: "0 2px 8px rgba(50,30,18,0.03)" }}>
-                      <div style={{ ...sideTitle, marginBottom: 0, fontSize: 13, color: C.orangeDk }}>
-                        Câu đo hiện tại
-                      </div>
-                      {currentTask && (
-                        <>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 12px", borderRadius: 12, border: `1px solid ${isTargetMeasured(currentTask) ? C.good : C.line}`, background: isTargetMeasured(currentTask) ? "#F3F8F3" : "#fff" }}>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: 11, color: C.sub, fontWeight: 900 }}>
-                                Câu {currentTaskIndex + 1}/{currentTargets.length}
-                              </div>
-                              <div style={{ fontSize: 16, color: C.ink, fontWeight: 900, lineHeight: 1.35 }}>
-                                s={(currentTask.s * 100).toFixed(0)}cm
-                              </div>
-                            </div>
-                            <span style={{ flexShrink: 0, color: currentTaskTrial ? C.good : (justRolled ? C.orangeDk : C.sub), fontSize: 12, fontWeight: 900, textAlign: "right" }}>
-                              {currentTaskTrial ? `Đã ghi ${currentTaskTrial.t.toFixed(scale === "fine" ? 3 : 2)}s` : `Số đo ${led}s`}
-                            </span>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            <button
-                              type="button"
-                              disabled={!justRolled || rolling}
-                              onClick={recordTrial}
-                              style={{ ...btnNavy, width: "100%", padding: "10px 8px", fontSize: 12.5, opacity: justRolled && !rolling ? 1 : 0.5, cursor: justRolled && !rolling ? "pointer" : "not-allowed" }}
-                            >
-                              Ghi số liệu
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setActiveTaskIndex((i) => (i + 1) % currentTargets.length)}
-                              style={{ border: `1px solid ${C.line}`, background: "#fff", color: C.ink, borderRadius: 11, padding: "10px 8px", fontSize: 12.5, fontWeight: 900, fontFamily: FONT }}
-                            >
-                              Câu tiếp theo
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={exportNote}
-                            style={{ ...btnBig, width: "100%", padding: "12px 10px", fontSize: 13, borderRadius: 12 }}
-                          >
-                            Xuất sang Sổ Báo Cáo
-                          </button>
-                          <div style={{ display: "flex", gap: 5, justifyContent: "center" }}>
-                            {currentTargets.map((target, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                aria-label={`Câu ${i + 1}`}
-                                onClick={() => setActiveTaskIndex(i)}
-                                style={{ width: 9, height: 9, borderRadius: 999, border: "none", background: i === currentTaskIndex ? C.orange : isTargetMeasured(target) ? C.good : "#DDD3C7", padding: 0 }}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </section>
-                  )}
-                  {renderSideContent({ assistant: false, progress: false, data: false })}
-                </div>
-              )}
-            </div>
-          )}
-          {toast && <div style={toastStyle}>{toast}</div>}
+          <LabToast toast={toast} fixed />
+          <LabDialog dialog={dialog} onClose={() => setDialog(null)} />
         </main>
         {/* Mapped pre-rendered dragging images to ensure instant decodes and no-lag display */}
         {TOOLS.map((t) => (
@@ -1392,54 +1133,28 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
           />
         ))}
 
-        {/* MOBILE BOTTOM SHEET / DESKTOP SIDEBAR: Trợ lý / Tiến trình / Điều kiện / Ghi số liệu */}
+        {/* PHẢI (desktop) / SHEET (mobile): bước tiếp theo · số liệu · g của em · điều khiển */}
         {isMobile ? (
-          <motion.div data-lab-guide-sheet
-            animate={{ height: sheetOpen ? (isPortrait ? "82%" : "86%") : 40 }}
-            transition={{ type: "spring", damping: 20, stiffness: 180 }}
-            style={{
-              position: "absolute",
-              bottom: isPortrait ? 6 : 0,
-              left: isPortrait && sheetOpen ? 6 : "auto",
-              right: isPortrait ? 6 : 0,
-              width: sheetOpen
-                ? (isPortrait ? "auto" : "min(340px, calc(100% - 12px))")
-                : "min(190px, calc(100% - 12px))",
-              background: "#FFFBF7",
-              border: `1.5px solid ${C.line}`,
-              borderRight: isPortrait ? undefined : "none",
-              borderBottom: isPortrait ? undefined : "none",
-              borderRadius: sheetOpen ? (isPortrait ? 18 : "18px 0 0 0") : (isPortrait ? 14 : "14px 0 0 0"),
-              boxShadow: sheetOpen ? "0 -8px 24px rgba(50,30,18,0.12)" : "0 8px 24px rgba(50,30,18,0.14)",
-              zIndex: 40,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden"
-            }}
+          <MobileLabSheet
+            open={sheetOpen}
+            onToggle={() => { setControlsOpen(false); setSheetOpen((v) => !v); }}
+            phase={phase}
+            next={next}
+            onPrimary={handlePrimary}
+            isPortrait={isPortrait}
+            openHeight={portraitStack ? `calc(100% - ${sceneH + 14}px)` : undefined}
           >
-            {/* Click-to-toggle handle */}
-            <div data-lab-guide-toggle
-              onClick={() => { setControlsOpen(false); setSheetOpen(!sheetOpen); }}
-              style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", flexShrink: 0, background: "#FFFBF7", borderBottom: sheetOpen ? `1px solid ${C.line}` : "none", touchAction: "manipulation", padding: "0 12px" }}
-            >
-              <span style={{ fontSize: 11, fontWeight: 900, color: C.orange, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {setupDone ? "Ghi số liệu" : "Tiến trình Lab"}
-              </span>
-              {sheetOpen ? (
-                <ChevronDown className="w-4 h-4 text-[#C85A17]" />
-              ) : (
-                <ChevronUp className="w-4 h-4 text-[#C85A17]" />
-              )}
-            </div>
-            
-            {/* Sheet body */}
-            <div data-lab-scroll style={{ flex: 1, overflow: "auto", overscrollBehavior: "contain", padding: "0 12px calc(16px + env(safe-area-inset-bottom, 0px))", display: sheetOpen ? "flex" : "none", flexDirection: "column", gap: 12 }}>
-              {renderMobileSheetContent()}
-            </div>
-          </motion.div>
+            {panelContent}
+            {finishButton}
+          </MobileLabSheet>
         ) : (
-          <aside data-lab-guide data-lab-scroll style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, overflow: "auto", padding: isMobile ? 6 : 12, display: "flex", flexDirection: "column", gap: isMobile ? 8 : 12, minWidth: 0 }}>
-            {renderGuidanceContent()}
+          <aside data-lab-guide style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+            <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+              {panelContent}
+            </div>
+            <div style={{ padding: 12, borderTop: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }}>
+              {finishButton}
+            </div>
           </aside>
         )}
       </div>
@@ -1449,17 +1164,23 @@ export default function FreeFallBench({ studentName, assignedSets, assistantSett
 
 /* ============================ FallScene ============================ */
 function FallScene(props) {
-  const { placed, s, balanced, magnetOn, rolling, fallY, cylDrag, wires, magnetWire, wireDrag, face, led, mode, scale, power,
-    dropTarget = [], flyTool = null, onDragGate, onDragCyl, onDragWire, onUnplug,
+  const { anim, placed, s, balanced, magnetOn, rolling, fallY: fallYState, cylDrag, settled = true, wires, magnetWire, wireDrag, face, led: ledState, mode, scale, power,
+    dropTarget = [], flyTool = null, gateFlash = 0, onDragGate, onDragCyl, onDragWire, onUnplug,
     onRelease, onToggleBalance, onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onCanvasTap,
     zoomMode, setZoomMode, highlightStep } = props;
 
   const zoomClock = zoomMode === "clock";
   const setZoomClock = (val) => setZoomMode(val ? "clock" : "full");
+  // Khi trụ đang rơi: đọc vị trí / số đồng hồ từ kho hoạt ảnh (chỉ bàn này vẽ lại mỗi khung hình).
+  const liveAnim = useAnim(anim);
+  const fallY = rolling ? liveAnim.fallY : fallYState;
+  const led = rolling ? liveAnim.led : ledState;
+  const swingDeg = liveAnim.swing || 0;
   const has = (k) => placed.has(k);
   const yGate = gateY(s);
   const cylY = magnetOn && !rolling ? Y0 : fallY;
   const cylGrab = !magnetOn && !rolling;                 // trụ đã rơi -> HS kéo lên gắn lại
+  const crossing = rolling && cylY + 22 >= yGate && cylY <= yGate + 4; // trụ đang cắt tia
 
   const viewBoxStr = props.isMobile
     ? (zoomMode === "clock" ? "540 290 330 190" :
@@ -1468,15 +1189,7 @@ function FallScene(props) {
     : (zoomMode === "clock" ? "540 290 330 190" :
        zoomMode === "rail" ? "200 40 500 440" :
        `0 0 ${VBW} ${VBH}`);
-  // Trên mobile: bỏ letterbox — SVG tự cao theo tỉ lệ viewBox để máng đứng cao & rõ.
   const showHint = props.isMobile && dropTarget.length === 0;
-  const HintBox = ({ x, y, w, h, label }) => (
-    <g style={{ pointerEvents: "none" }}>
-      <animate attributeName="opacity" values="0.28;0.52;0.28" dur="1.4s" repeatCount="indefinite" />
-      <rect x={x} y={y} width={w} height={h} rx="9" fill="#27AE6014" stroke="#27AE60" strokeWidth="1.4" strokeDasharray="6 4" />
-      {label && <text x={x + w / 2} y={y - 5} textAnchor="middle" fontSize="10" fontWeight="900" fill="#17864A" fontFamily={FONT}>{label}</text>}
-    </g>
-  );
 
   return (
     <div style={{ position: "relative", width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -1495,8 +1208,8 @@ function FallScene(props) {
         {/* Dây dọi + vít cân bằng (bấm vào con vít vàng ở khối kẹp để cân bằng) */}
         {has("rail") && (
           <g>
-            <line x1={RAILX + 40} y1={Y0 + 10} x2={RAILX + 40} y2={Y0 + 96} stroke={balanced ? C.good : "#c9a227"} strokeWidth="1.2" strokeDasharray={balanced ? "none" : "3 3"} />
-            <circle cx={RAILX + 40} cy={Y0 + 96} r="4" fill={balanced ? C.good : "#c9a227"} />
+            <line x1={RAILX + 40} y1={Y0 + 10} x2={RAILX + 40 + (balanced ? 0 : 7)} y2={Y0 + 96} stroke={balanced ? C.good : "#c9a227"} strokeWidth="1.2" strokeDasharray={balanced ? "none" : "3 3"} />
+            <circle cx={RAILX + 40 + (balanced ? 0 : 7)} cy={Y0 + 96} r="4" fill={balanced ? C.good : "#c9a227"} />
             <circle cx={RAILX - RAIL_W * 0.30} cy={railFracY(0.685)} r="7" fill={balanced ? C.good : "#c9a227"} stroke="#7a6410" strokeWidth="1.2" style={{ cursor: "pointer" }} onClick={onToggleBalance} />
           </g>
         )}
@@ -1516,7 +1229,12 @@ function FallScene(props) {
           </g>
         )}
 
-        {/* Trụ thép — giữ ở nam châm / rơi hẳn xuống chân đế / HS kéo lên gắn lại */}
+        {/* Tia hồng ngoại của cổng quang — đỏ rực khi trụ cắt ngang */}
+        {has("gate") && (
+          <line x1={RAILX - 26} y1={yGate} x2={RAILX + 26} y2={yGate} stroke={crossing ? "#FF2D2D" : "#FF6B6B"} strokeWidth={crossing ? 3 : 1.2} strokeDasharray={crossing ? "none" : "3 3"} opacity={crossing ? 1 : 0.55} style={{ pointerEvents: "none" }} />
+        )}
+
+        {/* Trụ thép — giữ ở nam châm (đung đưa khi vừa gắn) / rơi hẳn xuống chân đế / HS kéo lên gắn lại */}
         {has("magnet") && (() => {
           if (cylDrag) {
             if (cylDrag.x === undefined || cylDrag.y === undefined || isNaN(cylDrag.x) || isNaN(cylDrag.y)) return null;
@@ -1529,12 +1247,16 @@ function FallScene(props) {
           }
           if (cylY === undefined || isNaN(cylY)) return null;
           return (
-            <g onPointerDown={cylGrab ? onDragCyl : undefined} style={{ cursor: cylGrab ? "grab" : "default" }}>
+            <g onPointerDown={cylGrab ? onDragCyl : undefined} style={{ cursor: cylGrab ? "grab" : "default" }} transform={magnetOn && swingDeg ? `rotate(${swingDeg} ${RAILX} ${Y0 - 1})` : undefined}>
               <circle cx={RAILX} cy={cylY + 11} r="20" fill="transparent" />
               <image href={cylinderSvg} x={RAILX - 7} y={cylY} width="14" height="22" />
             </g>
           );
         })()}
+        {/* Trụ vừa gắn còn đung đưa */}
+        {has("magnet") && magnetOn && !settled && !rolling && (
+          <text x={RAILX + 16} y={Y0 + 16} fontSize="10" fontWeight="800" fill={C.orangeDk} fontFamily={FONT} style={{ pointerEvents: "none" }}>đang đung đưa…</text>
+        )}
         {/* gợi ý kéo trụ thép lên khi đã rơi */}
         {has("magnet") && cylGrab && !cylDrag && (
           <text x={RAILX + 16} y={cylY + 6} fontSize="10" fontWeight="700" fill={C.orangeDk} fontFamily={FONT}>← kéo trụ lên nam châm</text>
@@ -1546,10 +1268,19 @@ function FallScene(props) {
             <g style={{ cursor: rolling ? "default" : "ns-resize" }} onPointerDown={onDragGate}>
               <image href={photogatePng} x="-40" y="-24" width="80" height="48" preserveAspectRatio="xMidYMid meet" />
             </g>
-            {rolling && cylY >= yGate && <circle cx="0" cy="0" r="4.5" fill="#FF2D2D" />}
+            {crossing && <circle cx="0" cy="0" r="4.5" fill="#FF2D2D" />}
             <text x="46" y="-6" textAnchor="middle" fontSize="12" fontWeight="800" fill={C.navy} fontFamily={FONT}>E</text>
             {/* đầu dây kéo được */}
             <circle cx="34" cy="10" r="5" fill={wires.B === "gate" ? C.good : "#C0392B"} stroke="#fff" strokeWidth="1.4" style={{ cursor: "grab" }} onPointerDown={(e) => onDragWire("gate", e)} />
+          </g>
+        )}
+        {/* "Chụp ảnh về đích": vòng sáng lan ra khi trụ cắt tia */}
+        {has("gate") && gateFlash > 0 && (
+          <g key={`flash-${gateFlash}`} style={{ pointerEvents: "none" }}>
+            <circle cx={RAILX} cy={yGate} r="8" fill="none" stroke="#FF2D2D" strokeWidth="3">
+              <animate attributeName="r" from="8" to="46" dur="0.6s" fill="freeze" />
+              <animate attributeName="opacity" from="1" to="0" dur="0.6s" fill="freeze" />
+            </circle>
           </g>
         )}
 
@@ -1561,6 +1292,13 @@ function FallScene(props) {
             <line x1={RAILX - 66} y1={yGate} x2={RAILX - 54} y2={yGate} stroke={C.navy} strokeWidth="1.2" />
             <rect x={RAILX - 118} y={(Y0 + yGate) / 2 - 9} width="58" height="17" rx="8.5" fill={C.navy} />
             <text x={RAILX - 89} y={(Y0 + yGate) / 2 + 3} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#fff" fontFamily={FONT}>s = {(s * 100).toFixed(0)} cm</text>
+          </g>
+        )}
+        {/* Đang chiếu chậm */}
+        {rolling && (
+          <g style={{ pointerEvents: "none" }}>
+            <rect x={RAILX + 70} y={Y0 + 30} width="92" height="22" rx="11" fill="#321E12" opacity=".85" />
+            <text x={RAILX + 116} y={Y0 + 45} textAnchor="middle" fontSize="11" fontWeight="900" fill="#fff" fontFamily={FONT}>▶ chậm ×{SLOW}</text>
           </g>
         )}
 
@@ -1579,7 +1317,7 @@ function FallScene(props) {
 
         {/* Đồng hồ MC964 */}
         {has("clock") && (
-          <g 
+          <g
             onPointerDown={(e) => {
               e.stopPropagation();
               if (!zoomClock) {
@@ -1587,7 +1325,7 @@ function FallScene(props) {
               }
             }}
           >
-            <MC964Inline face={face} led={led} mode={mode} scale={scale} power={power} wires={wires} wireDrag={wireDrag}
+            <MC964Inline face={face} led={led} mode={mode} scale={scale} power={power} wires={wires} wireDrag={wireDrag} counting={rolling}
               onFlip={onFlip} onCycleMode={onCycleMode} onReset={onReset} onToggleScale={onToggleScale} onTogglePower={onTogglePower} onUnplug={onUnplug} />
           </g>
         )}
@@ -1611,7 +1349,7 @@ function FallScene(props) {
         })()}
 
         {showHint && highlightStep === "balance" && has("rail") && <HintBox x={RAILX - RAIL_W * 0.30 - 19} y={railFracY(0.685) - 19} w={38} h={38} label="Vặn vít" />}
-        {showHint && highlightStep === "wireMag" && face === "back" && (
+        {showHint && highlightStep === "wireMag" && (
           <>
             {has("switch") && <HintBox x={switchPlugMag.x - 22} y={switchPlugMag.y - 20} w={44} h={40} label="Công tắc" />}
             {has("magnet") && <HintBox x={magnetTerm.x - 22} y={magnetTerm.y - 20} w={44} h={40} label="Nam châm" />}
@@ -1653,9 +1391,10 @@ function FallScene(props) {
           }}
           style={{
             position: "absolute",
-            top: zoomClock ? "auto" : 12,
-            bottom: zoomClock ? 12 : "auto",
-            right: 12,
+            // Mobile: góc trên-trái để không đụng nút điều chỉnh nhanh (phải) và sheet hướng dẫn (dưới).
+            ...(props.isMobile
+              ? { top: 8, left: 8 }
+              : { top: zoomClock ? "auto" : 12, bottom: zoomClock ? 12 : "auto", right: 12 }),
             zIndex: 30,
             background: zoomClock ? C.orange : "#fff",
             color: zoomClock ? "#fff" : C.navy,
@@ -1680,6 +1419,32 @@ function FallScene(props) {
   );
 }
 
+/** Số đang hiện trên đồng hồ — trong lúc trụ rơi đọc thẳng từ kho hoạt ảnh. */
+function AnimLed({ anim, rolling, led }) {
+  const live = useAnim(anim);
+  return rolling ? live.led : led;
+}
+
+/** Đồ thị s–t²: lúc trụ đang rơi, chấm sáng lấy từ kho hoạt ảnh (chỉ đồ thị vẽ lại). */
+function LiveFallGraph({ anim, rolling, live, ...props }) {
+  const a = useAnim(anim);
+  const point = rolling && a.live
+    ? { x: a.live.x, y: a.live.y, color: C.orange, label: a.live.done ? `t = ${a.led} s` : "đang rơi…" }
+    : live;
+  return <LiveGraph {...props} live={point} />;
+}
+
+/** Khung xanh nhấp nháy chỉ chỗ cần thao tác (mobile). */
+function HintBox({ x, y, w, h, label }) {
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <animate attributeName="opacity" values="0.28;0.52;0.28" dur="1.4s" repeatCount="indefinite" />
+      <rect x={x} y={y} width={w} height={h} rx="9" fill="#27AE6014" stroke="#27AE60" strokeWidth="1.4" strokeDasharray="6 4" />
+      {label && <text x={x + w / 2} y={y - 5} textAnchor="middle" fontSize="10" fontWeight="900" fill="#17864A" fontFamily={FONT}>{label}</text>}
+    </g>
+  );
+}
+
 // ô đặt cho vòng sáng (đồng bộ với targetVB trong component chính)
 function targetOf(k, s) {
   switch (k) {
@@ -1693,7 +1458,7 @@ function targetOf(k, s) {
 }
 
 /* ============================ MC964 trong workbench ============================ */
-function MC964Inline({ face, led, mode, scale, power, wires, wireDrag, onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug }) {
+function MC964Inline({ face, led, mode, scale, power, wires, wireDrag, counting, onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug }) {
   const label = { switch: "CT", gate: "E" };
   const col = (g) => (g === "switch" ? C.navy : g === "gate" ? "#C0392B" : null);
   return (
@@ -1708,7 +1473,7 @@ function MC964Inline({ face, led, mode, scale, power, wires, wireDrag, onFlip, o
 
       {face === "front" ? (
         <>
-          <rect x="26" y="24" width="104" height="48" rx="4" fill="#3A1414" stroke="#61252C" strokeWidth="2" />
+          <rect x="26" y="24" width="104" height="48" rx="4" fill="#3A1414" stroke={counting ? "#FF6B6B" : "#61252C"} strokeWidth={counting ? 3 : 2} />
           <text x="78" y="58" textAnchor="middle" fontFamily="monospace" fontSize="28" fill="#FF2D2D" letterSpacing="3">{led}</text>
           <text x="30" y="96" fontFamily={FONT} fontSize="14" fontStyle="italic" fontWeight="700" fill="#C0392B">Phylab</text>
           <g onClick={onCycleMode} style={{ cursor: "pointer" }}>
@@ -1757,10 +1522,9 @@ function MC964Inline({ face, led, mode, scale, power, wires, wireDrag, onFlip, o
 }
 
 /* ============================ styles ============================ */
-const btnGhost = { border: "none", background: "transparent", color: C.sub, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: FONT };
-const sideTitle = { fontSize: 12.5, fontWeight: 800, color: C.sub, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 };
-const cardStyle = { background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, flexShrink: 0 };
-const btnBig = { padding: "11px 20px", borderRadius: 11, border: "none", background: C.orange, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: FONT };
-const btnNavy = { padding: "10px 20px", borderRadius: 11, border: `1px solid ${C.navy}`, background: "#fff", color: C.navy, fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: FONT };
+const linkBtn = { border: "none", background: "transparent", color: C.sub, fontWeight: 800, fontSize: 11, cursor: "pointer", fontFamily: FONT, padding: 0, textDecoration: "underline" };
+const miniLabel = { fontSize: 9.5, fontWeight: 900, color: C.sub, textTransform: "uppercase", letterSpacing: 0.4 };
+const chip = { display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 3px 2px 7px", borderRadius: 999, border: `1px solid ${C.line}`, background: "#fff", fontFamily: "monospace", fontSize: 11.5, fontWeight: 900 };
+const chipX = { border: "none", background: "transparent", color: C.sub, cursor: "pointer", fontSize: 13, fontWeight: 900, lineHeight: 1, padding: "0 3px", fontFamily: FONT };
+const choiceButton = { border: `1px solid ${C.line}`, borderRadius: 8, background: "#fff", color: C.sub, padding: "4px 8px", fontSize: 11, fontWeight: 850, cursor: "pointer", fontFamily: FONT };
 const mobileAdjustBtn = { border: `1px solid ${C.orange}`, background: "#fff", color: C.orangeDk, borderRadius: 10, padding: "9px 6px", fontSize: 12, fontWeight: 900, fontFamily: FONT };
-const toastStyle = { position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", background: C.navy, color: "#fff", padding: "9px 16px", borderRadius: 10, fontSize: 12.5, fontWeight: 700, boxShadow: "0 6px 18px rgba(0,0,0,.2)", maxWidth: 460, textAlign: "center", zIndex: 9999 };

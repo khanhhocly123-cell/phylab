@@ -126,6 +126,16 @@ export function guide(s = {}) {
 export const smartbotReady = () => true; // luôn có API route; ask() tự fallback nếu lỗi
 
 const FAQ = [
+  { k: ["đo1", "ampe kế", "ampe ke", "miliampe", "ma"],
+    a: "ĐO1 dùng làm ampe kế: quay núm về mA, cắm que đỏ ở mA/µA và que đen ở COM, rồi mắc nối tiếp trong mạch." },
+  { k: ["đo2", "vôn kế", "von ke", "hiệu điện thế", "hieu dien the"],
+    a: "ĐO2 dùng làm vôn kế: quay núm về V, cắm que đỏ ở VΩ và que đen ở COM, rồi mắc song song với vật dẫn hoặc hai cực M–N của pin." },
+  { k: ["định luật ohm", "dinh luat ohm", "điện trở", "dien tro"],
+    a: "Với vật dẫn tuân theo định luật Ohm, R = U/I. Em thay đổi U, ghi từng cặp (U, I), rồi kiểm tra đồ thị I theo U có gần đường thẳng qua gốc hay không." },
+  { k: ["suất điện động", "suat dien dong", "điện trở trong", "dien tro trong", "u = e"],
+    a: "Pin có hệ thức U = E − I·r. Đo nhiều cặp (I, U), vẽ U theo I: tung độ gốc cho E và độ lớn hệ số góc cho r." },
+  { k: ["nối dây", "noi day", "cắm dây", "cam day", "mạch điện", "mach dien"],
+    a: "Luôn mở khóa K và tắt nguồn trước. Trong Lab, chạm một chốt rồi chạm chốt đích đang phát sáng; em cũng có thể kéo trực tiếp giữa hai chốt." },
   { k: ["vận tốc tức thời", "tuc thoi", "instant"],
     a: "Vận tốc tức thời là vận tốc tại một thời điểm. Trong bài này ta lấy gần đúng: cho bi (đường kính d) che một cổng quang, đo thời gian che t rồi tính v = d / t." },
   { k: ["vận tốc trung bình", "trung binh", "average"],

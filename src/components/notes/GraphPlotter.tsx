@@ -1,28 +1,26 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import { Eraser, CheckCircle2, PenTool } from "lucide-react";
-import { bandScore } from "@/lib/grading";
+import { Eraser, Eye, PenTool } from "lucide-react";
 
 export interface DataPoint { x: number; y: number }
 
 interface GraphPlotterProps {
-  data: DataPoint[];      // các điểm số liệu THẬT (để đối chiếu khi chấm)
+  data: DataPoint[];      // các điểm số liệu THẬT (để đối chiếu)
   xLabel: string;
   yLabel: string;
-  onScored?: (score: number) => void;
 }
 
 const W = 520, H = 360, PAD = 46;
 
 /**
- * GraphPlotter — HỌC SINH TỰ VẼ đồ thị: bấm để đặt từng điểm.
- * Chấm (theo PDF): so khớp điểm HS vẽ với điểm số liệu + hồi quy tuyến tính (R²).
+ * GraphPlotter — HỌC SINH TỰ VẼ đồ thị: bấm để đặt từng điểm, rồi "Đối chiếu" để hiện
+ * điểm số liệu thật + đường khớp tuyến tính (R²). Không chấm điểm (phần chấm đang làm lại).
  */
-export default function GraphPlotter({ data, xLabel, yLabel, onScored }: GraphPlotterProps) {
+export default function GraphPlotter({ data, xLabel, yLabel }: GraphPlotterProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [points, setPoints] = useState<DataPoint[]>([]);
-  const [scored, setScored] = useState<null | { accuracy: number; r2: number; score: number }>(null);
+  const [scored, setScored] = useState<null | { r2: number }>(null);
 
   const bounds = useMemo(() => {
     const xs = data.map((d) => d.x); const ys = data.map((d) => d.y);
@@ -59,29 +57,13 @@ export default function GraphPlotter({ data, xLabel, yLabel, onScored }: GraphPl
     const my = points.reduce((a, p) => a + p.y, 0) / n;
     let sxx = 0, sxy = 0, syy = 0;
     for (const p of points) { sxx += (p.x - mx) ** 2; sxy += (p.x - mx) * (p.y - my); syy += (p.y - my) ** 2; }
-    const slope = sxx ? sxy / sxx : 0;
     const r2 = sxx && syy ? (sxy * sxy) / (sxx * syy) : 0;
-
-    // Khớp điểm HS với điểm số liệu (ghép gần nhất theo thứ tự x).
-    const sd = [...data].sort((a, b) => a.x - b.x);
-    const sp = [...points].sort((a, b) => a.x - b.x);
-    let err = 0; const m = Math.min(sd.length, sp.length);
-    for (let i = 0; i < m; i++) {
-      const dx = (sd[i].x - sp[i].x) / bounds.xmax;
-      const dy = (sd[i].y - sp[i].y) / bounds.ymax;
-      err += Math.hypot(dx, dy);
-    }
-    const meanErr = m ? err / m : 1;
-    const accuracy = Math.max(0, 100 - meanErr * 100 * 1.5);
-    // Điểm đồ thị: 70% độ khớp điểm + 30% độ thẳng (R²).
-    const score = Math.round((bandScore(accuracy) * 0.7 + Math.min(10, r2 * 10) * 0.3) * 10) / 10;
-    setScored({ accuracy: Math.round(accuracy), r2: Math.round(r2 * 1000) / 1000, score });
-    onScored?.(score);
+    setScored({ r2: Math.round(r2 * 1000) / 1000 });
   };
 
   const reset = () => { setPoints([]); setScored(null); };
 
-  // Đường hồi quy khi đã chấm.
+  // Đường khớp khi đã đối chiếu.
   let fitLine: { x1: number; y1: number; x2: number; y2: number } | null = null;
   if (scored && points.length >= 2) {
     const n = points.length;
@@ -113,7 +95,7 @@ export default function GraphPlotter({ data, xLabel, yLabel, onScored }: GraphPl
             disabled={points.length < 2 || !!scored}
             className="px-3 py-1.5 bg-[#C85A17] disabled:opacity-40 text-white text-[10px] font-black rounded-lg cursor-pointer flex items-center gap-1"
           >
-            <CheckCircle2 className="w-3 h-3" /> Chấm đồ thị
+            <Eye className="w-3 h-3" /> Đối chiếu
           </button>
         </div>
       </div>
@@ -142,7 +124,7 @@ export default function GraphPlotter({ data, xLabel, yLabel, onScored }: GraphPl
         <text x={W / 2} y={H - 6} fontSize={10} fill="#321E12" textAnchor="middle" fontWeight="bold">{xLabel}</text>
         <text x={12} y={H / 2} fontSize={10} fill="#321E12" textAnchor="middle" fontWeight="bold" transform={`rotate(-90 12 ${H / 2})`}>{yLabel}</text>
 
-        {/* Sau khi chấm: hiện điểm số liệu thật (xanh) để đối chiếu + đường hồi quy */}
+        {/* Sau khi đối chiếu: hiện điểm số liệu thật (xanh) + đường khớp */}
         {scored && data.map((d, i) => { const p = toPx(d); return <circle key={"d" + i} cx={p.px} cy={p.py} r={5} fill="none" stroke="#137333" strokeWidth={1.6} />; })}
         {fitLine && <line x1={fitLine.x1} y1={fitLine.y1} x2={fitLine.x2} y2={fitLine.y2} stroke="#C85A17" strokeWidth={1.6} strokeDasharray="5 4" />}
 
@@ -151,13 +133,13 @@ export default function GraphPlotter({ data, xLabel, yLabel, onScored }: GraphPl
       </svg>
 
       {scored && (
-        <div className="bg-[#FFF7EF] border border-[#C85A17]/25 rounded-xl p-3 text-[11px] font-bold text-[#605248] flex items-center justify-between flex-wrap gap-2">
-          <span>Độ khớp điểm số liệu: <b className="text-[#321E12]">{scored.accuracy}%</b> · Độ tuyến tính R² = <b className="text-[#321E12]">{scored.r2}</b></span>
-          <span className="text-[#C85A17] font-black">Điểm đồ thị: {scored.score}/10</span>
+        <div className="bg-[#FFF7EF] border border-[#C85A17]/25 rounded-xl p-3 text-[11px] font-bold text-[#605248]">
+          Độ tuyến tính của các điểm em vẽ: R² = <b className="text-[#321E12]">{scored.r2}</b>
+          <span className="text-[#605248]/70"> (càng gần 1 càng thẳng)</span> — so vị trí điểm cam với vòng tròn xanh để tự kiểm tra.
         </div>
       )}
       <p className="text-[9px] font-bold text-[#605248]/60">
-        Vòng tròn xanh = điểm số liệu chuẩn (hiện sau khi chấm) · Đường cam = đường hồi quy qua các điểm em vẽ.
+        Vòng tròn xanh = điểm số liệu thật (hiện sau khi đối chiếu) · Đường cam = đường khớp qua các điểm em vẽ.
       </p>
     </div>
   );

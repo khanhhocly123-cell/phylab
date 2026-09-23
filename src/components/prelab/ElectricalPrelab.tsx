@@ -1,78 +1,262 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Check, ChevronLeft, ChevronRight, Lock, MousePointerClick, PlugZap } from "lucide-react";
+import {
+  BatteryCharging,
+  Check,
+  CircleDot,
+  Gauge,
+  Hand,
+  MousePointerClick,
+  PlugZap,
+  Power,
+  RotateCw,
+  ShieldCheck,
+} from "lucide-react";
 import type { ExperimentSpec } from "@/lib/types";
+import PrelabShell, { type PrelabStep } from "./PrelabShell";
+import { Multimeter, DcSource, CircuitBoard, boardModuleRect, boardNode } from "../lab/electric/ElectricParts.jsx";
 
-type Props = { spec: ExperimentSpec; viewOnly?: boolean; onFinish: () => void };
-type MeterMode = "OFF" | "V" | "mA";
+type Props = { spec: ExperimentSpec; viewOnly?: boolean; onFinish: () => void; onExit?: () => void };
+type MeterMode = "OFF" | "V" | "Ω" | "mA" | "µA";
+type PortId = "A" | "mAµA" | "COM" | "VΩ";
 
-const A = "/lab/electric";
+const MODES: MeterMode[] = ["OFF", "V", "Ω", "mA", "µA"];
+const MODE_INFO: Record<MeterMode, { name: string; unit: string; description: string }> = {
+  OFF: { name: "Tắt đồng hồ", unit: "—", description: "Đưa về OFF trước khi cắm/rút dây hoặc thay đổi mạch." },
+  V: { name: "Đo hiệu điện thế", unit: "V", description: "Mắc song song với phần tử cần đo; que đỏ vào VΩ, que đen vào COM." },
+  Ω: { name: "Đo điện trở", unit: "Ω", description: "Chỉ đo khi mạch đã mất điện và phần tử được tách khỏi nguồn." },
+  mA: { name: "Đo dòng miliampe", unit: "mA", description: "Mắc nối tiếp trong mạch; que đỏ vào mAµA, que đen vào COM." },
+  µA: { name: "Đo dòng microampe", unit: "µA", description: "Dùng cho dòng rất nhỏ; luôn bắt đầu từ thang lớn hơn để bảo vệ đồng hồ." },
+};
+const PORT_INFO: Record<PortId, { title: string; color: string; description: string }> = {
+  A: { title: "Cổng A", color: "#991b1b", description: "Dòng lớn. Hai bài này không dùng cổng A để tránh quá tải." },
+  mAµA: { title: "Cổng mA/µA", color: "#dc2626", description: "Cắm que đỏ khi ĐO1 làm ampe kế ở thang mA hoặc µA." },
+  COM: { title: "Cổng COM", color: "#111827", description: "Cổng chung cho que đen (âm). Mọi phép đo đều cần một que ở COM." },
+  VΩ: { title: "Cổng VΩ", color: "#dc2626", description: "Cắm que đỏ khi đo hiệu điện thế V hoặc điện trở Ω." },
+};
 
-export default function ElectricalPrelab({ spec, viewOnly = false, onFinish }: Props) {
+export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onExit }: Props) {
   const isEmf = spec.id === "do-suat-dien-dong-pin-dien-hoa";
   const [slide, setSlide] = useState(0);
-  const [aMode, setAMode] = useState<MeterMode>("OFF");
-  const [vMode, setVMode] = useState<MeterMode>("OFF");
+  const [mode, setMode] = useState<MeterMode>("OFF");
+  const [modesSeen, setModesSeen] = useState<Set<MeterMode>>(() => new Set(["OFF"]));
+  const [selectedPort, setSelectedPort] = useState<PortId>("COM");
+  const [portsSeen, setPortsSeen] = useState<Set<PortId>>(() => new Set(["COM"]));
+  const [sourceOn, setSourceOn] = useState(false);
+  const [sourceVoltage, setSourceVoltage] = useState(3);
+  const [networkPair, setNetworkPair] = useState(0);
   const [safe, setSafe] = useState(false);
-  const modesOK = aMode === "mA" && vMode === "V";
-  const ready = modesOK && safe;
-  const total = 4;
+  const exploredModes = modesSeen.size === MODES.length;
+  const exploredPorts = portsSeen.size === Object.keys(PORT_INFO).length;
+  const ready = exploredModes && exploredPorts && safe;
+
+  const visitMode = (next: MeterMode) => {
+    setMode(next);
+    setModesSeen((old) => new Set(old).add(next));
+  };
+  const visitPort = (port: PortId) => {
+    setSelectedPort(port);
+    setPortsSeen((old) => new Set(old).add(port));
+  };
+
+  const missing = [
+    !exploredModes && `${MODES.length - modesSeen.size} nấc núm xoay`,
+    !exploredPorts && `${Object.keys(PORT_INFO).length - portsSeen.size} cổng cắm`,
+    !safe && "xác nhận an toàn",
+  ].filter(Boolean).join(" · ");
+  const steps: PrelabStep[] = [
+    { key: "overview", label: "Tổng quan" },
+    { key: "modes", label: "Núm xoay", done: exploredModes },
+    { key: "ports", label: "Cổng cắm", done: exploredPorts },
+    { key: isEmf ? "board" : "source", label: isEmf ? "Bảng mạch" : "Nguồn DC" },
+    { key: "safety", label: "An toàn", done: safe },
+  ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white border border-brand-orange/20 shadow-lg rounded-3xl p-5 md:p-6 my-4">
-      <div className="flex items-center justify-between gap-4 border-b border-brand-orange/15 pb-4 mb-5">
-        <div className="flex items-center gap-2.5"><div className="p-2 bg-brand-orange rounded-xl text-white"><BookOpen className="w-5 h-5"/></div><div><span className="text-[9px] font-black bg-brand-orange text-white px-2 py-0.5 rounded uppercase tracking-wider">Prelab · Điện lớp 11</span><h2 className="text-sm md:text-base font-black text-brand-blue uppercase mt-1.5">{spec.shortTitle}</h2></div></div>
-        <div className="text-xs font-black text-brand-blue/60 bg-brand-cream/40 px-3 py-1 rounded-full border border-brand-orange/10">Trang {slide + 1} / {total}</div>
+    <PrelabShell
+      spec={spec}
+      steps={steps}
+      current={slide}
+      onStep={setSlide}
+      mode={viewOnly ? "review" : "gate"}
+      canFinish={ready}
+      requirement={`Còn thiếu: ${missing}`}
+      onFinish={onFinish}
+      onExit={onExit}
+    >
+      <div className="min-h-[440px] flex flex-col justify-center">
+        {slide === 0 && (
+          <div className="max-w-3xl mx-auto text-center py-4">
+            <div className="inline-flex items-center gap-2 text-[10px] tracking-[.18em] text-brand-orange font-black uppercase mb-3"><MousePointerClick className="w-4 h-4" /> Làm quen trước khi lắp</div>
+            <h3 className="text-xl md:text-2xl font-black text-brand-blue">Chỉ học những dụng cụ quyết định phép đo</h3>
+            <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed mt-4">
+              {isEmf
+                ? "Em sẽ học cách dùng đồng hồ đa năng và cách các nút trong cùng một mạng trên bảng lắp mạch nối điện với nhau. Các linh kiện còn lại sẽ được giới thiệu đúng lúc trong phòng Lab."
+                : "Bài 23 dùng mạch nổi, không có bảng lắp mạch. Em chỉ cần nắm chắc đồng hồ đa năng và nguồn DC điều chỉnh trước khi vào bàn thí nghiệm."}
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4 mt-7 text-left">
+              <IntroCard icon={<Gauge className="w-5 h-5" />} title="Đồng hồ đa năng hiện số" text="Một thân máy, năm nấc chức năng. Màn hình và cổng cắm thay đổi ý nghĩa theo nấc đang chọn." visual={<svg viewBox="0 0 130 214" className="h-full w-auto"><Multimeter at={{ x: 0, y: 0, s: 1 }} mode="V" reading={0} /></svg>} />
+              {isEmf
+                ? <IntroCard icon={<CircleDot className="w-5 h-5" />} title="Bảng lắp mạch 216 nút" text="24 mạng độc lập; 9 nút trong cùng một mạng dẫn điện với nhau." visual={<svg viewBox="0 0 994 684" className="w-full h-auto"><CircuitBoard at={{ x: 0, y: 0, s: 1 }} /></svg>} />
+                : <IntroCard icon={<BatteryCharging className="w-5 h-5" />} title="Nguồn DC điều chỉnh" text="Cấp hiệu điện thế cho mạch; chỉ bật sau khi nối đúng và mở khóa K." visual={<svg viewBox="0 0 200 150" className="w-full h-auto"><DcSource at={{ x: 0, y: 0, s: 1 }} on voltage={4} /></svg>} />}
+            </div>
+          </div>
+        )}
+
+        {slide === 1 && (
+          <div className="max-w-4xl mx-auto w-full">
+            <SectionHeading eyebrow="Núm xoay 5 nấc" title="Chạm núm xoay (hoặc các nấc bên cạnh) để thử đủ năm chế độ" />
+            <div className="grid md:grid-cols-[minmax(260px,360px)_1fr] gap-5 items-center mt-5">
+              <InteractiveMeter mode={mode} onMode={visitMode} selectedPort={selectedPort} onPort={visitPort} showPorts={false} />
+              <div>
+                <div className="rounded-2xl border border-brand-orange/20 bg-white p-4">
+                  <div className="flex items-start gap-3"><div className="w-10 h-10 rounded-xl bg-brand-orange text-white grid place-items-center shrink-0"><RotateCw className="w-5 h-5" /></div><div><div className="text-[10px] font-black uppercase tracking-wider text-brand-orange">{mode}</div><h4 className="font-black text-brand-blue">{MODE_INFO[mode].name}</h4><p className="text-xs font-semibold text-slate-500 leading-relaxed mt-1">{MODE_INFO[mode].description}</p></div></div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 mt-3">{MODES.map((item) => <button key={item} type="button" onClick={() => visitMode(item)} className={`rounded-xl border py-2 text-xs font-black transition ${mode === item ? "bg-brand-orange border-brand-orange text-white" : modesSeen.has(item) ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-white border-slate-200 text-slate-500"}`}>{modesSeen.has(item) && mode !== item ? "✓ " : ""}{item}</button>)}</div>
+                <ProgressHint done={exploredModes} text={exploredModes ? "Đã thử đủ 5 nấc. Trong Lab, ĐO1 dùng mA và ĐO2 dùng V." : `Đã thử ${modesSeen.size}/5 nấc — tiếp tục chạm núm.`} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {slide === 2 && (
+          <div className="max-w-4xl mx-auto w-full">
+            <SectionHeading eyebrow="Bốn cổng cắm" title="Chạm từng jack để biết dây nào được cắm vào đâu" />
+            <div className="grid md:grid-cols-[minmax(260px,360px)_1fr] gap-5 items-center mt-5">
+              <InteractiveMeter mode={mode} onMode={visitMode} selectedPort={selectedPort} onPort={visitPort} />
+              <div>
+                <div className="rounded-2xl border border-brand-orange/20 bg-white p-4 min-h-32">
+                  <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: PORT_INFO[selectedPort].color }} /><h4 className="font-black text-brand-blue">{PORT_INFO[selectedPort].title}</h4></div>
+                  <p className="text-xs font-semibold text-slate-500 leading-relaxed mt-2">{PORT_INFO[selectedPort].description}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-3">{(Object.keys(PORT_INFO) as PortId[]).map((port) => <button key={port} type="button" onClick={() => visitPort(port)} className={`rounded-xl border px-3 py-2 text-left text-xs font-black ${selectedPort === port ? "border-brand-orange bg-orange-50 text-brand-orange" : portsSeen.has(port) ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}>{portsSeen.has(port) && selectedPort !== port ? "✓ " : ""}{PORT_INFO[port].title}</button>)}</div>
+                <ProgressHint done={exploredPorts} text={exploredPorts ? "Đã xem đủ 4 cổng. Nhớ: que đen luôn ở COM." : `Đã xem ${portsSeen.size}/4 cổng — hãy chạm các jack còn lại.`} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {slide === 3 && (
+          <div className="max-w-4xl mx-auto w-full">
+            {isEmf ? (
+              <>
+                <SectionHeading eyebrow="Bảng lắp mạch" title="Một mạng có 9 nút dẫn điện với nhau" />
+                <div className="grid md:grid-cols-[1.15fr_.85fr] gap-5 items-center mt-5">
+                  <button type="button" onClick={() => setNetworkPair((value) => (value + 1) % 3)} className="rounded-2xl border border-brand-orange/20 bg-white p-3 text-left cursor-pointer" aria-label="Chạm để xem cặp mạng khác">
+                    <BoardNetworks pair={networkPair} />
+                    <span className="block text-center text-[10px] font-bold text-slate-500 mt-1">Chạm để xem cặp mạng khác · cam = mạng 1, xanh = mạng 2</span>
+                  </button>
+                  <div className="space-y-3 text-xs font-semibold text-slate-600">
+                    <InfoRow n="1" text="Cắm hai chân linh kiện vào hai nút của hai mạng khác nhau." />
+                    <InfoRow n="2" text="Muốn nối tiếp hai linh kiện, cho một chân của mỗi linh kiện vào cùng một mạng." />
+                    <InfoRow n="3" text="Trong Lab, chốt đích hợp lệ sẽ sáng; chạm chốt đầu rồi chạm chốt sáng để nối." />
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 font-bold text-amber-900">Không cắm hai chân của cùng một linh kiện vào cùng một mạng.</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionHeading eyebrow="Nguồn DC điều chỉnh" title="Bật nguồn và chỉnh điện áp ra" />
+                <div className="grid md:grid-cols-[1fr_1fr] gap-5 items-center mt-5">
+                  <div className="rounded-2xl border border-brand-orange/20 bg-white p-5 flex justify-center"><svg viewBox="0 0 200 150" className="w-full max-w-[340px] h-auto" role="img" aria-label="Nguồn điện một chiều điều chỉnh được"><DcSource at={{ x: 0, y: 0, s: 1 }} on={sourceOn} voltage={sourceVoltage} onTogglePower={() => setSourceOn((value) => !value)} onStepVoltage={() => setSourceVoltage((value) => (value >= 10 ? 1 : value + 1))} /></svg></div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <button type="button" onClick={() => setSourceOn((value) => !value)} className={`w-full rounded-xl py-3 font-black flex items-center justify-center gap-2 ${sourceOn ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700"}`}><Power className="w-4 h-4" /> Nguồn {sourceOn ? "ĐANG BẬT" : "ĐANG TẮT"}</button>
+                    <label className="block mt-4 text-xs font-bold text-slate-600">Điện áp đặt: <b className="text-brand-orange">{sourceVoltage} V</b><input aria-label="Điện áp nguồn" type="range" min="1" max="10" step="1" value={sourceVoltage} onChange={(event) => setSourceVoltage(Number(event.target.value))} className="w-full mt-2 accent-orange-600" /></label>
+                    <p className="text-xs font-semibold text-slate-500 mt-4 leading-relaxed">Trong Lab: lắp/đổi dây khi đã mở K và tắt nguồn → bật nguồn → đóng K → chỉnh U từng mức (bấm núm hoặc chọn trong bảng) rồi ghi số đo.</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {slide === 4 && (
+          <div className="max-w-2xl mx-auto w-full text-center py-3">
+            <SectionHeading eyebrow="Kiểm tra trước khi vào Lab" title="An toàn trước, cấp điện sau" />
+            <div className="grid sm:grid-cols-3 gap-3 mt-6 text-left">
+              <SafetyCard icon={<Power className="w-4 h-4" />} title="Mở K / tắt nguồn" text="Trước khi lắp hoặc thay đổi dây." />
+              <SafetyCard icon={<PlugZap className="w-4 h-4" />} title="Đúng cổng" text="COM + mAµA cho dòng; COM + VΩ cho áp." />
+              <SafetyCard icon={<ShieldCheck className="w-4 h-4" />} title="Đúng nấc" text="ĐO1 ở mA, ĐO2 ở V rồi mới đóng K." />
+            </div>
+            <button type="button" onClick={() => setSafe((value) => !value)} className={`mt-5 w-full rounded-2xl border-2 p-4 text-left transition ${safe ? "bg-emerald-50 border-emerald-400" : "bg-white border-brand-orange/25"}`}>
+              <div className="flex gap-3"><div className={`w-7 h-7 rounded-full shrink-0 grid place-items-center ${safe ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>{safe ? <Check className="w-4 h-4" /> : <Hand className="w-4 h-4" />}</div><div><b className="text-sm text-brand-blue">Em đã hiểu quy trình an toàn và cách chọn đúng cổng, đúng nấc.</b><p className="text-xs font-semibold text-slate-500 mt-1">Chạm để xác nhận.</p></div></div>
+            </button>
+            {(!exploredModes || !exploredPorts) && <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-bold text-orange-900">Còn thiếu: {!exploredModes ? `${5 - modesSeen.size} nấc VOM` : ""}{!exploredModes && !exploredPorts ? " · " : ""}{!exploredPorts ? `${4 - portsSeen.size} cổng cắm` : ""}. Bấm tên bước ở thanh trên để quay lại.</div>}
+          </div>
+        )}
       </div>
+    </PrelabShell>
+  );
+}
 
-      <div className="bg-[#fefbf5] rounded-3xl border border-slate-200 min-h-[480px] p-4 md:p-6 flex flex-col justify-between">
-        <div className="flex-1 flex flex-col justify-center">
-          {slide === 0 && <div className="max-w-2xl mx-auto text-center py-6">
-            <div className="inline-flex items-center gap-2 text-[10px] tracking-[.18em] text-brand-orange font-black uppercase mb-3"><MousePointerClick className="w-4 h-4"/> Chuẩn bị trước khi lắp</div>
-            <h3 className="text-xl md:text-2xl font-black text-brand-blue">Nhận diện đúng dụng cụ SVG sẽ dùng trong phòng Lab</h3>
-            <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed mt-4">Trong phòng Lab, em kéo từng dụng cụ từ khay bên trái vào ô sáng trên bảng lắp mạch. Chỉ sau khi lắp đủ mới được nối dây và cấp điện.</p>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-7">
-              {(isEmf ? [
-                ["Bảng lắp", `${A}/circuit-board.svg`], ["Pin", `${A}/battery.svg`], ["Khóa K", `${A}/switch-k.svg`], ["Điện trở", `${A}/protective-resistor.svg`], ["Biến trở", `${A}/rheostat.svg`], ["Đồng hồ", `${A}/multimeter.svg`],
-              ] : [
-                ["Bảng lắp", `${A}/circuit-board.svg`], ["Nguồn", `${A}/transformer.svg`], ["Khóa K", `${A}/switch-k.svg`], ["Vật dẫn", `${A}/protective-resistor.svg`], ["ĐO1", `${A}/multimeter.svg`], ["ĐO2", `${A}/multimeter.svg`],
-              ]).map(([name, src]) => <div key={name} className="bg-white border border-brand-orange/15 rounded-2xl p-2 min-h-28 flex flex-col items-center justify-center"><img src={src} alt={name} className="w-full h-16 object-contain"/><b className="text-[10px] text-brand-blue mt-2">{name}</b></div>)}
-            </div>
-          </div>}
+const JACK_OF: Record<PortId, string> = { A: "A", mAµA: "mA", COM: "COM", VΩ: "V" };
+const PORT_OF: Record<string, PortId> = { A: "A", mA: "mAµA", COM: "COM", V: "VΩ" };
 
-          {slide === 1 && <div className="max-w-3xl mx-auto w-full">
-            <div className="text-center mb-5"><span className="text-[10px] font-black text-brand-orange uppercase">Thiết bị đo</span><h3 className="text-lg md:text-xl font-black text-brand-blue">Hai đồng hồ — hai kiểu mắc khác nhau</h3></div>
-            <div className="grid sm:grid-cols-2 gap-5">
-              <MeterCard title="Đồng hồ ĐO1" mode={aMode} setMode={setAMode} note="Ampe kế mắc nối tiếp, dây đỏ cắm cổng mA."/>
-              <MeterCard title="Đồng hồ ĐO2" mode={vMode} setMode={setVMode} note="Vôn kế mắc song song, dây đỏ cắm cổng VΩ."/>
-            </div>
-            <div className={`mt-5 rounded-xl border p-3 text-xs font-bold text-center ${modesOK ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-orange-50 border-orange-200 text-orange-900"}`}>{modesOK ? "✓ Đúng: ĐO1 ở mA và ĐO2 ở V." : "Hãy đặt ĐO1 ở mA và ĐO2 ở V."}</div>
-          </div>}
-
-          {slide === 2 && <div className="max-w-3xl mx-auto w-full text-center">
-            <span className="text-[10px] font-black text-brand-orange uppercase">Trình tự lắp</span><h3 className="text-lg md:text-xl font-black text-brand-blue mt-1">Lắp dụng cụ trước, nối dây sau</h3>
-            <div className="relative mt-5 bg-white border border-brand-orange/15 rounded-2xl p-4 overflow-hidden"><img src={`${A}/circuit-board.svg`} alt="Bảng lắp mạch 216 nút" className="w-full max-h-72 object-contain opacity-55"/><div className="absolute inset-0 grid place-items-center pointer-events-none"><div className="bg-white/95 border border-brand-orange/30 rounded-2xl px-5 py-4 shadow-sm max-w-md"><PlugZap className="w-6 h-6 text-brand-orange mx-auto mb-2"/><p className="text-xs font-black text-brand-blue">Dây chỉ được kéo từ đúng chốt thiết bị đến chốt đích. Thả sai chốt sẽ không tạo kết nối.</p></div></div></div>
-            <div className="grid sm:grid-cols-3 gap-3 mt-4 text-left text-[11px] font-bold text-slate-600"><div className="bg-white rounded-xl border p-3"><b className="text-brand-orange">1.</b> Kéo đúng thứ tự vào vòng sáng.</div><div className="bg-white rounded-xl border p-3"><b className="text-brand-orange">2.</b> Kéo đầu dây giữa các chốt.</div><div className="bg-white rounded-xl border p-3"><b className="text-brand-orange">3.</b> Chọn thang đo rồi mới đóng K.</div></div>
-          </div>}
-
-          {slide === 3 && <div className="max-w-xl mx-auto w-full text-center">
-            <span className="text-[10px] font-black text-brand-orange uppercase">An toàn điện</span><h3 className="text-lg md:text-xl font-black text-brand-blue mt-1">Xác nhận trước khi vào phòng Lab</h3>
-            <button onClick={() => setSafe((value) => !value)} className={`mt-6 w-full rounded-2xl border-2 p-5 text-left transition ${safe ? "bg-emerald-50 border-emerald-400" : "bg-white border-brand-orange/25"}`}><div className="flex gap-3"><div className={`w-7 h-7 rounded-full shrink-0 grid place-items-center ${safe ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>{safe && <Check className="w-4 h-4"/>}</div><div><b className="text-sm text-brand-blue">Luôn mở khóa K và tắt nguồn khi lắp hoặc đổi dây.</b><p className="text-xs font-semibold text-slate-500 mt-1">Kiểm tra đúng cổng cắm, đúng thang đo và đúng cực trước khi cấp điện.</p></div></div></button>
-            {!modesOK && <p className="text-xs font-bold text-orange-800 mt-4">Quay lại trang 2 để đặt đúng hai đồng hồ.</p>}
-          </div>}
-        </div>
-
-        <div className="flex items-center justify-between border-t border-slate-200 pt-4 mt-6">
-          <button onClick={() => setSlide((value) => Math.max(0, value - 1))} disabled={slide === 0} className="px-4 py-2.5 border rounded-xl text-xs font-bold flex items-center gap-1 disabled:opacity-40"><ChevronLeft className="w-4 h-4"/> Trang trước</button>
-          <div className="flex gap-2">{Array.from({ length: total }).map((_, i) => <button key={i} onClick={() => setSlide(i)} className={`h-2.5 rounded-full transition-all ${i === slide ? "w-6 bg-brand-orange" : "w-2.5 bg-slate-300"}`}/>)}</div>
-          {slide < total - 1 ? <button onClick={() => setSlide((value) => value + 1)} className="px-4 py-2.5 bg-brand-orange text-white rounded-xl text-xs font-bold flex items-center gap-1">Trang sau <ChevronRight className="w-4 h-4"/></button> : <button onClick={onFinish} disabled={!ready} className="px-5 py-2.5 bg-brand-orange text-white rounded-xl text-xs font-black flex items-center gap-1.5 disabled:bg-slate-200 disabled:text-slate-400">{ready ? <>{viewOnly ? "Đã xem xong" : "Vào phòng Lab"}<ChevronRight className="w-4 h-4"/></> : <><Lock className="w-3.5 h-3.5"/> Chưa hoàn tất</>}</button>}
-        </div>
+function InteractiveMeter({ mode, onMode, selectedPort, onPort, showPorts = true }: { mode: MeterMode; onMode: (mode: MeterMode) => void; selectedPort: PortId; onPort: (port: PortId) => void; showPorts?: boolean }) {
+  const step = () => onMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
+  return (
+    <div className="rounded-2xl border border-brand-orange/20 bg-white p-3 select-none">
+      <svg viewBox="0 0 130 214" className="mx-auto block w-[220px] max-w-full h-auto" role="img" aria-label="Đồng hồ đa năng hiện số">
+        <Multimeter
+          at={{ x: 0, y: 0, s: 1 }}
+          mode={mode}
+          reading={0}
+          title="ĐỒNG HỒ ĐA NĂNG"
+          onCycleMode={step}
+          selectedJack={showPorts ? JACK_OF[selectedPort] : undefined}
+          onJack={showPorts ? (id: string) => onPort(PORT_OF[id]) : undefined}
+        />
+      </svg>
+      <div className="flex items-center justify-center gap-2 mt-2 text-[10px] font-bold text-slate-500">
+        <RotateCw className="w-3.5 h-3.5" /> {showPorts ? "Chạm lỗ cắm để xem công dụng" : "Chạm núm xoay để chuyển nấc"}
       </div>
     </div>
   );
 }
 
-function MeterCard({ title, mode, setMode, note }: { title: string; mode: MeterMode; setMode: (mode: MeterMode) => void; note: string }) {
-  return <div className="bg-white border border-brand-orange/15 rounded-2xl p-4"><div className="flex gap-4 items-center"><div className="relative w-28 shrink-0"><img src={`${A}/multimeter.svg`} alt={title} className="w-full h-40 object-contain"/><div className="absolute left-[27%] right-[27%] top-[15%] h-7 bg-slate-900 rounded grid place-items-center text-[10px] font-mono font-black text-emerald-300">{mode === "OFF" ? "----" : mode}</div></div><div className="flex-1"><b className="text-sm text-brand-blue">{title}</b><p className="text-[11px] font-semibold text-slate-500 mt-1 mb-3">{note}</p><div className="grid grid-cols-3 gap-1">{(["OFF", "V", "mA"] as MeterMode[]).map((item) => <button key={item} onClick={() => setMode(item)} className={`py-2 rounded-lg text-[10px] font-black border ${mode === item ? "bg-brand-orange text-white border-brand-orange" : "bg-white text-slate-600"}`}>{item}</button>)}</div></div></div></div>;
+/** Bảng lắp mạch với 2 mạng được tô đúng vị trí nút (lấy từ metadata của ảnh bảng). */
+function BoardNetworks({ pair }: { pair: number }) {
+  const colA = pair * 2;
+  const colB = pair * 2 + 1;
+  const a = boardModuleRect(0, colA);
+  const b = boardModuleRect(0, colB);
+  const legA = boardNode(0, colA, 1, 2);
+  const legB = boardNode(0, colB, 1, 0);
+  const mid = { x: (legA.x + legB.x) / 2, y: legA.y };
+  return (
+    <svg viewBox="0 0 994 684" className="w-full h-auto block" role="img" aria-label="Bảng lắp mạch 216 nút, hai mạng được tô sáng">
+      <CircuitBoard at={{ x: 0, y: 0, s: 1 }} />
+      <rect x={a.x} y={a.y} width={a.w} height={a.h} rx="18" fill="#FB923C33" stroke="#EA580C" strokeWidth="7">
+        <animate attributeName="opacity" values="1;0.55;1" dur="1.6s" repeatCount="indefinite" />
+      </rect>
+      <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="18" fill="#22C55E26" stroke="#16A34A" strokeWidth="7" />
+      <line x1={legA.x} y1={legA.y} x2={legB.x} y2={legB.y} stroke="#6B7280" strokeWidth="6" strokeLinecap="round" />
+      <rect x={mid.x - 20} y={mid.y - 11} width="40" height="22" rx="9" fill="#F3E3C3" stroke="#8A6D3B" strokeWidth="3" />
+      <circle cx={legA.x} cy={legA.y} r="9" fill="#6B7280" />
+      <circle cx={legB.x} cy={legB.y} r="9" fill="#6B7280" />
+      <text x={a.x + a.w / 2} y={a.y + a.h + 40} textAnchor="middle" fontSize="30" fontWeight="900" fill="#C2410C">Mạng 1</text>
+      <text x={b.x + b.w / 2} y={b.y + b.h + 40} textAnchor="middle" fontSize="30" fontWeight="900" fill="#15803D">Mạng 2</text>
+    </svg>
+  );
+}
+
+function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return <div className="text-center"><span className="text-[10px] font-black text-brand-orange uppercase tracking-[.16em]">{eyebrow}</span><h3 className="text-lg md:text-xl font-black text-brand-blue mt-1">{title}</h3></div>;
+}
+
+function IntroCard({ icon, title, text, visual }: { icon: React.ReactNode; title: string; text: string; visual: React.ReactNode }) {
+  return <div className="rounded-2xl border border-brand-orange/15 bg-white p-4 flex items-center gap-4"><div aria-hidden className="w-24 h-24 rounded-xl bg-[#fef9f2] grid place-items-center shrink-0 p-1.5 overflow-hidden">{visual}</div><div><div className="w-8 h-8 rounded-lg bg-brand-orange text-white grid place-items-center mb-2">{icon}</div><h4 className="text-sm font-black text-brand-blue">{title}</h4><p className="text-[11px] font-semibold text-slate-500 leading-relaxed mt-1">{text}</p></div></div>;
+}
+
+function ProgressHint({ done, text }: { done: boolean; text: string }) {
+  return <div className={`mt-3 rounded-xl border p-3 text-xs font-bold text-center ${done ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-orange-50 border-orange-200 text-orange-900"}`}>{done ? "✓ " : ""}{text}</div>;
+}
+
+function InfoRow({ n, text }: { n: string; text: string }) {
+  return <div className="rounded-xl border border-slate-200 bg-white p-3 flex gap-3"><span className="w-6 h-6 rounded-lg bg-brand-orange text-white grid place-items-center font-black shrink-0">{n}</span><span>{text}</span></div>;
+}
+
+function SafetyCard({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+  return <div className="rounded-xl border border-brand-orange/15 bg-white p-3"><div className="w-8 h-8 rounded-lg bg-orange-50 text-brand-orange grid place-items-center mb-2">{icon}</div><b className="text-xs text-brand-blue">{title}</b><p className="text-[11px] font-semibold text-slate-500 mt-1">{text}</p></div>;
 }

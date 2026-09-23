@@ -5,7 +5,11 @@
 > (SmartBot, SmartReader OCR, eKYC, SmartVoice TTS). Hiện có **2 bài thực hành** Vật lí 10 (SGK
 > Kết nối tri thức): **Bài 6 — Đo tốc độ** và **Bài 11 — Đo gia tốc rơi tự do**.
 >
-> Tài liệu này mô tả CHI TIẾT mọi tính năng, kiến trúc và ràng buộc của dự án. Cập nhật 2026-07-04.
+> Tài liệu này mô tả CHI TIẾT mọi tính năng, kiến trúc và ràng buộc của dự án. Cập nhật 2026-07-20.
+>
+> **Mới (2026-07-20):** đã triển khai **tính năng Lớp học cho giáo viên** (mục 20) — tạo lớp bằng mã
+> tham gia, giao bài Lab với đề tự đặt, quiz form Bộ GD 2025, quiz chống gian lận, dashboard theo dõi
+> HS, heatmap lỗi sai, xuất bảng điểm CSV. Kế hoạch **3 bài lab mới** ở mục 21.
 
 ---
 
@@ -30,6 +34,8 @@
 17. [Bản đồ mã nguồn](#17-bản-đồ-mã-nguồn)
 18. [Kiểm thử](#18-kiểm-thử)
 19. [Biến môi trường](#19-biến-môi-trường)
+20. [Tính năng Lớp học — Giáo viên ↔ Học sinh](#20-tính-năng-lớp-học--giáo-viên--học-sinh)
+21. [Định hướng phát triển tiếp theo](#21-định-hướng-phát-triển-tiếp-theo)
 
 ---
 
@@ -332,5 +338,134 @@ Thiếu cấu hình nào thì tính năng đó **fallback an toàn** (mock/RAG/W
 
 ---
 
-*Tài liệu này mô tả trạng thái dự án tại 2026-07-04. Điểm số & vật lý là deterministic; AI của VNPT
+## 20. Tính năng Lớp học — Giáo viên ↔ Học sinh
+
+Triển khai 2026-07-20. Toàn bộ endpoint gộp trong **một route** `/api/class/[action]`
+(`src/app/api/class/[action]/route.ts`) — chạy **Node runtime** (có chủ đích, xem 20.7).
+
+### 20.1. Đăng nhập giáo viên & phân quyền
+
+- Tài khoản GV demo qua env: `TEACHER_EMAIL` / `TEACHER_PASSWORD` (mặc định
+  `giaovien@phylab.vn` / `giaoviendeptrai`). Đăng nhập ở cùng `LoginScreen` → route
+  `/api/auth/login` trả `{role:"teacher", token}`.
+- Token HMAC-SHA256 (`src/lib/auth.ts`, `crypto.subtle`, TTL 30 ngày, secret `AUTH_SECRET`
+  **bắt buộc**); mọi route GV guard bằng `requireTeacher` (Bearer). HS trả `role:"student"`.
+- GV vào **shell riêng** `TeacherShell.tsx` (`src/components/teacher/`) — không render shell HS.
+- Định danh HS: UUID sinh ở `localStorage.studentId` (`lib/activity.ts getStudentId`) + tên hiển
+  thị; giữ nguyên khi đăng xuất để "vẫn là em đó" khi vào lại. (Spoof được — chấp nhận cho hackathon.)
+
+### 20.2. Lớp học & mã tham gia
+
+- GV tạo lớp → **mã 5 ký tự** (bỏ 0/O/1/I, ví dụ `XKGSC`) hiện to trên dashboard, có nút copy.
+- HS mở tab **"Lớp của tôi"** (sidebar + bottom dock, `student/MyClassTab.tsx`) → nhập mã → vào lớp.
+- GV xem: danh sách lớp + sĩ số (`TeacherDashboard`), chi tiết lớp (`ClassDetail`): roster với
+  **lần hoạt động cuối + sparkline 7 ngày**, danh sách bài tập + % nộp + điểm TB, drill-down
+  từng HS (`StudentDrilldown`): bảng số liệu từng lần đo (KQ đúng vs lý thuyết), nhận xét,
+  điểm quiz, timeline hoạt động.
+- **Cường độ vào app**: client ghi sự kiện `login / lab_start / lab_submit / quiz_submit`
+  (fire-and-forget, `lib/activity.ts`) → bảng `activity_events`.
+
+### 20.3. Bài Lab do giáo viên ra đề
+
+- `teacher/LabAssignmentComposer.tsx`: GV chọn bài 6/11, tự đặt mục tiêu đo (θ, sEF, s) — thấy ngay
+  **đáp án mong đợi** tính từ physics engine (`theoreticalOf`), HS không thấy.
+- Khi HS trong lớp mở đúng bài lab: đề GV **thay thế** đề seeded/AI —
+  `buildAssignedSet` (`lib/problemGen.ts`) override tại `LabBench.jsx` / `FreeFallBench.jsx`
+  (prop `assignedSets` chảy từ `page.tsx` hook `useMyClass` → `LabRoom`). HS ngoài lớp/không có
+  bài giao vẫn nhận đề seeded như cũ.
+- **Nộp bài tự động**: HS chấm điểm ở Sổ Báo Cáo như bình thường → `page.tsx handleReportGraded`
+  POST `submit-lab`; server **re-verify điểm bằng `gradeLesson`** (không tin điểm client),
+  UPSERT giữ bản mới nhất + đếm số lần nộp.
+
+### 20.4. Quiz theo form đề Bộ GD&ĐT 2025
+
+`src/lib/moeQuiz.ts` — 3 phần đúng cấu trúc đề minh hoạ 2025:
+
+| Phần | Dạng | Điểm |
+|---|---|---|
+| I | Trắc nghiệm 4 phương án | 0,25đ/câu |
+| II | Đúng/Sai 4 ý a-b-c-d | 1 ý=0,1 · 2 ý=0,25 · 3 ý=0,5 · 4 ý=1,0 |
+| III | Trả lời ngắn (số, ≤4 ký tự, có dung sai) | 0,25đ/câu |
+
+- Điểm quy về thang 10. GV soạn bằng `QuizComposer` (kèm nút **import câu hỏi từ ngân hàng ôn
+  tập** `quizBank.ts`); HS làm bằng `student/QuizPlayer.tsx` (render KaTeX, review từng câu sau nộp).
+- **Chống lộ đáp án**: đề gửi xuống client đã qua `stripAnswers`; bài làm **chấm trên server**
+  (`gradeMoeQuiz` trong action `submit-quiz`) — đáp án không bao giờ rời server.
+
+### 20.5. Quiz CHỐNG GIAN LẬN từ số liệu của chính học sinh
+
+`src/lib/antiCheatQuiz.ts` — `generatePersonalQuiz(trials, seed)`:
+
+- GV chọn 1 bài Lab đã giao làm nguồn (kind `personal_quiz`). Khi HS mở quiz, server đọc bài Lab
+  **em đó đã nộp** → sinh đề từ chính (s, t, θ, balanced) của em: tính lại g/v từ số liệu của mình
+  (trả lời ngắn, dung sai 2%), lần đo lệch lý thuyết nhất (trắc nghiệm), 4 ý Đúng/Sai bám dữ liệu
+  thật (trung bình, cân bằng, t max, độ lệch).
+- **Deterministic**: seed = `assignmentId::studentId` (`seededRandom.makeRng`) → khi nộp, server
+  **tái sinh đúng đề đó để chấm**. Mỗi HS số liệu khác → đề khác → chép đáp án của bạn vô nghĩa.
+- Chưa nộp bài Lab nguồn → báo "cần nộp bài Lab trước" (HTTP 409, `needLab`).
+
+### 20.6. Heatmap lỗi sai & bảng điểm CSV
+
+- **Bản đồ lỗi sai** (`MistakeHeatmap.tsx`, action `heatmap`): câu quiz cả lớp sai nhiều nhất
+  (thanh nhiệt %), % lần đo khi **chưa cân bằng** dụng cụ, % ô "Kết quả tính" lệch quá dung sai 1%,
+  điểm Lab trung bình — GV biết ngay cần giảng lại phần nào.
+- **Bảng điểm CSV** (action `gradebook`): UTF-8 **BOM** (Excel tiếng Việt không lỗi font), cột =
+  tên HS · điểm từng bài tập · điểm TB · số sự kiện 7 ngày · lần cuối vào app.
+
+### 20.7. Lưu trữ dữ liệu (3 adapter qua `getDb()` — `src/lib/db.ts`)
+
+```
+1. Cloudflare D1   — deploy Pages/Workers (binding DB; schema migrations/0001_init.sql)
+2. File JSON       — Node local: .data/phylab-db.json (npm run dev / start / demo qua tunnel)
+                     → dữ liệu SỐNG qua restart; demo GV↔HS nhiều thiết bị qua localtunnel chạy thật
+3. In-memory       — fallback cuối (edge sandbox không có fs)
+```
+
+- Route `/api/class/[action]` chạy **Node runtime** có chủ đích: (a) sandbox edge của `next dev`
+  tạo mới mỗi request nên không giữ được state → cần fs; (b) `@cloudflare/next-on-pages` không hỗ
+  trợ Next 16 nên đường edge trên Pages không còn ràng buộc.
+- Setup D1 (khi cần production đa thiết bị trên Cloudflare): xem hướng dẫn trong `wrangler.toml`
+  (`wrangler d1 create` → điền id → `npm run db:migrate` / `db:migrate:remote` → gắn binding `DB`
+  + env trên dashboard). Bảng: classes, memberships, assignments, submissions, quiz_results,
+  activity_events.
+- Env mới: `TEACHER_EMAIL`, `TEACHER_PASSWORD`, `AUTH_SECRET` (đã thêm `.env.example`,
+  `cloudflare-env.txt`).
+- Kiểm thử: `scripts/test-class.mjs` (26 test — thang Đúng/Sai Bộ GD, dung sai trả lời ngắn,
+  determinism anti-cheat, buildAssignedSet) — gộp trong `npm run test:all`.
+
+---
+
+## 21. Định hướng phát triển tiếp theo
+
+> Mục này ghi lại **kế hoạch**, không phải tính năng đã có trong code. Cập nhật khi bắt đầu triển khai.
+
+### 21.1. 3 bài lab mới
+
+Hiện chỉ có 2 bài (`do-toc-do-vat-chuyen-dong` — Bài 6, `do-gia-toc-roi-tu-do` — Bài 11) khai báo
+trong `src/experiments/specs.ts`. Khung sẵn có cho phép thêm bài mới theo từng bước, mỗi bài cần:
+
+1. **`ExperimentSpec` mới** trong `src/experiments/specs.ts` — `theory`, `instruments`, `steps`,
+   `dataBook`, `homework` (theo đúng cấu trúc 2 bài hiện tại).
+2. **Physics engine riêng** trong `src/engine/` (mẫu: `physics.js` cho Bài 6, `physicsFreeFall.js`
+   cho Bài 11) + file `.ts` tương ứng trong `src/engine/physics/` — số liệu phải sinh từ mô hình vật
+   lý đúng, có nhiễu ±1% (nguyên tắc cốt lõi ở mục 1, không được bịa số).
+3. **Dụng cụ SVG mới** trong `components/dungcuthinghiem/` & `instruments/` nếu bài dùng thiết bị
+   khác 2 bài hiện tại; cập nhật `LabRoom.tsx` để điều phối bench mới (như `LabBench.jsx` /
+   `FreeFallBench.jsx`).
+4. **Prelab riêng** (`components/prelab/`) nếu có dụng cụ HS cần làm quen trước — theo mẫu
+   `PhotogatePrelab`, `MC964Prelab`, `CaliperZoom`/`PlumbBasePrelab` (mục 7).
+5. **Cập nhật RAG** (`lib/labKnowledge.ts`) và dữ liệu train (`smartbot_training_data.md`) để
+   SmartBot trả lời đúng ngữ cảnh bài mới (mục 12).
+6. **Cập nhật `lessonMatch.ts`** — thêm từ khóa để OCR quét SGK (mục 6) nhận diện được bài mới.
+7. **Bổ sung Ôn tập** (`data/quizBank.ts`) cho bài mới nếu cần flashcard/trắc nghiệm (mục 10).
+8. **Kiểm thử**: thêm test vật lý cho bài mới vào `scripts/test.mjs` (theo mẫu 5 kịch bản mục 18).
+
+Chưa chốt nội dung SGK/chủ đề cụ thể cho 3 bài mới — cập nhật mục này khi có quyết định.
+Lưu ý thêm sau khi có tính năng Lớp học (mục 20): bài mới cần khai báo thêm trong
+`LabAssignmentComposer.tsx` (để GV ra đề được) và mở rộng `LabAssignmentPayload`/`antiCheatQuiz.ts`
+nếu bài dùng đại lượng đo khác (θ, sEF, s).
+
+---
+
+*Tài liệu này mô tả trạng thái dự án tại 2026-07-20. Điểm số & vật lý là deterministic; AI của VNPT
 lo phần ngôn ngữ (nhận xét, hỏi đáp, đọc thoại, OCR, eKYC).*

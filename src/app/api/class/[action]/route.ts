@@ -587,6 +587,7 @@ export async function POST(
               voltage: tr.voltage != null ? Number(tr.voltage) : undefined,
               current: tr.current != null ? Number(tr.current) : undefined,
               resistance: tr.resistance != null ? Number(tr.resistance) : undefined,
+              cell: tr.cell === "new" || tr.cell === "old" ? tr.cell : undefined,
               length: tr.length != null ? Number(tr.length) : undefined,
               emf: tr.emf != null ? Number(tr.emf) : undefined,
               material: tr.material === "X" || tr.material === "Y" ? tr.material : undefined,

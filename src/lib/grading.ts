@@ -46,6 +46,7 @@ export interface Trial {
   current?: number;
   resistance?: number;
   material?: "X" | "Y";
+  cell?: "new" | "old";
   length?: number;
   emf?: number;
   studentResult?: number | null; // kết quả HS tự tính (điền ở Notes)
@@ -63,6 +64,7 @@ export interface RowEval {
   resistance?: number;
   length?: number;
   material?: "X" | "Y";
+  cell?: "new" | "old";
   correctResult: number;   // kết quả đúng theo công thức từ (s,t) HS đo
   theoretical: number;     // giá trị lý thuyết mong đợi (g hoặc v)
   studentResult: number | null;
@@ -171,13 +173,14 @@ const LABELS: Record<LabKind, { label: string; unit: string }> = {
  */
 function configurationKey(
   labKind: LabKind,
-  value: { s?: number; sEF?: number; theta?: number; config?: number; voltage?: number; resistance?: number }
+  value: { s?: number; sEF?: number; theta?: number; config?: number; voltage?: number; resistance?: number; cell?: "new" | "old" }
 ): string {
   if (labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf") {
     const config = labKind === "emf"
       ? value.config ?? value.resistance ?? value.voltage ?? value.s ?? 0
       : value.config ?? value.voltage ?? value.s ?? 0;
-    return `config:${Math.round(config * 100)}`;
+    const cellPrefix = labKind === "emf" && value.cell ? `cell:${value.cell}|` : "";
+    return `${cellPrefix}config:${Math.round(config * 100)}`;
   }
   const distance = value.sEF ?? value.s ?? 0;
   const sBucket = Math.round(distance / 0.005);       // 5 mm
@@ -199,8 +202,11 @@ export function gradeSample(
   expectedTargets?: ExpectedLabTargets[LabKind]
 ): SampleGrade {
   const meta = LABELS[labKind];
+  const hasTwoCellEmf = labKind === "emf" && trials.some((trial) => trial.cell === "new" || trial.cell === "old");
   const targetKeys = new Set(
-    (expectedTargets ?? []).map((target) => configurationKey(labKind, target))
+    (expectedTargets ?? []).flatMap((target) => hasTwoCellEmf
+      ? (["new", "old"] as const).map((cell) => configurationKey(labKind, { ...target, cell }))
+      : [configurationKey(labKind, target)])
   );
   const assignmentConstrained = targetKeys.size > 0;
   const rows: RowEval[] = trials.map((tr, i) => {
@@ -218,7 +224,7 @@ export function gradeSample(
     return {
       index: i + 1, s: tr.s, t: tr.t, theta: tr.theta,
       config: tr.config, expected: tr.expected, voltage: tr.voltage,
-      current: tr.current, resistance: tr.resistance, length: tr.length, material: tr.material,
+      current: tr.current, resistance: tr.resistance, length: tr.length, material: tr.material, cell: tr.cell,
       correctResult: correct, theoretical: theo,
       studentResult: hasStudent ? (tr.studentResult as number) : null,
       calcAccuracy, physCloseness, correct: isCorrect,
@@ -244,7 +250,9 @@ export function gradeSample(
   const uniqueConfigurationCount = groupedRows.length;
   const duplicateTrialCount = Math.max(0, rows.length - uniqueConfigurationCount);
   const matchedConfigurationCount = assignmentConstrained ? scoringGroups.length : uniqueConfigurationCount;
-  const requiredTrials = labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf" ? 5 : MIN_TRIALS;
+  const requiredTrials = labKind === "emf" && hasTwoCellEmf
+    ? 10
+    : labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf" ? 5 : MIN_TRIALS;
   const expectedConfigurationCount = assignmentConstrained ? targetKeys.size : requiredTrials;
   const unexpectedConfigurationCount = assignmentConstrained
     ? groupedEntries.filter(([key]) => !targetKeys.has(key)).length

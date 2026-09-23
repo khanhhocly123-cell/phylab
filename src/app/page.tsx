@@ -4,12 +4,13 @@ import React, { useState } from "react";
 import {
   Camera, BookOpen, Clipboard, User,
   Settings, LogOut, CheckCircle,
-  FileText, ArrowRight, Home, ChevronDown, Bell,
+  FileText, Home, ChevronDown, Bell,
   ChevronLeft, ChevronRight, AlertTriangle, GraduationCap
 } from "lucide-react";
 import LoginScreen from "@/components/LoginScreen";
 import ScanScreen from "@/components/ScanScreen";
 import LabRoom, { LabExportPayload } from "@/components/lab/LabRoom";
+import LabHub from "@/components/lab/LabHub";
 import NoteSection from "@/components/NoteSection";
 import Prelab from "@/components/Prelab";
 import HomeScreen from "@/components/HomeScreen";
@@ -23,99 +24,14 @@ import { useMyClass } from "@/lib/useMyClass";
 import { getStudentId, logActivity } from "@/lib/activity";
 import type { LabAssignmentPayload } from "@/lib/classTypes";
 
-export type AssistantSettings = {
-  pronoun: "anh" | "chị";
-  answerStyle: "short" | "detailed";
-};
-
-const DEFAULT_ASSISTANT_SETTINGS: AssistantSettings = {
-  pronoun: "chị",
-  answerStyle: "short",
-};
-
-/**
- * LabChooser — Bộ chọn thí nghiệm: luôn hiện 2 lựa chọn để HS tự chọn/ nhận diện,
- * KHÔNG nhảy thẳng vào bài đã chọn trước đó. Dùng chung cho tab Phòng Lab và Prelab.
- */
-function LabChooser({ onSelect, onScan }: { onSelect: (id: LessonId) => void; onScan: () => void }) {
-  const images: Record<string, string> = {
-    "do-toc-do-vat-chuyen-dong": "/images/marble_ramp.webp",
-    "do-gia-toc-roi-tu-do": "/images/free_fall.webp",
-    "do-dien-tro-dinh-luat-ohm": "/images/do-dien-tro-ohm.png",
-    "do-suat-dien-dong-pin-dien-hoa": "/images/do-suat-dien-dong.png",
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto px-1 sm:px-0">
-      <div className="text-center mb-6 space-y-1">
-        <h2 className="text-xl md:text-2xl font-black text-[#321E12] tracking-tight">Phòng Lab — Chọn thí nghiệm</h2>
-        <p className="text-xs md:text-sm font-bold text-[#605248]">Chọn một bài để xem Prelab dụng cụ rồi vào lắp ráp &amp; đo đạc.</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
-        {Object.values(EXPERIMENT_SPECS).map((sp) => {
-          const imgUrl = images[sp.id] || "";
-          return (
-            <button
-              key={sp.id}
-              onClick={() => onSelect(sp.id as LessonId)}
-              className="group text-left bg-[#FFFFFF] border border-[#E2DFD8] hover:border-[#C85A17]/40 shadow-sm hover:shadow-md rounded-3xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between active:scale-98 relative"
-            >
-              {/* Card visual header */}
-              {imgUrl && (
-                <div className="h-32 sm:h-36 w-full overflow-hidden relative border-b border-[#E2DFD8]/60 bg-slate-100 flex-shrink-0">
-                  <img 
-                    src={imgUrl} 
-                    alt={sp.title} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-                  <span className="absolute top-3 left-3 px-2.5 py-0.5 bg-[#C85A17] text-white font-bold text-[9px] rounded shadow-xs uppercase tracking-wider">
-                    {sp.book.split("SGK")[0].trim() || "Thực hành"}
-                  </span>
-                </div>
-              )}
-              
-              <div className="p-5 flex-1 flex flex-col justify-between gap-4">
-                <div className="space-y-2">
-                  {!imgUrl && (
-                    <span className="inline-flex px-2 py-0.5 bg-[#FFF2E6] text-[#C85A17] font-bold text-[10px] rounded border border-[#C85A17]/10 uppercase tracking-wider">{sp.book}</span>
-                  )}
-                  <h3 className="text-base font-black text-[#321E12] leading-snug group-hover:text-[#C85A17] transition-colors">{sp.title}</h3>
-                  <div className="text-xs font-semibold text-[#605248] leading-relaxed line-clamp-2">
-                    <MathText text={sp.theory.objective} />
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-[#E2DFD8]/60 flex items-center justify-between mt-auto">
-                  <span className="inline-flex items-center gap-1.5 text-[#C85A17] font-black text-xs">
-                    Vào phòng Lab <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                  <span className="text-[10px] font-black px-2.5 py-1 bg-[#FFF2E6] text-[#C85A17] rounded-lg border border-[#C85A17]/10">
-                    Mở
-                  </span>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      <div className="text-center mt-8">
-        <button
-          onClick={onScan}
-          className="px-5 py-3 bg-[#FAF9F6] border border-[#C85A17]/35 text-[#321E12] text-xs font-black rounded-xl inline-flex items-center gap-2 hover:bg-[#FFF0E0] active:scale-95 transition-all cursor-pointer shadow-2xs"
-        >
-          <Camera className="w-4 h-4 text-[#C85A17]" /> Hoặc quét sách giáo khoa <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
+type AppTab = "home" | "scan" | "lab" | "notes" | "myclass";
+const APP_TABS: AppTab[] = ["home", "scan", "lab", "notes", "myclass"];
 
 export default function Page() {
   const [studentName, setStudentName] = useState<string | null>(null);
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [teacherToken, setTeacherToken] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"home" | "scan" | "lab" | "notes" | "prelab" | "myclass">("home");
+  const [activeTab, setActiveTab] = useState<AppTab>("home");
   const [activeLessonId, setActiveLessonId] = useState<LessonId | null>(null);
   const [prelabPassed, setPrelabPassed] = useState<Record<string, boolean>>({});
 
@@ -142,8 +58,11 @@ export default function Page() {
         setTeacherToken(localStorage.getItem("teacherToken"));
       }
       const savedTab = localStorage.getItem("activeTab");
-      if (savedTab) {
-        setActiveTab(savedTab as any);
+      if (savedTab === "prelab") {
+        // Tab Prelab cũ đã gộp vào Phòng Lab (Prelab là chặng 1 của mỗi bài).
+        setActiveTab("lab");
+      } else if (savedTab && (APP_TABS as string[]).includes(savedTab)) {
+        setActiveTab(savedTab as AppTab);
       }
       const savedLesson = localStorage.getItem("activeLessonId");
       if (savedLesson) {
@@ -183,35 +102,18 @@ export default function Page() {
   }, [prelabPassed, studentName]);
 
   const [theoryOpen, setTheoryOpen] = useState(false);
-  const [prelabOverlay, setPrelabOverlay] = useState(false); // xem lại Prelab dạng lớp phủ trên bàn thí nghiệm
+  // Bài đang mở "Xem lại Prelab" dạng lớp phủ (từ bàn thí nghiệm hoặc từ danh sách bài).
+  const [reviewPrelabId, setReviewPrelabId] = useState<LessonId | null>(null);
   const [completedCount, setCompletedCount] = useState(0);
   const [measuredD, setMeasuredD] = useState(0.0182); // đường kính bi mặc định 18,20mm (mét), cập nhật từ Prelab
-  
+
   // Collapse sidebar state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Header dropdown states
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [assistantSettings, setAssistantSettings] = useState<AssistantSettings>(() => {
-    if (typeof window === "undefined") return DEFAULT_ASSISTANT_SETTINGS;
-    try {
-      const saved = JSON.parse(localStorage.getItem("assistantSettings") || "null") as Partial<AssistantSettings> | null;
-      return {
-        pronoun: saved?.pronoun === "anh" ? "anh" : "chị",
-        answerStyle: saved?.answerStyle === "detailed" ? "detailed" : "short",
-      };
-    } catch {
-      return DEFAULT_ASSISTANT_SETTINGS;
-    }
-  });
 
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("assistantSettings", JSON.stringify(assistantSettings));
-    }
-  }, [assistantSettings]);
-
-  // Reports state initialized with some mock past items for high visual fidelity
+  // Lịch sử báo cáo (1 báo cáo mẫu để trang chủ không trống khi demo).
   const [reports, setReports] = useState<ExperimentReport[]>([
     {
       id: "rep-mock-1",
@@ -230,16 +132,10 @@ export default function Page() {
         { lab: "freefall", s: 0.40, t: 0.287, balanced: true, studentResult: 9.71 },
         { lab: "freefall", s: 0.60, t: 0.352, balanced: true, studentResult: 9.68 }
       ],
-      score: 9.7,
-      aiFeedback:
-        `Phép đo của em có độ chuẩn xác và độ lặp lại rất cao, việc thả rơi trụ thép ổn định. ` +
-        `Gia tốc trung bình $g_{tb} \\approx 9.71\\ \\text{m/s}^2$, sát giá trị chuẩn $9.8\\ \\text{m/s}^2$. ` +
-        `Sai số chủ yếu do giới hạn đo của thiết bị (thước $\\pm 0.5\\text{mm}$, đồng hồ $\\pm 0.001\\text{s}$). ` +
-        `Lời khuyên: giữ thẳng trục đứng của giá đỡ để trụ không chạm thành máng khi rơi.`
     }
   ]);
 
-  // Dữ liệu đo giàu thông tin vừa xuất từ phòng Lab, chờ chấm ở Notes.
+  // Dữ liệu đo giàu thông tin vừa xuất từ phòng Lab, chờ lập báo cáo ở Sổ Báo Cáo.
   const [labData, setLabData] = useState<{ lessonId: string; trials: RichTrial[] } | null>(null);
 
   // ── Lớp học: dữ liệu "Lớp của tôi" (đề GV giao + trạng thái nộp) ──
@@ -262,6 +158,28 @@ export default function Page() {
     const payload = activeLabAssignment.assignment.payload as LabAssignmentPayload | null;
     return payload?.problemSets ?? null;
   }, [activeLabAssignment]);
+
+  // Trạng thái hiển thị ở danh sách bài: bài nào GV giao, bài nào đã có số liệu trong Sổ Báo Cáo.
+  const assignedLessonIds = React.useMemo(
+    () => (myClass?.assignments ?? [])
+      .filter((s) => s.assignment.kind === "lab" && s.assignment.lessonId)
+      .map((s) => s.assignment.lessonId as string),
+    [myClass]
+  );
+  const completedLessonIds = React.useMemo(() => {
+    const ids = new Set(reports.map((r) => r.lessonId));
+    if (labData?.lessonId) ids.add(labData.lessonId);
+    return [...ids];
+  }, [reports, labData]);
+  const reviewSpec = reviewPrelabId ? getExperimentSpec(reviewPrelabId) : null;
+
+  // Esc đóng lớp phủ "Xem lại Prelab".
+  React.useEffect(() => {
+    if (!reviewPrelabId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setReviewPrelabId(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [reviewPrelabId]);
 
   // Overall grades/stats
   const [, setReportSubmitted] = useState(false);
@@ -321,35 +239,27 @@ export default function Page() {
     setProfileMenuOpen(false);
   };
 
-  // Chọn/nhận diện bài -> sang tab Lab; nếu phiên này chưa hoàn thành Prelab của bài,
-  // Prelab sẽ chặn trước (xem render tab "lab").
+  // Chọn/nhận diện bài -> sang tab Lab; nếu chưa hoàn thành Prelab của bài,
+  // Prelab (chặng 1) hiện trước bàn thí nghiệm (xem render tab "lab").
+  // Không xóa labData ở đây: số liệu vừa đo của bài trước vẫn còn trong Sổ Báo Cáo.
   const handleLessonSelect = (lessonId: LessonId) => {
     setActiveLessonId(lessonId);
-    setLabData(null); // clear previous experiment data
     setReportSubmitted(false);
     setGpaScore(null);
     setTheoryOpen(false);
-    setPrelabOverlay(false);
+    setReviewPrelabId(null);
     setActiveTab("lab");
     setProfileMenuOpen(false);
     setNotificationsOpen(false);
   };
 
-  // Hoàn thành Prelab (đã khóa dây dọi / đo bi thép) -> mở khóa phòng Lab của bài đó trong phiên.
+  // Hoàn thành Prelab (đã khóa dây dọi / đo bi thép / nắm an toàn điện) -> mở khóa phòng Lab của bài đó.
   const handlePrelabComplete = (lessonId: LessonId, d?: number) => {
     if (d && d > 0) setMeasuredD(d);
     setPrelabPassed((prev) => ({ ...prev, [lessonId]: true }));
   };
 
-  // Chọn bài ở tab Prelab -> chỉ xem Prelab của bài đó (không vào thí nghiệm).
-  const handlePrelabView = (lessonId: LessonId) => {
-    setActiveLessonId(lessonId);
-    setActiveTab("prelab");
-    setProfileMenuOpen(false);
-    setNotificationsOpen(false);
-  };
-
-  // Nhận số liệu xuất từ engine phòng Lab -> giữ dữ liệu giàu thông tin + sang Notes để chấm.
+  // Nhận số liệu xuất từ engine phòng Lab -> giữ dữ liệu giàu thông tin + sang Sổ Báo Cáo.
   const handleExportNote = (payload: LabExportPayload) => {
     const rich: RichTrial[] = (payload.trials || []).map((tr) => {
       const lab = String((tr as { lab?: string }).lab || payload.lab) as RichTrial["lab"];
@@ -379,10 +289,12 @@ export default function Page() {
 
     setLabData({ lessonId: activeLessonId || "", trials: rich });
     setActiveTab("notes");
+    showToast(`Đã lưu ${rich.length} số đo vào Sổ Báo Cáo.`);
   };
 
-  // Nhận báo cáo đã chấm từ Notes -> lưu vào lịch sử + NỘP cho giáo viên nếu có assignment.
-  const handleReportGraded = (report: ExperimentReport) => {
+  // Nhận báo cáo HS lưu ở Sổ Báo Cáo -> lưu vào lịch sử + NỘP cho giáo viên nếu có assignment.
+  // (Phần chấm điểm phía học sinh đang tạm gỡ để làm lại; server vẫn tự tính điểm cho GV.)
+  const handleReportSaved = (report: ExperimentReport) => {
     setReports((prev) => [report, ...prev]);
     setCompletedCount((prev) => Math.min(Object.keys(EXPERIMENT_SPECS).length, prev + 1));
 
@@ -399,17 +311,19 @@ export default function Page() {
           studentId: getStudentId(),
           studentName,
           trials: report.trials,
-          graphScore: report.graphScore,
-          aiFeedback: report.aiFeedback,
         }),
       })
         .then((res) => {
           if (res.ok) {
-            showToast("Đã nộp bài Lab cho giáo viên ✓");
+            showToast("Đã lưu báo cáo và nộp bài Lab cho giáo viên ✓");
             void refreshMyClass();
+          } else {
+            showToast("Đã lưu báo cáo, nhưng chưa nộp được cho giáo viên — thử lại sau.");
           }
         })
-        .catch(() => {});
+        .catch(() => showToast("Đã lưu báo cáo, nhưng chưa nộp được cho giáo viên — kiểm tra mạng."));
+    } else {
+      showToast("Đã lưu báo cáo vào Sổ Báo Cáo ✓");
     }
   };
 
@@ -512,7 +426,6 @@ export default function Page() {
               { label: "Lớp của tôi", tab: "myclass" as const, icon: GraduationCap },
               { label: "Quét tài liệu", tab: "scan" as const, icon: Camera },
               { label: "Sổ Báo Cáo", tab: "notes" as const, icon: FileText },
-              { label: "Prelab", tab: "prelab" as const, icon: BookOpen }
             ].map((item) => {
               const Icon = item.icon;
               const active = activeTab === item.tab;
@@ -521,8 +434,8 @@ export default function Page() {
                   key={item.label}
                   onClick={() => {
                     setActiveTab(item.tab);
-                    // Phòng Lab / Prelab: luôn về bộ chọn 2 thí nghiệm, không nhảy thẳng vào bài đã chọn.
-                    if (item.tab === "lab" || item.tab === "prelab") setActiveLessonId(null);
+                    // Phòng Lab: luôn về danh sách bài, không nhảy thẳng vào bài đã chọn trước đó.
+                    if (item.tab === "lab") setActiveLessonId(null);
                     setProfileMenuOpen(false);
                     setNotificationsOpen(false);
                   }}
@@ -573,7 +486,7 @@ export default function Page() {
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* Top Header */}
-        <header className={`h-16 border-b border-[#E2DFD8] bg-[#FAF9F6] px-6 items-center justify-between flex-shrink-0 z-20 print:hidden ${isScanMode ? "hidden" : isDoingExperiment ? "hidden md:flex" : "flex"}`}>
+        <header className={`h-16 border-b border-[#E2DFD8] bg-[#FAF9F6] px-6 items-center justify-between flex-shrink-0 z-20 print:hidden ${isScanMode || isDoingExperiment ? "hidden" : "flex"}`}>
           
           {/* Left Header Title / Breadcrumbs */}
           <div className="flex items-center gap-2">
@@ -586,9 +499,17 @@ export default function Page() {
             <div className="hidden lg:flex items-center gap-1.5 text-xs font-bold text-[#605248]/70">
               <span className="cursor-pointer hover:text-[#C85A17] transition-colors">Phylab</span>
               <span>&gt;</span>
-              <span className="text-[#321E12] font-black">
-                {activeTab === "home" ? "Trang chủ" : activeTab === "lab" ? "Phòng Lab của tôi" : activeTab === "scan" ? "Quét tài liệu" : activeTab === "notes" ? "Sổ Báo Cáo" : activeTab === "myclass" ? "Lớp của tôi" : "Prelab"}
-              </span>
+              {activeTab === "lab" && activeSpec ? (
+                <>
+                  <button type="button" onClick={() => setActiveLessonId(null)} className="cursor-pointer hover:text-[#C85A17] transition-colors">Phòng Lab</button>
+                  <span>&gt;</span>
+                  <span className="text-[#321E12] font-black">{activeSpec.shortTitle} · Prelab</span>
+                </>
+              ) : (
+                <span className="text-[#321E12] font-black">
+                  {activeTab === "home" ? "Trang chủ" : activeTab === "lab" ? "Phòng Lab" : activeTab === "scan" ? "Quét tài liệu" : activeTab === "notes" ? "Sổ Báo Cáo" : "Lớp của tôi"}
+                </span>
+              )}
             </div>
           </div>
 
@@ -683,48 +604,6 @@ export default function Page() {
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-[#E2DFD8]/60 space-y-2.5">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-[#C85A17] mb-1.5">Trợ lý Phylab</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {(["chị", "anh"] as const).map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => setAssistantSettings((s) => ({ ...s, pronoun: p }))}
-                            className={`py-2 rounded-xl border text-[11px] font-black transition-colors ${
-                              assistantSettings.pronoun === p
-                                ? "bg-[#FFF2E6] text-[#C85A17] border-[#C85A17]/40"
-                                : "bg-white text-[#605248] border-[#E2DFD8] hover:bg-[#FFF8F0]"
-                            }`}
-                          >
-                            Xưng {p}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-[#605248] mb-1.5">Giọng văn khi chat</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {([
-                          ["short", "Ngắn gọn"],
-                          ["detailed", "Chi tiết"],
-                        ] as const).map(([value, label]) => (
-                          <button
-                            key={value}
-                            onClick={() => setAssistantSettings((s) => ({ ...s, answerStyle: value }))}
-                            className={`py-2 rounded-xl border text-[11px] font-black transition-colors ${
-                              assistantSettings.answerStyle === value
-                                ? "bg-[#FFF2E6] text-[#C85A17] border-[#C85A17]/40"
-                                : "bg-white text-[#605248] border-[#E2DFD8] hover:bg-[#FFF8F0]"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="pt-2 border-t border-[#E2DFD8]/60 flex flex-col gap-1">
                     <button className="w-full text-left py-2 px-2.5 hover:bg-[#FFF0E0]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-2 font-black text-[#605248] hover:text-[#C85A17]">
                       <Settings className="w-3.5 h-3.5" /> Cấu hình tài khoản
@@ -760,7 +639,11 @@ export default function Page() {
                     completedCount={completedCount}
                     inProgressLabIds={activeLessonId ? [activeLessonId] : []}
                     reports={reports}
-                    onNav={(tab) => setActiveTab(tab)}
+                    onNav={(tab) => {
+                      // "Vào Phòng Lab" luôn mở danh sách bài, giống thanh điều hướng.
+                      if (tab === "lab") setActiveLessonId(null);
+                      setActiveTab(tab);
+                    }}
                     onOpenLab={(id) => handleLessonSelect(id as LessonId)}
                     onSubjectClick={(subject) => {
                       // Cơ học và Điện đã có phòng Lab hoạt động.
@@ -787,32 +670,39 @@ export default function Page() {
                 </div>
               )}
 
-              {/* 2. LABORATORY BENCH VIEW — Prelab chặn 1 lần/phiên trước khi vào bàn thí nghiệm */}
+              {/* 2. PHÒNG LAB — danh sách bài → Prelab (chặng 1, bắt buộc 1 lần) → bàn thí nghiệm */}
               {activeTab === "lab" && (
                 <div className={`animate-scale-up ${isDoingExperiment ? "h-full flex flex-col" : ""}`}>
                   {activeSpec ? (
                     !prelabPassed[activeSpec.id] ? (
-                      /* Chưa qua Prelab trong phiên này: bắt buộc hoàn thành trước khi vào Lab */
                       <Prelab
+                        key={activeSpec.id}
                         spec={activeSpec}
+                        studentName={studentName ?? undefined}
                         onStartExperiment={(d) => handlePrelabComplete(activeSpec.id, d)}
+                        onExit={() => setActiveLessonId(null)}
                       />
                     ) : (
-                    /* Phòng Lab: engine kéo-thả-nối-dây + vật lý thật (port từ φLab) */
-                    <LabRoom
-                      spec={activeSpec}
-                      measuredD={measuredD}
-                      studentName={studentName}
-                      assignedSets={assignedSets}
-                      assistantSettings={assistantSettings}
-                      onExportNote={handleExportNote}
-                      onReplayPrelab={() => setPrelabOverlay(true)}
-                      onExitLab={() => setActiveLessonId(null)}
-                    />
+                      /* Bàn thí nghiệm: engine kéo-thả-nối-dây + vật lý thật (port từ φLab) */
+                      <LabRoom
+                        spec={activeSpec}
+                        measuredD={measuredD}
+                        studentName={studentName}
+                        assignedSets={assignedSets}
+                        onExportNote={handleExportNote}
+                        onReplayPrelab={() => setReviewPrelabId(activeSpec.id)}
+                        onExitLab={() => setActiveLessonId(null)}
+                      />
                     )
                   ) : (
-                    /* CHỌN LAB — không rơi thẳng vào một bài; HS tự chọn thí nghiệm */
-                    <LabChooser onSelect={handleLessonSelect} onScan={() => setActiveTab("scan")} />
+                    <LabHub
+                      prelabPassed={prelabPassed}
+                      completedLessonIds={completedLessonIds}
+                      assignedLessonIds={assignedLessonIds}
+                      onStart={handleLessonSelect}
+                      onReviewPrelab={setReviewPrelabId}
+                      onScan={() => setActiveTab("scan")}
+                    />
                   )}
                 </div>
               )}
@@ -824,9 +714,8 @@ export default function Page() {
                     reports={reports}
                     labData={labData}
                     studentName={studentName}
-                    assistantSettings={assistantSettings}
-                    assignedSets={assignedSets}
-                    onReportGraded={handleReportGraded}
+                    hasAssignment={!!labData && assignedLessonIds.includes(labData.lessonId)}
+                    onReportSaved={handleReportSaved}
                   />
                 </div>
               )}
@@ -843,21 +732,6 @@ export default function Page() {
                   />
                 </div>
               )}
-
-              {/* 4. PRELAB — CHỈ ĐỂ XEM (không dẫn vào thí nghiệm) */}
-              {activeTab === "prelab" && (
-                <div className="animate-scale-up">
-                  {activeSpec ? (
-                    <Prelab
-                      spec={activeSpec}
-                      viewOnly
-                      onStartExperiment={() => setActiveLessonId(null)} // xem xong -> về danh sách Prelab
-                    />
-                  ) : (
-                    <LabChooser onSelect={handlePrelabView} onScan={() => setActiveTab("scan")} />
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Decorative background bottom footer */}
@@ -871,7 +745,7 @@ export default function Page() {
       </div>
 
       {/* ================= MOBILE BOTTOM FLOATING DOCK (Fixed at bottom) ================= */}
-      {activeTab !== "scan" && (!activeSpec || !prelabPassed[activeSpec.id] || activeTab !== "lab") && (
+      {activeTab !== "scan" && !isDoingExperiment && (
         <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden print:hidden">
         <nav className="h-16 bg-white/85 backdrop-blur-md border border-[#E2DFD8]/80 rounded-2xl flex items-center justify-around px-2.5 shadow-[0_8px_32px_rgba(50,30,18,0.12)]">
           {/* Tab: Home */}
@@ -896,17 +770,6 @@ export default function Page() {
             <span className="text-[9px] font-black mt-1">Phòng Lab</span>
           </button>
 
-          {/* Tab: Lớp của tôi */}
-          <button
-            onClick={() => setActiveTab("myclass")}
-            className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all active:scale-95 cursor-pointer ${
-              activeTab === "myclass" ? "text-[#C85A17]" : "text-[#605248]/70"
-            }`}
-          >
-            <GraduationCap className="w-5 h-5 stroke-[2.5]" />
-            <span className="text-[9px] font-black mt-1">Lớp học</span>
-          </button>
-
           {/* Floating Central Scan Button */}
           <div className="relative -translate-y-4 flex justify-center w-14">
             <button 
@@ -917,6 +780,17 @@ export default function Page() {
               <Camera className="w-6 h-6 stroke-[2.5] animate-pulse" />
             </button>
           </div>
+
+          {/* Tab: Lớp của tôi */}
+          <button
+            onClick={() => setActiveTab("myclass")}
+            className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all active:scale-95 cursor-pointer ${
+              activeTab === "myclass" ? "text-[#C85A17]" : "text-[#605248]/70"
+            }`}
+          >
+            <GraduationCap className="w-5 h-5 stroke-[2.5]" />
+            <span className="text-[9px] font-black mt-1">Lớp học</span>
+          </button>
 
           {/* Tab: Notes */}
           <button
@@ -929,32 +803,20 @@ export default function Page() {
             <span className="text-[9px] font-black mt-1">Sổ Báo Cáo</span>
           </button>
 
-          {/* Tab: Prelab */}
-          <button
-            onClick={() => { setActiveTab("prelab"); setActiveLessonId(null); }}
-            className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all active:scale-95 cursor-pointer ${
-              activeTab === "prelab" ? "text-[#C85A17]" : "text-[#605248]/70"
-            }`}
-          >
-            <BookOpen className="w-5 h-5 stroke-[2.5]" />
-            <span className="text-[9px] font-black mt-1">Prelab</span>
-          </button>
         </nav>
       </div>
       )}
 
-      {/* ============ PRELAB OVERLAY — "Xem lại Prelab" từ trong phòng lab (giữ nguyên bàn thí nghiệm phía sau) ============ */}
-      {prelabOverlay && activeSpec && (
-        <div className="fixed inset-0 z-50 bg-[#321E12]/45 backdrop-blur-xs flex items-start justify-center overflow-auto p-3 py-6">
-          <div className="relative w-full max-w-4xl">
-            <button
-              onClick={() => setPrelabOverlay(false)}
-              className="absolute -top-2 right-1 z-10 px-3 py-1.5 bg-[#FFFFFF] border border-[#E2DFD8] rounded-xl text-xs font-black text-[#321E12] hover:bg-[#FFF0E0] transition-all cursor-pointer shadow-sm"
-            >
-              Đóng &times;
-            </button>
-            <Prelab spec={activeSpec} viewOnly onStartExperiment={() => setPrelabOverlay(false)} />
-          </div>
+      {/* ============ XEM LẠI PRELAB — lớp phủ, giữ nguyên bàn thí nghiệm / danh sách phía sau ============ */}
+      {reviewSpec && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Xem lại Prelab — ${reviewSpec.shortTitle}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setReviewPrelabId(null); }}
+          className="fixed inset-0 z-[70] bg-[#321E12]/45 backdrop-blur-xs overflow-auto p-3 py-6 sm:p-6"
+        >
+          <Prelab key={reviewSpec.id} spec={reviewSpec} studentName={studentName ?? undefined} viewOnly onStartExperiment={() => setReviewPrelabId(null)} />
         </div>
       )}
 

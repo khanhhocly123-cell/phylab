@@ -20,6 +20,18 @@ Dự án hỗ trợ hai bài thực hành chính:
 - Bài 6: Đo tốc độ tức thời và tốc độ trung bình trên máng nghiêng.
 - Bài 11: Đo gia tốc rơi tự do.
 
+### Tính năng Lớp học dành cho Giáo viên
+
+Ứng dụng có bảng điều khiển riêng cho giáo viên (đăng nhập bằng tài khoản giáo viên demo, cấu hình qua biến môi trường `TEACHER_EMAIL`/`TEACHER_PASSWORD`):
+
+- **Tạo lớp bằng mã tham gia 5 ký tự** — học sinh nhập mã ở tab "Lớp của tôi" để vào lớp.
+- **Giao bài Lab với đề tự đặt** (mục tiêu đo θ, sEF, s do giáo viên chọn, thay đề AI giao) — giáo viên xem được đáp án mong đợi tính từ physics engine; học sinh chấm điểm ở Sổ Báo Cáo là bài tự động nộp lên lớp (điểm được server chấm lại độc lập).
+- **Soạn Quiz theo form đề Bộ GD&ĐT 2025**: trắc nghiệm, Đúng/Sai 4 ý (thang 0,1 → 1 điểm), trả lời ngắn. Đề gửi xuống học sinh đã lược đáp án; bài làm chấm trên server.
+- **Quiz chống gian lận**: đề sinh riêng cho từng học sinh từ chính số liệu bài Lab em đó đã nộp — mỗi em một đề, chép đáp án của bạn là vô nghĩa.
+- **Dashboard theo dõi lớp**: danh sách học sinh với mức độ hoạt động 7 ngày, chi tiết bài nộp/điểm quiz từng em, bản đồ lỗi sai của cả lớp và xuất bảng điểm CSV (mở trực tiếp bằng Excel).
+
+Dữ liệu lớp học lưu qua 3 tầng tự chọn theo môi trường: Cloudflare D1 (production) → file JSON `.data/` (chạy local/demo qua tunnel, dữ liệu giữ qua restart) → in-memory. Chi tiết kiến trúc ở `docs/PHYLAB_FEATURES.md` mục 20.
+
 ---
 
 ## Hướng dẫn cài đặt và chạy thử
@@ -51,7 +63,7 @@ Lệnh này sẽ khởi động máy chủ Next.js đồng thời kích hoạt m
 
 ## Hệ thống kiểm thử tự động
 
-Dự án tích hợp bộ kiểm thử tự động gồm 16 kịch bản chạy offline (không cần kết nối internet hay gọi API thật bên ngoài). 
+Dự án tích hợp bộ kiểm thử tự động gồm 42 kịch bản chạy offline (không cần kết nối internet hay gọi API thật bên ngoài). 
 
 Để khởi chạy toàn bộ các bài kiểm thử:
 ```bash
@@ -71,6 +83,14 @@ Phần này kiểm tra độ chính xác của logic chấm điểm và các hì
 - **Hình phạt thiếu số lần đo:** Kiểm tra việc trừ 2 điểm khi số lần đo thực tế dưới mức tối thiểu là 3 lần.
 - **Xử lý dữ liệu trống:** Kiểm tra cách hệ thống tính điểm khi học sinh bỏ trống một vài ô kết quả.
 - **Tính điểm tổng hợp:** Kiểm tra công thức tính điểm tổng hợp của bài thực hành theo tỷ lệ: 70% điểm đo đạc thực tế và 30% điểm vẽ đồ thị.
+
+#### 1B. Kiểm thử tính năng Lớp học (26 kịch bản trong `scripts/test-class.mjs`)
+Kiểm tra bộ chấm quiz theo form đề Bộ GD&ĐT 2025 và cơ chế quiz chống gian lận:
+- **Thang điểm Đúng/Sai chuẩn Bộ GD:** đúng 1 ý được 0,1đ · 2 ý 0,25đ · 3 ý 0,5đ · cả 4 ý 1đ.
+- **Trả lời ngắn:** so đáp án số có dung sai, chấp nhận dấu phẩy thập phân kiểu Việt Nam ("9,8").
+- **Chống lộ đáp án:** đề gửi xuống client phải được lược sạch trường đáp án.
+- **Quiz chống gian lận deterministic:** cùng seed + cùng số liệu sinh ra đúng một đề (để server tái sinh khi chấm); học sinh có số liệu khác nhau nhận đề với đáp án khác nhau; đáp án phần trả lời ngắn phải khớp công thức $g = 2s/t^2$ tính từ chính số liệu của học sinh.
+- **Đề giáo viên tự đặt (`buildAssignedSet`):** đúng cấu trúc ProblemSet để thay thế đề sinh tự động trong phòng Lab.
 
 #### 2. Kiểm thử mô phỏng vật lý và truy vấn tri thức (5 kịch bản trong `scripts/test.mjs`)
 Kiểm tra các thuật toán chuyển động của mô phỏng và công cụ tìm kiếm tài liệu hỗ trợ:

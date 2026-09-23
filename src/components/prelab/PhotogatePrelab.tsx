@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const INFO = {
   gateA: {
@@ -57,9 +57,16 @@ const GATE_BOT = RAIL_Y + 24;
 const BASE_H = 10;
 const FOOT_H = 8;
 const BEAM_Y = RAIL_Y - 8;
+// Tỉ lệ hình: bi bán kính 14 px ↔ đường kính thật 20 mm → quãng A→B = 100 mm.
+const D_MM = 20;
+const AB_MM = ((GATE_B_X - GATE_A_X) / (2 * BALL_R)) * D_MM;
+const V_SLOW = 0.1;
+const V_FAST = 0.3;
 
 type MeasureState = { status: string; startMs: number | null; elapsedMs: number | null };
 const idleMeasure: MeasureState = { status: "idle", startMs: null, elapsedMs: null };
+const badge: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 999, border: "1px dashed #D6D0C4", color: "#8a8278", fontSize: 12, fontWeight: 800, background: "#FAF7F2" };
+const badgeOn: React.CSSProperties = { border: "1px solid #86EFAC", color: "#166534", background: "#F0FDF4" };
 
 export default function PhotogatePrelab() {
   const [sel, setSel] = useState<keyof typeof INFO | null>(null);
@@ -71,6 +78,14 @@ export default function PhotogatePrelab() {
   const [measureA, setMeasureA] = useState<MeasureState>(idleMeasure);
   const [measureB, setMeasureB] = useState<MeasureState>(idleMeasure);
   const [measureAB, setMeasureAB] = useState<{ tA: number | null; tB: number | null; elapsedMs: number | null }>({ tA: null, tB: null, elapsedMs: null });
+  // Huy hiệu vui: kéo chậm (v nhỏ) / kéo nhanh (v lớn) qua một cổng — thấy ngay t ↔ v.
+  const [badges, setBadges] = useState({ slow: false, fast: false });
+  const blockStart = useRef<{ A: number | null; B: number | null }>({ A: null, B: null });
+  const award = (ms: number) => {
+    const v = D_MM / 1000 / (ms / 1000);
+    if (v < V_SLOW) setBadges((b) => (b.slow ? b : { ...b, slow: true }));
+    if (v > V_FAST) setBadges((b) => (b.fast ? b : { ...b, fast: true }));
+  };
 
   const draggingRef = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -115,6 +130,8 @@ export default function PhotogatePrelab() {
     if (inA !== blockingARef.current) {
       blockingARef.current = inA;
       setGateABlocked(inA);
+      if (inA) blockStart.current.A = now;
+      else if (blockStart.current.A !== null) { if (m === "A") award(now - blockStart.current.A); blockStart.current.A = null; }
       if (m === "A") {
         if (inA) {
           setMeasureA({ status: "blocking", startMs: now, elapsedMs: null });
@@ -132,6 +149,8 @@ export default function PhotogatePrelab() {
     if (inB !== blockingBRef.current) {
       blockingBRef.current = inB;
       setGateBBlocked(inB);
+      if (inB) blockStart.current.B = now;
+      else if (blockStart.current.B !== null) { if (m === "B") award(now - blockStart.current.B); blockStart.current.B = null; }
       if (m === "B") {
         if (inB) {
           setMeasureB({ status: "blocking", startMs: now, elapsedMs: null });
@@ -202,6 +221,11 @@ export default function PhotogatePrelab() {
     ledValue = fmt(liveMs !== null ? liveMs : measureAB.elapsedMs);
     ledHint = measureAB.elapsedMs !== null ? "Xong — kéo lại để đo lại" : measureAB.tA !== null ? "Đã qua cổng A, chờ cổng B" : "Kéo vật qua cổng A trước";
   }
+
+  // Tốc độ tính ngay từ số đo vừa xong: v = d/t (MODE A, B) hoặc v_tb = AB/t (MODE A↔B).
+  const doneMs = mode === "A" ? measureA.elapsedMs : mode === "B" ? measureB.elapsedMs : measureAB.elapsedMs;
+  const distMm = mode === "AAB" ? AB_MM : D_MM;
+  const vNow = doneMs ? distMm / 1000 / (doneMs / 1000) : null;
 
   const info = sel ? INFO[sel] : { title: "Cổng quang điện", body: "Gồm hai đầu thu – phát tia hồng ngoại (D1, D2) đặt đối diện nhau qua một khe hở. Khi vật cản đi qua khe, tia bị chắn và cổng quang báo tín hiệu cho đồng hồ đo thời gian. Chạm từng bộ phận hoặc kéo vật để tìm hiểu." };
 
@@ -276,6 +300,15 @@ export default function PhotogatePrelab() {
             {renderGateFront(GATE_B_X, gateBBlocked, "gateB")}
           </svg>
           <p style={{ fontSize: 12, color: "#999", margin: "10px 4px 0" }}>Kéo viên bi qua khe hở giữa D1 – D2. Chạm vào bộ phận bất kì để tìm hiểu.</p>
+        </div>
+        <div style={{ background: "#fff", border: "0.5px solid #e5e3dc", borderRadius: 12, padding: "10px 14px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          <div style={{ flex: "1 1 240px", fontSize: 13.5, fontWeight: 800, color: "#1F4D78", lineHeight: 1.5 }}>
+            {vNow != null
+              ? <>{mode === "AAB" ? "v_tb = AB/t" : "v = d/t"} = {(distMm / 1000).toFixed(3)} m ÷ {(doneMs! / 1000).toFixed(3)} s = <b style={{ fontSize: 16 }}>{vNow.toFixed(2)} m/s</b></>
+              : <>Kéo bi qua cổng: đồng hồ đo t, rồi {mode === "AAB" ? "v_tb = AB/t (AB = 10 cm)" : "v = d/t (d = 20 mm)"} hiện ở đây.</>}
+          </div>
+          <span style={{ ...badge, ...(badges.slow ? badgeOn : {}) }} title={`Kéo chậm qua cổng A/B: v < ${V_SLOW} m/s`}>🐢 {badges.slow ? "Kéo chậm ✓" : `v < ${V_SLOW} m/s`}</span>
+          <span style={{ ...badge, ...(badges.fast ? badgeOn : {}) }} title={`Kéo nhanh qua cổng A/B: v > ${V_FAST} m/s`}>🐇 {badges.fast ? "Kéo nhanh ✓" : `v > ${V_FAST} m/s`}</span>
         </div>
         <div style={{ background: "#fff", border: "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px" }}>
           <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700 }}>{info.title}</h3>
