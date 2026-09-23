@@ -308,3 +308,17 @@ body.lab-active {
   height: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
+
+/* ===== Màn quét SGK ===== */
+@keyframes scanSweep {
+  0%, 100% { top: 6%; }
+  50% { top: 92%; }
+}
+@keyframes scanPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}

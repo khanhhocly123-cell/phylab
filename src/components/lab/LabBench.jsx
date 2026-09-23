@@ -11,17 +11,9 @@ import {
 import LiveGraph, { niceRange } from "./LiveGraph.jsx";
 import { labSound } from "./labSound.js";
 import { useAnimStore, useAnim } from "./animStore.js";
-
-/* Assets phục vụ qua thư mục public (không import kiểu Vite trong Next). */
-const railPng = "/lab/bai6/rail.png";
-const standLeftPng = "/lab/bai6/stand_left.png";
-const standRightPng = "/lab/bai6/stand_right.png";
-const ballSvg = "/lab/bai6/ball.svg";
-const magnetOnSvg = "/lab/bai6/magnet_on.svg";
-const magnetOffSvg = "/lab/bai6/magnet_off.svg";
-const photogateSvg = "/lab/bai6/photogate.svg";
-const plumbSvg = "/lab/bai6/plumb.svg";
-const mc964FrontSvg = "/lab/bai6/mc964_front.svg";
+import {
+  BenchBackdrop, Rail6, StandLeft6, StandRight6, StandScrew6, screwPos6, Photogate6, Magnet6, SteelBall, Plumb6, MC964Face, MechIcon,
+} from "./mech/MechParts.jsx";
 
 /* ============================================================================
    LabBench — Lab 6 "Đo tốc độ" (tốc độ trung bình & tức thời).
@@ -49,21 +41,27 @@ const RULER_Y = 130, RULER_X0 = 190, PXM = 610;
 const END_LX = 744;             // bi lăn tới cuối ruler (local x)
 // path bi bám mặt máng: đỉnh dốc -> cong xuống -> ĐIỂM CHUYỂN TIẾP (185,130) -> ruler thẳng
 const CHUTE = [[74, 42], [100, 64], [126, 92], [152, 116], [185, 130]];
+const PLUMB_PIVOT = [122, 150];  // tâm thước đo góc (local) — dây dọi treo ở đây
+const RAIL_END_X = 766;          // đầu thấp của thước/ray (local)
 
 const MODES = ["A", "B", "A+B", "A<->B", "T"];
 const MODE_LABEL = { "A": "A", "B": "B", "A+B": "A+B", "A<->B": "A↔B", "T": "T" };
 const MODE_ANGLE = { "A": -50, "B": -25, "A+B": 0, "A<->B": 25, "T": 50 };
 
+// icon: bản vẽ trong mech/MechParts.jsx (cùng hình với bàn thí nghiệm).
 const TOOLS = [
-  { k: "standL", name: "Giá đỡ trái", sub: "cột trượt (cố định)", img: standLeftPng },
-  { k: "standR", name: "Giá đỡ phải", sub: "kéo để đổi góc", img: standRightPng },
-  { k: "rail", name: "Thanh ray + thước góc", sub: "±1 mm", img: railPng },
-  { k: "weight", name: "Vật nặng (dây dọi)", sub: "chỉ góc nghiêng", img: plumbSvg },
-  { k: "magnet", name: "Nam châm + bi", sub: "giữ / thả bi", img: magnetOnSvg },
-  { k: "gateE", name: "Cổng quang E", sub: "±0.0003 s", img: photogateSvg },
-  { k: "gateF", name: "Cổng quang F", sub: "±0.0003 s", img: photogateSvg },
-  { k: "clock", name: "Đồng hồ MC964", sub: "±0.001 s", img: mc964FrontSvg },
+  { k: "standL", name: "Giá đỡ trái", sub: "cột trượt (cố định)", icon: "standL6" },
+  { k: "standR", name: "Giá đỡ phải", sub: "kéo để đổi góc", icon: "standR6" },
+  { k: "rail", name: "Thanh ray + thước góc", sub: "±1 mm", icon: "rail6" },
+  { k: "weight", name: "Vật nặng (dây dọi)", sub: "chỉ góc nghiêng", icon: "plumb6" },
+  { k: "magnet", name: "Nam châm + bi", sub: "giữ / thả bi", icon: "magnet6" },
+  { k: "gateE", name: "Cổng quang E", sub: "±0.0003 s", icon: "gate6" },
+  { k: "gateF", name: "Cổng quang F", sub: "±0.0003 s", icon: "gate6" },
+  { k: "clock", name: "Đồng hồ MC964", sub: "±0.001 s", icon: "clock" },
 ];
+const toolIcon = (k) => TOOLS.find((t) => t.k === k)?.icon;
+// Phích cắm ở ổ đồng hồ (mặt sau): cổng E dây xanh, cổng F dây đỏ.
+const PLUG_INFO = (gate) => (gate === "E" ? { text: "E", color: C.navy } : gate === "F" ? { text: "F", color: "#C0392B" } : null);
 
 const REQ = { series: 3, instant: 3 };            // ≥ 3 khoảng sEF cùng một góc · ≥ 3 lần đo MODE A
 const SERIES_COLORS = ["#2563EB", "#E8842B", "#16A34A", "#DB2777", "#7C3AED", "#0891B2"];
@@ -1120,7 +1118,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
                   style={{ display: "flex", flexDirection: isMobile && isPortrait ? "column" : "row", alignItems: "center", gap: isMobile ? (isPortrait ? 2 : 6) : 9, padding: isMobile ? (isPortrait ? "5px 3px" : "4px 5px") : "8px 10px", borderRadius: 10, marginBottom: isMobile ? 0 : 6, cursor: done ? "default" : (isMobile ? "pointer" : "grab"), touchAction: isMobile ? "manipulation" : "none", flexShrink: 0, minWidth: 0, width: "100%",
                     border: `1.5px solid ${done ? C.good : isNext ? C.orange : C.line}`, background: done ? "#F3F8F3" : "#fff", opacity: done ? 0.7 : isNext ? 1 : 0.62, boxShadow: isNext ? `0 0 0 3px ${C.orange}22` : "none" }}>
                   <div style={{ width: isMobile ? 24 : 44, height: isMobile ? 24 : 44, display: "grid", placeItems: "center", background: C.bg, borderRadius: 8, flexShrink: 0 }}>
-                    <img src={t.img} alt="" style={{ maxWidth: isMobile ? 18 : 34, maxHeight: isMobile ? 18 : 34, objectFit: "contain" }} />
+                    <MechIcon kind={t.icon} size={isMobile ? 20 : 38} />
                   </div>
                   <div style={{ minWidth: 0, textAlign: isMobile && isPortrait ? "center" : "left", flex: 1, width: isMobile && isPortrait ? "100%" : "auto" }}>
                     <div style={{ fontSize: isMobile ? (isPortrait ? 9.5 : 10.5) : 13.5, fontWeight: 700, color: C.ink, whiteSpace: isMobile && isPortrait ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.15 }}>{t.name}</div>
@@ -1263,26 +1261,12 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
           <LabToast toast={toast} fixed />
           <LabDialog dialog={dialog} onClose={() => setDialog(null)} />
         </main>
-        {/* Mapped pre-rendered dragging images to ensure instant decodes and no-lag display */}
-        {TOOLS.map((t) => (
-          <img
-            key={`drag-cache-${t.k}`}
-            src={t.img}
-            alt=""
-            style={{
-              position: "fixed",
-              left: dragTool && dragTool.k === t.k ? dragTool.x - 22 : -999,
-              top: dragTool && dragTool.k === t.k ? (isMobile ? dragTool.y - 70 : dragTool.y - 22) : -999,
-              width: 44,
-              height: 44,
-              objectFit: "contain",
-              pointerEvents: "none",
-              zIndex: 60,
-              opacity: dragTool && dragTool.k === t.k ? 0.92 : 0,
-              filter: "drop-shadow(0 4px 8px rgba(0,0,0,.3))"
-            }}
-          />
-        ))}
+        {/* Dụng cụ đang kéo từ khay (cùng bản vẽ với bàn) */}
+        {dragTool && (
+          <div style={{ position: "fixed", left: dragTool.x - 24, top: isMobile ? dragTool.y - 72 : dragTool.y - 24, width: 48, height: 48, pointerEvents: "none", zIndex: 60, opacity: 0.94, filter: "drop-shadow(0 4px 8px rgba(0,0,0,.3))" }}>
+            <MechIcon kind={toolIcon(dragTool.k)} size={48} />
+          </div>
+        )}
 
         {/* PHẢI (desktop) / SHEET (mobile): bước tiếp theo · đo · điều khiển · số liệu */}
         {isMobile ? (
@@ -1403,36 +1387,33 @@ function Workbench(props) {
         style={props.isMobile
           ? { flex: 1, flexShrink: 1, width: "100%", height: "100%", minHeight: 0, display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 12, border: `1px solid ${C.line}`, touchAction: "none" }
           : { flex: 1, minHeight: 0, width: "100%", height: "100%", display: "block", background: "linear-gradient(#ffffff,#FBF6EC)", borderRadius: 16, border: `1px solid ${C.line}`, flexShrink: 1 }}>
-        <rect x="0" y={FLOOR} width={VBW} height={VBH - FLOOR} fill="#F1E7D3" />
-        <line x1="0" y1={FLOOR} x2={VBW} y2={FLOOR} stroke="#E1D3B6" strokeWidth="2" />
+        <BenchBackdrop width={VBW} height={VBH} floor={FLOOR} />
 
-        {/* Cột giá trái (cố định) — đầu cao ray trượt trên đây */}
-        {has("standL") && <image href={standLeftPng} x={XL - 78} y={poleTop} width="156" height={FLOOR - poleTop} preserveAspectRatio="xMidYMax meet" />}
+        {/* Cột giá trái (cố định) — đầu cao ray trượt trên đây (vòng kẹp đi theo đầu cao) */}
+        {has("standL") && <StandLeft6 x={XL} top={poleTop} floor={FLOOR} clampY={has("rail") ? pHigh.y + 1 : null} />}
 
-        {/* Giá phải (cao cố định, kéo để đổi góc) */}
+        {/* Giá phải (cao cố định, kéo để đổi góc) — chạc đỡ đúng điểm tựa đầu thấp của máng */}
         {has("standR") && (
           <g style={{ cursor: rolling ? "default" : "ew-resize" }} onPointerDown={onDragAngle}>
-            <image href={standRightPng} x={xR - HR * 0.279} y={YR} width={HR * 0.558} height={HR} preserveAspectRatio="xMidYMax meet" />
+            <StandRight6 x={xR} top={YR} floor={FLOOR} />
           </g>
         )}
 
-        {/* RAY (chỉ ảnh ray trong group xoay) */}
+        {/* RAY + thước + thước đo góc (vẽ trong hệ toạ độ của ray, xoay theo θ) */}
         {has("rail") && (
           <g transform={railGroup}>
-            <image href={railPng} x="0" y="0" width="778" height="187" />
+            <Rail6 chute={CHUTE} rulerY={RULER_Y} zeroX={RULER_X0} pxPerM={PXM} pivot={PLUMB_PIVOT} endX={RAIL_END_X} />
           </g>
         )}
 
-        {/* Dây dọi gắn ở thước đo góc */}
+        {/* Dây dọi treo ở tâm thước đo góc — luôn thẳng đứng nên chỉ đúng θ */}
         {has("weight") && (() => {
-          const piv = screenOf(122, 150, theta); const L = 58, w = 8;
-          return <g transform={`rotate(${swingDeg} ${piv.x} ${piv.y})`}>
-            <image href={plumbSvg} x={piv.x - w / 2} y={piv.y} width={w} height={L} preserveAspectRatio="xMidYMin meet" />
-          </g>;
+          const piv = screenOf(PLUMB_PIVOT[0], PLUMB_PIVOT[1], theta);
+          return <g transform={`translate(${piv.x} ${piv.y}) rotate(${swingDeg})`}><Plumb6 length={58} /></g>;
         })()}
 
-        {/* vít cân bằng (trên giá phải) */}
-        {has("standR") && <circle cx={xR} cy={YR + 20} r="7" fill={balanced ? C.good : "#c9a227"} stroke="#7a6410" strokeWidth="1" style={{ cursor: "pointer" }} onClick={onToggleBalance} />}
+        {/* vít cân bằng (chân đế giá phải) */}
+        {has("standR") && <StandScrew6 x={xR} floor={FLOOR} balanced={balanced} onToggle={onToggleBalance} />}
 
         {/* Cổng quang E/F — vẽ screen-space, nghiêng theo ray */}
         {has("gateE") && <GatePiece p={gEs} theta={theta} label="E" wired={wires.A === "E"} blocked={blocked.E} flash={gateFlash.E} onDragWire={(e) => onDragWire("E", e)} />}
@@ -1441,8 +1422,15 @@ function Workbench(props) {
         {/* Nam châm (xoay theo ray) + nút thả, ở đầu cao */}
         {has("magnet") && (
           <g transform={`translate(${pMag.x} ${pMag.y}) rotate(${theta}) translate(0 -6)`}>
-            <image href={magnetOn ? magnetOnSvg : magnetOffSvg} x="-8.5" y="-8.5" width="17" height="17" style={{ cursor: "pointer" }} onClick={onToggleMagnet} />
-            <circle cx="0" cy="-13" r="4.5" fill="#E03A36" stroke="#8a1f1f" strokeWidth="1.3" style={{ cursor: "pointer" }} onClick={onReleaseBtn} />
+            <g style={{ cursor: "pointer" }} onClick={onToggleMagnet} role="button" aria-label={magnetOn ? "Nam châm đang hút — bấm để tắt" : "Nam châm đang tắt — bấm để bật"}>
+              <rect x="-13" y="-9" width="22" height="18" fill="transparent" />
+              <Magnet6 on={magnetOn} />
+            </g>
+            <g style={{ cursor: "pointer" }} onClick={onReleaseBtn} role="button" aria-label="Nút thả bi">
+              <circle cx="0" cy="-14.5" r="7" fill="transparent" />
+              <circle cx="0" cy="-14.5" r="4.6" fill="#E03A36" stroke="#7F1D1D" strokeWidth="1.3" />
+              <circle cx="-1.3" cy="-15.9" r="1.4" fill="#fff" opacity=".6" />
+            </g>
           </g>
         )}
 
@@ -1457,11 +1445,12 @@ function Workbench(props) {
         {/* badge θ + sEF */}
         {has("rail") && (() => { const wob = Math.abs(swingDeg) > 0.25;
           return <g>
-            <rect x={XL - 33} y={FLOOR - 22} width="66" height="17" rx="8.5" fill="#fff" stroke={wob ? "#c9a227" : C.line} />
-            <text x={XL} y={FLOOR - 10} textAnchor="middle" fontSize="10.5" fontWeight="800" fill={wob ? "#c9a227" : C.orange} fontFamily={FONT}>{wob ? `θ ≈ ${(theta + swingDeg).toFixed(0)}°` : `θ = ${theta}°`}</text>
+            <rect x={XL - 34} y={FLOOR + 12} width="68" height="18" rx="9" fill="#fff" stroke={wob ? "#c9a227" : C.line} />
+            <text x={XL} y={FLOOR + 25} textAnchor="middle" fontSize="10.5" fontWeight="800" fill={wob ? "#c9a227" : C.orange} fontFamily={FONT}>{wob ? `θ ≈ ${(theta + swingDeg).toFixed(0)}°` : `θ = ${theta}°`}</text>
           </g>; })()}
-        {has("gateE") && has("gateF") && (() => { const mx = (gEs.x + gFs.x) / 2, my = Math.min(gEs.y, gFs.y) - 34;
-          return <g><line x1={gEs.x} y1={gEs.y - 26} x2={gFs.x} y2={gFs.y - 26} stroke={C.navy} strokeDasharray="4 3" strokeWidth="1.2" />
+        {has("gateE") && has("gateF") && (() => { const mx = (gEs.x + gFs.x) / 2, my = Math.min(gEs.y, gFs.y) - 54;
+          return <g><line x1={gEs.x} y1={gEs.y - 42} x2={gFs.x} y2={gFs.y - 42} stroke={C.navy} strokeDasharray="4 3" strokeWidth="1.2" />
+            {[gEs, gFs].map((g, i) => <line key={i} x1={g.x} y1={g.y - 46} x2={g.x} y2={g.y - 38} stroke={C.navy} strokeWidth="1.4" />)}
             <rect x={mx - 29} y={my - 9} width="58" height="16" rx="8" fill={C.navy} />
             <text x={mx} y={my + 2.5} textAnchor="middle" fontSize="10" fontWeight="800" fill="#fff" fontFamily={FONT}>sEF = {(sEF * 100).toFixed(0)} cm</text></g>; })()}
 
@@ -1497,7 +1486,7 @@ function Workbench(props) {
         {wireDrag && (() => { const from = wireDrag.gate === "E" ? gEs : gFs; const col = wireDrag.gate === "E" ? C.navy : "#C0392B";
           return <path d={`M ${from.x} ${from.y} C ${from.x} ${from.y + 60}, ${wireDrag.x} ${wireDrag.y - 40}, ${wireDrag.x} ${wireDrag.y}`} fill="none" stroke={col} strokeWidth="2.6" strokeDasharray="5 4" />; })()}
 
-        {showHint && highlightStep === "balance" && has("standR") && <HintBox x={xR - 20} y={YR + 4} w={40} h={34} label="Vặn vít" />}
+        {showHint && highlightStep === "balance" && has("standR") && (() => { const sp = screwPos6(xR, FLOOR); return <HintBox x={sp.x - 17} y={sp.y - 16} w={34} h={32} label="Vặn vít" />; })()}
         {showHint && highlightStep === "wire" && face === "back" && (
           <>
             {has("gateE") && <HintBox x={gEs.x - 19} y={gEs.y - 4} w={38} h={36} label="Dây E" />}
@@ -1521,7 +1510,7 @@ function Workbench(props) {
           </g>); })}
 
         {/* Vật đang "bay" vào ô đích */}
-        {flyTool && <image href={TOOLS.find((t) => t.k === flyTool.k)?.img} x={flyTool.x - 18} y={flyTool.y - 18} width="36" height="36" opacity="0.95" style={{ pointerEvents: "none" }} />}
+        {flyTool && <MechIcon kind={toolIcon(flyTool.k)} x={flyTool.x - 20} y={flyTool.y - 20} size={40} style={{ pointerEvents: "none" }} />}
 
         {!has("rail") && <text x={VBW / 2} y="40" textAnchor="middle" fontSize="14" fill={C.sub} fontFamily={FONT}>Kéo dụng cụ vào ô sáng (+) trên bàn để lắp…</text>}
       </svg>
@@ -1568,27 +1557,26 @@ function BallImg({ x, y, grab, onDown }) {
   return (
     <g style={{ cursor: grab ? "grab" : "default" }} onPointerDown={onDown}>
       <circle cx={x} cy={y} r="20" fill="transparent" />
-      <image href={ballSvg} x={x - 8} y={y - 8} width="16" height="16" />
+      <SteelBall x={x} y={y} />
     </g>
   );
 }
 
-// cổng quang screen-space, nghiêng theo ray; đầu dây kéo được; tia đỏ rực + vòng sáng khi bi che
+// cổng quang screen-space, nghiêng theo ray; đầu dây kéo được; tia hồng ngoại đỏ rực + vòng sáng khi bi che
 function GatePiece({ p, theta, label, wired, blocked, flash, draggable, onDrag, onDragWire }) {
   return (
     <g transform={`translate(${p.x} ${p.y}) rotate(${theta})`}>
       <g style={{ cursor: draggable ? "grab" : "default" }} onPointerDown={draggable ? onDrag : undefined}>
-        <image href={photogateSvg} x="-11" y="-23" width="22" height="45" />
+        <Photogate6 blocked={blocked} />
       </g>
-      <line x1="-1" y1="-18" x2="-1" y2="10" stroke={blocked ? "#FF2D2D" : "#FF6B6B"} strokeWidth={blocked ? 2.6 : 1} strokeDasharray={blocked ? "none" : "2 2"} opacity={blocked ? 1 : 0.5} style={{ pointerEvents: "none" }} />
-      {blocked && <circle cx="0" cy="-5" r="4" fill="#FF2D2D" />}
+      <line x1="0" y1="-9.6" x2="0" y2="2.6" stroke={blocked ? "#FF2D2D" : "#FF6B6B"} strokeWidth={blocked ? 2.4 : 1} strokeDasharray={blocked ? "none" : "1.6 1.6"} opacity={blocked ? 1 : 0.7} style={{ pointerEvents: "none" }} />
       {flash > 0 && (
-        <circle key={`f${flash}`} cx="0" cy="-5" r="6" fill="none" stroke="#FF2D2D" strokeWidth="2.5" style={{ pointerEvents: "none" }}>
+        <circle key={`f${flash}`} cx="0" cy="-3.5" r="6" fill="none" stroke="#FF2D2D" strokeWidth="2.5" style={{ pointerEvents: "none" }}>
           <animate attributeName="r" from="6" to="30" dur="0.55s" fill="freeze" />
           <animate attributeName="opacity" from="1" to="0" dur="0.55s" fill="freeze" />
         </circle>
       )}
-      <text x="0" y="-27" textAnchor="middle" fontSize="11" fontWeight="800" fill={C.navy} fontFamily={FONT}>{label}</text>
+      <text x="0" y="-28" textAnchor="middle" fontSize="11" fontWeight="900" fill={C.navy} fontFamily={FONT}>{label}</text>
       {/* đầu dây kéo được (ở chân cổng) */}
       <circle cx="0" cy="20" r="5" fill={wired ? C.good : (label === "E" ? C.navy : "#C0392B")} stroke="#fff" strokeWidth="1.4"
         style={{ cursor: "grab" }} onPointerDown={onDragWire} />
@@ -1600,60 +1588,9 @@ function GatePiece({ p, theta, label, wired, blocked, flash, draggable, onDrag, 
 function MC964Inline({ face, led, mode, scale, power, wires, wireDrag, counting, onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug }) {
   return (
     <g transform={`translate(${CLK.x} ${CLK.y}) scale(${CLK_SCALE})`}>
-      <g style={{ cursor: "pointer" }} onClick={onFlip}>
-        <rect x="0" y="-20" width="100" height="18" rx="6" fill="#fff" stroke={C.line} />
-        <text x="50" y="-7" textAnchor="middle" fontSize="10" fontWeight="700" fill={C.navy} fontFamily={FONT}>{face === "front" ? "Xem mặt sau ⟳" : "⟲ Mặt trước"}</text>
-      </g>
-      <rect x="-6" y="34" width="12" height="30" rx="3" fill="#B8B8BE" />
-      <rect x="292" y="34" width="12" height="30" rx="3" fill="#B8B8BE" />
-      <rect x="6" y="0" width="288" height="132" rx="8" fill="#FCF8EF" stroke="#888780" strokeWidth="1.2" />
-
-      {face === "front" ? (
-        <>
-          <rect x="26" y="24" width="104" height="48" rx="4" fill="#3A1414" stroke={counting ? "#FF6B6B" : "#61252C"} strokeWidth={counting ? 3 : 2} />
-          <text x="78" y="58" textAnchor="middle" fontFamily="monospace" fontSize="28" fill="#FF2D2D" letterSpacing="3">{led}</text>
-          <text x="30" y="96" fontFamily={FONT} fontSize="14" fontStyle="italic" fontWeight="700" fill="#C0392B">Phylab</text>
-          <g onClick={onCycleMode} style={{ cursor: "pointer" }}>
-            <circle cx="180" cy="50" r="21" fill="#C9C1C1" stroke="#9B9B9B" strokeWidth="1.4" />
-            <line x1="180" y1="50" x2={180 + 15 * Math.sin(MODE_ANGLE[mode] * Math.PI / 180)} y2={50 - 15 * Math.cos(MODE_ANGLE[mode] * Math.PI / 180)} stroke={C.navy} strokeWidth="3" strokeLinecap="round" />
-            <g fontFamily={FONT} fontSize="9" fill="#333" textAnchor="middle"><text x="148" y="56">A</text><text x="158" y="30">B</text><text x="180" y="22">A+B</text><text x="205" y="31">A↔B</text><text x="211" y="56">T</text></g>
-            <text x="180" y="86" textAnchor="middle" fontSize="9" fill={C.orange} fontWeight="800">MODE: {MODE_LABEL[mode]}</text>
-          </g>
-          <g onClick={onReset} style={{ cursor: "pointer" }}>
-            <text x="250" y="30" textAnchor="middle" fontFamily={FONT} fontSize="10" fill="#444" fontWeight="700">Reset</text>
-            <circle cx="250" cy="48" r="11" fill="#E03A36" stroke="#9A2E2E" strokeWidth="1.2" />
-          </g>
-          <g onClick={onToggleScale} style={{ cursor: "pointer" }}>
-            <text x="234" y="96" fontFamily={FONT} fontSize="8" fill={scale === "coarse" ? C.orange : "#999"} fontWeight="700">0.01</text>
-            <text x="258" y="96" fontFamily={FONT} fontSize="8" fill={scale === "fine" ? C.orange : "#999"} fontWeight="700">0.001</text>
-            <rect x="232" y="100" width="40" height="12" rx="6" fill="#B8B8BE" stroke="#999" strokeWidth="0.6" />
-            <circle cx={scale === "fine" ? 264 : 240} cy="106" r="5" fill="#fff" stroke="#888" strokeWidth="0.8" />
-            <text x="252" y="124" textAnchor="middle" fontFamily={FONT} fontSize="8" fill="#444">Thang đo ({LAB6.scales[scale].label})</text>
-          </g>
-        </>
-      ) : (
-        <>
-          {[["A", SOCK.A], ["B", SOCK.B], ["C", SOCK.C]].map(([s, cx]) => {
-            const g = wires[s]; const col = g === "E" ? C.navy : g === "F" ? "#C0392B" : null;
-            const hot = wireDrag && s !== "C";
-            return (
-              <g key={s} onClick={() => g && onUnplug(s)} style={{ cursor: g ? "pointer" : "default" }}>
-                <circle cx={cx} cy="52" r="15" fill="#1f1f1f" stroke={hot ? C.orange : "#000"} strokeWidth={hot ? 2.6 : 0.8} />
-                <circle cx={cx} cy="52" r="8" fill="#0d0d0d" />
-                {col && <circle cx={cx} cy="52" r="5.5" fill={col} />}
-                <text x={cx} y="84" textAnchor="middle" fontFamily={FONT} fontSize="11" fill="#333" fontWeight="700">{s}</text>
-                {col && <text x={cx} y="38" textAnchor="middle" fontFamily={FONT} fontSize="9" fill={col} fontWeight="800">{g}</text>}
-              </g>
-            );
-          })}
-          <text x="196" y="96" fontFamily={FONT} fontSize="9" fontStyle="italic" fill="#333">+10V</text>
-          <g onClick={onTogglePower} style={{ cursor: "pointer" }}>
-            <rect x="238" y="26" width="26" height="46" rx="4" fill={power ? "#3E8E3E" : "#C04C4C"} stroke="#5a2020" strokeWidth="1" />
-            <text x="251" y="54" textAnchor="middle" fontFamily={FONT} fontSize="11" fill="#fff" fontWeight="800">{power ? "I" : "O"}</text>
-            <text x="251" y="96" textAnchor="middle" fontFamily={FONT} fontSize="8" fill="#444">Nguồn {power ? "BẬT" : "TẮT"}</text>
-          </g>
-        </>
-      )}
+      <MC964Face face={face} led={led} counting={counting} modeAngle={MODE_ANGLE[mode]} modeLabel={MODE_LABEL[mode]}
+        scale={scale} scaleLabel={LAB6.scales[scale].label} power={power} wires={wires} plugInfo={PLUG_INFO} hotSockets={Boolean(wireDrag)}
+        onFlip={onFlip} onCycleMode={onCycleMode} onReset={onReset} onToggleScale={onToggleScale} onTogglePower={onTogglePower} onUnplug={onUnplug} />
     </g>
   );
 }

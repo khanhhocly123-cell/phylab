@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Camera, CheckCircle, Play, Upload, AlertTriangle, RotateCcw, X, Scan, Sun, Sparkles, ChevronUp } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { AlertTriangle, ArrowLeft, Camera, CameraOff, CheckCircle2, Hand, HelpCircle, ImageUp, Play, RotateCcw, ScanText, Sun, X } from "lucide-react";
 import { LessonId } from "@/lib/types";
+import { OPEN_LABS } from "@/data/labCatalog";
 
 interface ScanScreenProps {
   onLessonMatched: (lessonId: LessonId) => void;
@@ -20,23 +21,55 @@ interface OcrResponse {
   reason?: string;
 }
 
+type Phase = "idle" | "scanning" | "done" | "failed";
+
+/* Lối tắt chọn nhanh = mọi bài đang mở trong danh mục chung (thêm bài là tự có ở đây). */
+const LESSONS = OPEN_LABS;
+const TIPS = [
+  { Icon: ScanText, title: "Tiêu đề trong khung", text: "Dòng “Bài …” và tên bài nằm gọn trong khung cam." },
+  { Icon: Sun, title: "Đủ sáng, không lóa", text: "Tránh bóng tay và đèn chiếu thẳng vào trang." },
+  { Icon: Hand, title: "Giữ yên tay", text: "Giữ máy 1 giây khi bấm chụp để chữ không nhòe." },
+];
+const GUIDE_KEY = "scanGuideSeen";
+
+/** Lý do không nhận diện được → câu dễ hiểu cho học sinh. */
+function failReason(result: OcrResponse | null) {
+  if (!result) return "Không kết nối được máy chủ nhận dạng.";
+  if (result.reason === "empty_text") return "Ảnh chưa đọc ra chữ — chụp gần hơn, đủ sáng và rõ nét.";
+  if (result.reason === "low_match" || result.reason === "below_threshold") return "Đọc được chữ nhưng chưa khớp bài thực hành nào — đưa phần TIÊU ĐỀ bài vào khung.";
+  const err = result.error || "";
+  // Lỗi kỹ thuật từ máy chủ OCR (HTTP 401/5xx, hết phiên, thiếu token…) → nói dễ hiểu, chỉ lối tắt.
+  if (/HTTP_|NO_FILE_HASH|token|fetch|network|kết nối/i.test(err)) {
+    return "Máy chủ nhận dạng VNPT đang bận hoặc hết phiên đăng nhập — thử lại sau ít phút, hoặc chọn nhanh bài ở danh sách.";
+  }
+  return err || "Hãy chụp rõ tiêu đề bài học (dòng “Bài …” và tên bài).";
+}
+
 export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScreenProps) {
-  const [phase, setPhase] = useState<"idle" | "scanning" | "done" | "failed">("idle");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [useCamera, setUseCamera] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [status, setStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [result, setResult] = useState<OcrResponse | null>(null);
-  const [showGuideModal, setShowGuideModal] = useState(true);
+  // Mẹo chụp: desktop luôn hiện ở cột phải; mobile tự mở lần đầu, sau đó bấm “?”.
+  const [guideOpen, setGuideOpen] = useState(() => {
+    try { return typeof window !== "undefined" && !window.localStorage.getItem(GUIDE_KEY); } catch { return false; }
+  });
 
-  const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
+  const closeGuide = () => {
+    setGuideOpen(false);
+    try { window.localStorage.setItem(GUIDE_KEY, "1"); } catch { /* bỏ qua */ }
+  };
 
   const startCamera = async () => {
     setUseCamera(true);
+    setCameraError(false);
     setPhase("idle");
-    setLogs([]);
+    setStatus("");
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -44,8 +77,8 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
       setStream(mediaStream);
       if (videoRef.current) videoRef.current.srcObject = mediaStream;
     } catch (err) {
-      console.error("Không truy cập được Camera:", err);
-      addLog("[Lỗi] Không thể mở camera. Vui lòng sử dụng nút tải ảnh lên.");
+      console.warn("Không truy cập được Camera:", err);
+      setCameraError(true);
       setUseCamera(false);
     }
   };
@@ -58,66 +91,59 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
     setUseCamera(false);
   };
 
-  // Auto-start camera on mount
+  // Tự bật camera khi vào màn quét (hoãn một nhịp để không setState ngay trong effect).
   useEffect(() => {
-    startCamera();
-    return () => {
-      stopCamera();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const id = window.setTimeout(() => { startCamera(); }, 0);
+    return () => window.clearTimeout(id);
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-    };
+  useEffect(() => () => {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
   }, [stream]);
+  // Khung video gắn lại luồng camera mỗi khi hiện lại (sau khi bỏ ảnh xem trước).
+  useEffect(() => {
+    if (videoRef.current && stream && videoRef.current.srcObject !== stream) videoRef.current.srcObject = stream;
+  }, [stream, preview, useCamera]);
 
   /** Gọi OCR route thật; đọc recognized + confidence thật. */
   const runOcr = async (file: File) => {
     setPhase("scanning");
     setResult(null);
-    setLogs([]);
-    addLog("[Hệ thống] Kết nối VNPT SmartReader OCR...");
-    addLog("[Tải lên] Đang gửi ảnh lên hệ thống nhận dạng...");
-
+    setStatus("Đang gửi ảnh tới VNPT SmartReader…");
     try {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/vnpt/ocr", { method: "POST", body: form });
+      setStatus("Đang đọc chữ và dò tên bài…");
       const data: OcrResponse = await res.json();
-
-      if (data.text) addLog(`[OCR] Trích xuất: "${data.text.slice(0, 60)}..."`);
-      if (data.error) addLog(`[Lỗi] ${data.error}`);
-
+      setResult(data);
       if (data.recognized && data.lessonId) {
-        addLog(`[Kết quả] Nhận diện: ${data.title} (tin cậy ${((data.confidence ?? 0) * 100).toFixed(0)}%)`);
-        setResult(data);
         setPhase("done");
+        setStatus(`Nhận diện: ${data.title}`);
       } else {
-        addLog("[Kết quả] Không nhận diện được bài học từ ảnh này.");
-        setResult(data);
         setPhase("failed");
+        setStatus(data.text ? `Đọc được: “${data.text.slice(0, 48)}…”` : "");
       }
     } catch (err) {
-      addLog(`[Lỗi] Không gọi được API OCR: ${err instanceof Error ? err.message : "không xác định"}`);
-      setResult({ recognized: false, error: "Không kết nối được máy chủ OCR." });
+      setResult({ recognized: false, error: `Không kết nối được máy chủ nhận dạng (${err instanceof Error ? err.message : "lỗi mạng"}).` });
       setPhase("failed");
+      setStatus("");
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
+    e.target.value = "";
     if (!f) return;
+    stopCamera();
     setPreview(URL.createObjectURL(f));
     runOcr(f);
   };
 
-  /** Chụp 1 khung hình từ webcam → ảnh JPEG → OCR thật. */
+  /** Chụp 1 khung hình từ camera → JPEG → OCR thật. */
   const handleCapture = () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) {
-      addLog("[Lỗi] Camera chưa sẵn sàng.");
+      setStatus("Camera chưa sẵn sàng — đợi một chút rồi chụp lại.");
       return;
     }
     const canvas = document.createElement("canvas");
@@ -127,343 +153,272 @@ export default function ScanScreen({ onLessonMatched, onManualSelect }: ScanScre
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     setPreview(canvas.toDataURL("image/jpeg", 0.92));
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `scan-${Date.now()}.jpg`, { type: "image/jpeg" });
-        runOcr(file);
-      },
-      "image/jpeg",
-      0.92
-    );
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      runOcr(new File([blob], `scan-${Date.now()}.jpg`, { type: "image/jpeg" }));
+    }, "image/jpeg", 0.92);
   };
 
-  const reset = () => {
+  const retake = () => {
     setPhase("idle");
     setResult(null);
-    setLogs([]);
+    setStatus("");
     setPreview(null);
+    if (!stream) startCamera();
+  };
+  const pickUpload = () => fileInputRef.current?.click();
+  const openLesson = (id: LessonId) => {
+    stopCamera();
+    onLessonMatched(id);
+  };
+  const exit = () => {
+    stopCamera();
+    onManualSelect();
   };
 
-  return (
-    <div className="w-full min-h-[100dvh] sm:min-h-0 sm:max-w-xl sm:mx-auto bg-[#050505] sm:bg-[#FFFBF7] sm:border-2 sm:border-[#E2DFD8] sm:rounded-[32px] p-3 sm:p-5 sm:my-4 text-[#321E12] font-nunito sm:shadow-xs relative">
-      <button
-        onClick={onManualSelect}
-        className="absolute top-4 left-4 z-30 px-3 py-2 bg-black/45 sm:bg-[#FFF2E6] backdrop-blur-md border border-white/20 sm:border-[#C85A17]/25 text-white sm:text-[#C85A17] text-[10px] font-black rounded-xl transition-all cursor-pointer active:scale-95"
-      >
-        ← Thoát
-      </button>
-      {/* Header Deck */}
-      <div className="hidden sm:flex items-center justify-between pb-3.5 mb-5 border-b border-[#E2DFD8]/60">
-        <div className="text-left flex-1 min-w-0">
-          <h2 className="text-base font-black text-[#321E12] uppercase tracking-wide">Quét trang Sách giáo khoa</h2>
-          <p className="text-[10px] font-bold text-[#605248] mt-0.5 truncate">
-            VNPT SmartReader OCR tự nhận dạng đề và mở phòng Lab
-          </p>
-        </div>
-        <button
-          onClick={onManualSelect}
-          className="ml-3 px-3 py-1.5 bg-[#FFF2E6] hover:bg-[#FFE0C2] border border-[#C85A17]/25 text-[#C85A17] text-[10px] font-black rounded-xl transition-all flex-shrink-0 cursor-pointer active:scale-95"
-        >
-          Chọn bài bằng tay
-        </button>
-      </div>
+  const matched = phase === "done" && result?.lessonId ? LESSONS.find((l) => l.id === result.lessonId) : null;
+  const confidence = Math.round((result?.confidence ?? 0) * 100);
+  const live = useCamera && !preview;
 
-      {/* Unified Viewfinder Card */}
-      <div className="relative w-full h-[calc(100dvh-108px)] sm:h-auto sm:aspect-[9/13.5] sm:max-w-sm mx-auto bg-slate-950 sm:rounded-[28px] overflow-hidden sm:border-4 sm:border-white sm:shadow-[0_12px_28px_rgba(50,30,18,0.06)] flex flex-col items-center justify-center">
-        {/* Stream */}
-        {useCamera && !preview && (
-          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-        )}
-
-        {/* Static Photo Preview */}
-        {preview && (
-          <img src={preview} alt="Ảnh chụp" className="w-full h-full object-cover" />
-        )}
-
-        {/* Viewfinder Guidelines brackets overlay */}
-        {!preview && useCamera && (
-          <div className="absolute inset-x-4 top-4 bottom-22 border border-white/5 pointer-events-none rounded-xl flex items-center justify-center">
-            <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[#DF742E] rounded-tl-lg" />
-            <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[#DF742E] rounded-tr-lg" />
-            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[#DF742E] rounded-bl-lg" />
-            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[#DF742E] rounded-br-lg" />
-            <span className="text-[9px] font-black text-white/55 bg-black/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
-              Đặt đề bài vào khung hình
-            </span>
-          </div>
-        )}
-
-        {/* Hướng dẫn chụp panel docked at the bottom of viewfinder */}
-        {!preview && useCamera && (
-          <div 
-            onClick={() => setShowGuideModal(true)}
-            className="absolute bottom-0 left-0 right-0 bg-[#241A13]/85 backdrop-blur-md border-t border-white/10 p-2 pb-2.5 rounded-t-2xl cursor-pointer hover:bg-[#241A13]/90 transition-all z-10 select-none"
-          >
-            <div className="flex items-center justify-between mb-1.5 px-1.5">
-              <div className="w-3" /> {/* spacer */}
-              <span className="text-[9px] font-black text-orange-200/80 uppercase tracking-wider">Hướng dẫn chụp</span>
-              <ChevronUp className="w-3 h-3 text-orange-200/80" />
-            </div>
-            <div className="grid grid-cols-3 gap-1.5 text-center text-white">
-              <div className="flex flex-col items-center gap-1">
-                <div className="w-6.5 h-6.5 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                  <Scan className="w-3.5 h-3.5 text-[#DF742E]" />
-                </div>
-                <span className="text-[7px] font-bold text-slate-300 leading-tight">Đặt sách ngay ngắn trong khung hình</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <div className="w-6.5 h-6.5 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                  <Sun className="w-3.5 h-3.5 text-[#DF742E]" />
-                </div>
-                <span className="text-[7px] font-bold text-slate-300 leading-tight">Ánh sáng đầy đủ, tránh bóng đổ</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <div className="w-6.5 h-6.5 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                  <Sparkles className="w-3.5 h-3.5 text-[#DF742E]" />
-                </div>
-                <span className="text-[7px] font-bold text-slate-300 leading-tight">Chụp rõ nét, không bị lóa</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Camera Off Placeholder */}
-        {!useCamera && !preview && (
-          <div className="flex flex-col items-center p-6 text-center text-slate-400 gap-4">
-            <div className="w-14 h-14 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-              <Camera className="w-6 h-6 text-slate-600" />
-            </div>
-            <p className="text-[11px] font-bold leading-normal text-slate-500">
-              Chưa bật camera. Hãy cho phép camera hoặc chọn một ảnh trang sách để nhận dạng.
-            </p>
-            <button
-              onClick={startCamera}
-              className="px-4 py-2 bg-[#DF742E] text-white text-xs font-black rounded-xl hover:bg-[#B24A0C] transition-all cursor-pointer active:scale-95"
-            >
-              Kích hoạt Camera
-            </button>
-          </div>
-        )}
-
-        {/* Processing Indicator Overlay */}
-        {phase === "scanning" && (
-          <div className="absolute inset-0 bg-[#321E12]/50 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-3 z-20">
-            <div className="w-8 h-8 border-4 border-white/20 border-t-[#DF742E] rounded-full animate-spin" />
-            <span className="text-[11px] font-black tracking-wide text-orange-50">Đang phân tích đề bài...</span>
-          </div>
-        )}
-
-        {/* Outcome Overlay Inside Viewfinder (Optimized for Mobile UX) */}
-        {phase === "done" && result?.recognized && result.lessonId && (
-          <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md border border-[#2E7D32]/25 rounded-[20px] p-4 flex flex-col items-center text-center gap-3 shadow-lg z-20 animate-[slideUp_0.25s_ease-out]">
-            <div className="bg-[#F3F8F2] text-[#2E7D32] rounded-full p-2 border border-[#2E7D32]/20">
-              <CheckCircle className="w-5 h-5 stroke-[2.5]" />
-            </div>
-            <div className="space-y-0.5">
-              <span className="text-[9px] font-black uppercase bg-[#2E7D32] text-white px-2 py-0.5 rounded">
-                Nhận dạng thành công
-              </span>
-              <h4 className="text-xs font-black text-[#321E12] mt-1.5 leading-snug line-clamp-2">{result.title}</h4>
-            </div>
-            <button
-              onClick={() => {
-                stopCamera();
-                onLessonMatched(result.lessonId as LessonId);
-              }}
-              className="w-full py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              Vào phòng Lab <Play className="w-3 h-3 fill-current" />
-            </button>
-          </div>
-        )}
-
-        {phase === "failed" && (
-          <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md border border-rose-200/60 rounded-[20px] p-4 flex flex-col items-center text-center gap-3 shadow-lg z-20 animate-[slideUp_0.25s_ease-out]">
-            <div className="bg-rose-100 text-rose-700 rounded-full p-2 border border-rose-200">
-              <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
-            </div>
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-black text-rose-700">Chưa nhận diện được đề bài</h4>
-              <p className="text-[9px] font-bold text-rose-600/85 leading-relaxed">
-                {result?.error || "Hãy chụp rõ nét tiêu đề bài học (Bài 6 hoặc Bài 11) đủ sáng."}
-              </p>
-            </div>
-            <div className="flex gap-2 w-full mt-1">
-              <button
-                onClick={() => {
-                  reset();
-                  startCamera();
-                }}
-                className="flex-1 py-1.5 bg-white border border-[#E2DFD8] text-[#605248] text-[10px] font-black rounded-xl hover:bg-slate-50 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> Quét lại
-              </button>
-              <button
-                onClick={onManualSelect}
-                className="flex-1 py-1.5 bg-[#DF742E] hover:bg-[#B24A0C] text-white text-[10px] font-black rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
-              >
-                Thoát quét
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Shutter Deck Controls */}
-      <div className="mt-3 sm:mt-6 flex items-center justify-center gap-6 max-w-sm mx-auto">
-        {/* 1. Upload Button (Small icon on the left) */}
-        <button
-          onClick={() => {
-            stopCamera();
-            reset();
-            fileInputRef.current?.click();
-          }}
-          title="Tải ảnh lên"
-          className="w-12 h-12 rounded-full bg-white border-2 border-[#E2DFD8] hover:border-[#DF742E]/50 text-[#605248] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_4px_8px_rgba(50,30,18,0.02)] active:scale-95 transition-all cursor-pointer"
-        >
-          <Upload className="w-5 h-5 text-[#605248]" />
-        </button>
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-
-        {/* 2. Primary Action Button (Big Shutter in center) */}
-        {preview ? (
-          <button
-            onClick={() => {
-              reset();
-              startCamera();
-            }}
-            title="Chụp ảnh mới"
-            className="w-16 h-16 rounded-full bg-white border-4 border-[#E2DFD8] hover:border-[#DF742E] flex items-center justify-center shadow-sm active:scale-90 transition-all cursor-pointer"
-          >
-            <RotateCcw className="w-5 h-5 text-[#605248]" />
-          </button>
-        ) : (
-          <button
-            onClick={handleCapture}
-            disabled={!useCamera}
-            title="Bấm chụp"
-            className="w-16 h-16 rounded-full bg-white p-1 shadow-sm border-2 border-[#E2DFD8] flex items-center justify-center active:scale-90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="w-13 h-13 rounded-full bg-[#DF742E] hover:bg-[#B24A0C] transition-colors" />
-          </button>
-        )}
-
-        {/* 3. Camera Power Toggle (Small button on the right) */}
-        {useCamera ? (
-          <button
-            onClick={stopCamera}
-            title="Tắt Camera"
-            className="w-12 h-12 rounded-full bg-white border-2 border-[#E2DFD8] hover:border-rose-350 text-[#605248] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_4px_8px_rgba(50,30,18,0.02)] active:scale-95 transition-all cursor-pointer"
-          >
-            <X className="w-5 h-5 text-rose-500" />
-          </button>
-        ) : (
-          <button
-            onClick={startCamera}
-            title="Bật Camera"
-            className="w-12 h-12 rounded-full bg-white border-2 border-[#E2DFD8] hover:border-[#DF742E]/55 text-[#605248] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_4px_8px_rgba(50,30,18,0.02)] active:scale-95 transition-all cursor-pointer"
-          >
-            <Camera className="w-5 h-5 text-[#C85A17]" />
-          </button>
-        )}
-      </div>
-
-      {/* Compact Log Messages */}
-      {phase === "scanning" && logs.length > 0 && (
-        <div className="mt-4 max-w-sm mx-auto bg-white rounded-xl border border-[#E2DFD8] p-3 text-[10px] font-mono text-[#605248] max-h-24 overflow-y-auto space-y-1">
-          {logs.map((log, idx) => (
-            <div key={idx} className="truncate">{log}</div>
-          ))}
-        </div>
+  /* ---------------- Thẻ kết quả (dùng chung desktop / mobile) ---------------- */
+  const resultCard = phase === "done" && result?.lessonId ? (
+    <div className="w-full rounded-2xl bg-white border border-[#2E7D32]/25 shadow-[0_18px_40px_rgba(20,12,6,.28)] p-3 flex gap-3 items-center animate-[scanPop_.28s_ease-out]">
+      {matched && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={matched.image || "/images/background.webp"} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-[#E2DFD8]" />
       )}
-      {/* Guide Modal Overlay */}
-      {showGuideModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-[fadeIn_0.2s_ease-out]">
-          <div className="w-full max-w-sm bg-white rounded-[32px] p-5 shadow-2xl border border-[#E2DFD8]/60 flex flex-col gap-4 relative animate-[scaleUp_0.2s_ease-out] font-nunito text-[#321E12]">
-            {/* Close button */}
-            <button 
-              onClick={() => setShowGuideModal(false)}
-              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-[#FFF2E6] hover:bg-[#FFE0C2] flex items-center justify-center text-[#DF742E] transition-all cursor-pointer border-none"
-            >
-              <X className="w-4 h-4 stroke-[2.5]" />
-            </button>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 text-[#2E7D32] text-[10px] font-black uppercase tracking-wide">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Nhận dạng thành công
+        </div>
+        <div className="text-[13px] font-black text-[#321E12] leading-snug line-clamp-2 mt-0.5">{result.title}</div>
+        <div className="flex items-center gap-2 mt-1.5">
+          <div className="h-1.5 flex-1 rounded-full bg-[#EDE7DB] overflow-hidden">
+            <div className="h-full rounded-full bg-[#2E7D32]" style={{ width: `${Math.max(8, confidence)}%` }} />
+          </div>
+          <span className="text-[10px] font-black text-[#605248] tabular-nums">tin cậy {confidence}%</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5 flex-shrink-0">
+        <button onClick={() => openLesson(result.lessonId as LessonId)} className="px-3.5 py-2 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all">
+          Vào Lab <Play className="w-3 h-3 fill-current" />
+        </button>
+        <button onClick={retake} className="px-3 py-1.5 rounded-xl border border-[#E2DFD8] text-[#605248] text-[11px] font-black flex items-center justify-center gap-1 cursor-pointer hover:bg-[#FBF6EC]">
+          <RotateCcw className="w-3 h-3" /> Quét lại
+        </button>
+      </div>
+    </div>
+  ) : null;
 
-            <h3 className="text-sm font-black text-[#321E12] text-center mt-1 uppercase tracking-wide">Hướng dẫn chụp sách</h3>
+  const failCard = phase === "failed" ? (
+    <div className="w-full rounded-2xl bg-white border border-rose-200 shadow-[0_18px_40px_rgba(20,12,6,.28)] p-3 animate-[scanPop_.28s_ease-out]">
+      <div className="flex items-start gap-2.5">
+        <div className="w-9 h-9 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center flex-shrink-0">
+          <AlertTriangle className="w-4.5 h-4.5 text-rose-600" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[13px] font-black text-rose-700">Chưa nhận ra bài học</div>
+          <div className="text-[11.5px] font-bold text-[#605248] leading-snug mt-0.5">{failReason(result)}</div>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-2.5">
+        <button onClick={retake} className="flex-1 py-2 rounded-xl bg-[#DF742E] hover:bg-[#B24A0C] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer active:scale-95">
+          <RotateCcw className="w-3.5 h-3.5" /> Chụp lại
+        </button>
+        <button onClick={pickUpload} className="flex-1 py-2 rounded-xl border border-[#E2DFD8] text-[#605248] text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FBF6EC]">
+          <ImageUp className="w-3.5 h-3.5" /> Tải ảnh khác
+        </button>
+      </div>
+    </div>
+  ) : null;
 
-            <div className="flex flex-col gap-3">
-              {/* Step 1 */}
-              <div className="flex gap-3 items-start border-b border-slate-100 pb-2.5">
-                <div className="w-14 h-14 rounded-xl bg-orange-50/80 border border-orange-100/50 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <rect x="8" y="10" width="24" height="20" rx="2" stroke="#DF742E" strokeWidth="2" strokeDasharray="3 2" />
-                    <rect x="12" y="14" width="16" height="12" rx="1" fill="#DF742E" fillOpacity="0.15" stroke="#DF742E" strokeWidth="1.5" />
-                    <circle cx="8" cy="10" r="2" fill="#2E7D32" />
-                    <circle cx="32" cy="10" r="2" fill="#2E7D32" />
-                    <circle cx="8" cy="30" r="2" fill="#2E7D32" />
-                    <circle cx="32" cy="30" r="2" fill="#2E7D32" />
-                  </svg>
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-[11px] font-black text-[#321E12]">1. Đặt sách ngay ngắn</h4>
-                  <p className="text-[9px] font-bold text-[#605248] leading-normal">Đặt sách trên mặt phẳng, căn chỉnh sao cho 4 góc nằm gọn trong khung hình.</p>
-                </div>
-              </div>
+  const quickPick = (
+    <div className="grid grid-cols-2 gap-2 max-h-[172px] overflow-y-auto pr-0.5">
+      {LESSONS.map((l) => (
+        <button key={l.id} onClick={() => openLesson(l.id)}
+          className="group flex items-center gap-2 p-1.5 pr-2 rounded-xl bg-white border border-[#E9E2D4] hover:border-[#DF742E]/60 hover:shadow-[0_6px_14px_rgba(50,30,18,.08)] text-left cursor-pointer transition-all">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {l.image ? <img src={l.image} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" /> : <span className="w-9 h-9 rounded-lg bg-[#FFF2E6] flex-shrink-0" />}
+          <span className="min-w-0">
+            <span className="block text-[10px] font-black text-[#C85A17] leading-none">{l.code} · Lớp {l.grade}</span>
+            <span className="block text-[11.5px] font-black text-[#321E12] leading-tight truncate mt-0.5">{l.name}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 
-              {/* Step 2 */}
-              <div className="flex gap-3 items-start border-b border-slate-100 pb-2.5">
-                <div className="w-14 h-14 rounded-xl bg-orange-50/80 border border-orange-100/50 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <circle cx="20" cy="20" r="7" stroke="#DF742E" strokeWidth="2" />
-                    <path d="M20 6V9M20 31V34M6 20H9M31 20H34M10 10L12 12M28 28L30 30M30 10L28 12M12 28L10 30" stroke="#DF742E" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M25 15L15 25" stroke="#2E7D32" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
-                  </svg>
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-[11px] font-black text-[#321E12]">2. Đảm bảo ánh sáng</h4>
-                  <p className="text-[9px] font-bold text-[#605248] leading-normal">Chụp ở nơi đủ sáng, tránh bóng đổ hoặc nguồn sáng trực tiếp gây lóa trang sách.</p>
-                </div>
-              </div>
+  return (
+    <div className="h-full min-h-[100dvh] md:min-h-0 w-full flex flex-col md:flex-row bg-[#120D0A] text-white font-nunito overflow-hidden">
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
 
-              {/* Step 3 */}
-              <div className="flex gap-3 items-start border-b border-slate-100 pb-2.5">
-                <div className="w-14 h-14 rounded-xl bg-orange-50/80 border border-orange-100/50 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <rect x="14" y="8" width="12" height="24" rx="2" stroke="#DF742E" strokeWidth="2" />
-                    <line x1="17" y1="28" x2="23" y2="28" stroke="#DF742E" strokeWidth="1.5" strokeLinecap="round" />
-                    <path d="M8 15C10 17 10 23 8 25M32 15C30 17 30 23 32 25" stroke="#DF742E" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
-                  </svg>
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-[11px] font-black text-[#321E12]">3. Giữ máy ổn định</h4>
-                  <p className="text-[9px] font-bold text-[#605248] leading-normal">Giữ chắc tay khi chụp, tránh rung lắc để hình ảnh không bị nhòe mờ chữ.</p>
-                </div>
-              </div>
+      {/* ===================== SÂN KHẤU CAMERA ===================== */}
+      <section className="relative flex-1 min-h-0 min-w-0 flex flex-col">
+        {/* Thanh trên */}
+        <div className="absolute top-0 inset-x-0 z-30 flex items-center gap-2 p-3 bg-gradient-to-b from-black/70 to-transparent">
+          <button onClick={exit} className="h-9 pl-2.5 pr-3 rounded-xl bg-white/12 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95">
+            <ArrowLeft className="w-4 h-4" /> Thoát
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-black leading-tight truncate">Quét trang sách giáo khoa</div>
+            <div className="text-[10.5px] font-bold text-white/60 truncate">Chụp tiêu đề bài · VNPT SmartReader tự mở đúng phòng Lab</div>
+          </div>
+          <button onClick={() => setGuideOpen(true)} aria-label="Mẹo chụp" className="md:hidden w-9 h-9 rounded-xl bg-white/12 border border-white/15 flex items-center justify-center cursor-pointer">
+            <HelpCircle className="w-4.5 h-4.5" />
+          </button>
+        </div>
 
-              {/* Step 4 */}
-              <div className="flex gap-3 items-start">
-                <div className="w-14 h-14 rounded-xl bg-orange-50/80 border border-orange-100/50 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <path d="M10 10H30V30H10V10Z" stroke="#DF742E" strokeWidth="2" />
-                    <path d="M14 14H26" stroke="#DF742E" strokeWidth="1.5" />
-                    <path d="M14 18H26" stroke="#DF742E" strokeWidth="1.5" />
-                    <path d="M14 22H22" stroke="#DF742E" strokeWidth="1.5" />
-                    <path d="M26 26L28 28" stroke="#2E7D32" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
+        {/* Khung ngắm */}
+        <div className="relative flex-1 min-h-0 overflow-hidden bg-[radial-gradient(ellipse_at_center,#2A1F17_0%,#120D0A_70%)]">
+          {live && <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />}
+          {preview && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="Ảnh vừa chụp" className="absolute inset-0 w-full h-full object-contain bg-black" />
+          )}
+
+          {/* Không có camera: gợi ý tải ảnh */}
+          {!live && !preview && (
+            <div className="absolute inset-0 flex items-center justify-center p-6">
+              <div className="max-w-xs text-center flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-white/8 border border-white/12 flex items-center justify-center">
+                  <CameraOff className="w-7 h-7 text-white/60" />
                 </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-[11px] font-black text-[#321E12]">4. Chụp đủ trang</h4>
-                  <p className="text-[9px] font-bold text-[#605248] leading-normal">Đảm bảo không bị cắt mất nội dung ở các mép trang hoặc tiêu đề bài học.</p>
+                <div className="text-sm font-black">{cameraError ? "Chưa mở được camera" : "Camera đang tắt"}</div>
+                <div className="text-xs font-bold text-white/60 leading-relaxed">
+                  {cameraError ? "Cho phép trình duyệt dùng camera, hoặc tải ảnh chụp trang sách lên." : "Bật camera để chụp, hoặc tải ảnh có sẵn."}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={startCamera} className="px-3.5 py-2 rounded-xl bg-[#DF742E] hover:bg-[#B24A0C] text-white text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95">
+                    <Camera className="w-3.5 h-3.5" /> Bật camera
+                  </button>
+                  <button onClick={pickUpload} className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/15 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer hover:bg-white/15">
+                    <ImageUp className="w-3.5 h-3.5" /> Tải ảnh
+                  </button>
                 </div>
               </div>
             </div>
+          )}
 
-            <button
-              onClick={() => setShowGuideModal(false)}
-              className="w-full py-3 bg-[#DF742E] hover:bg-[#B24A0C] text-white text-xs font-black rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer mt-2 border-none"
-            >
-              Đã hiểu
+          {/* Khung căn tiêu đề: mặt nạ tối xung quanh + 4 góc cam + vạch quét khi đang nhận dạng */}
+          {(live || phase === "scanning") && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-6 pt-16 pb-28 md:pb-24">
+              <div className="relative w-full max-w-[560px] aspect-[4/3] max-h-full rounded-2xl shadow-[0_0_0_9999px_rgba(10,6,4,.52)]">
+                {[
+                  "top-0 left-0 border-t-4 border-l-4 rounded-tl-2xl",
+                  "top-0 right-0 border-t-4 border-r-4 rounded-tr-2xl",
+                  "bottom-0 left-0 border-b-4 border-l-4 rounded-bl-2xl",
+                  "bottom-0 right-0 border-b-4 border-r-4 rounded-br-2xl",
+                ].map((c) => <div key={c} className={`absolute w-9 h-9 border-[#F08A3E] ${c}`} />)}
+                {phase === "scanning" ? (
+                  <div className="absolute inset-x-3 h-0.5 bg-[#FFB27A] shadow-[0_0_14px_4px_rgba(255,140,60,.7)] rounded-full animate-[scanSweep_1.6s_ease-in-out_infinite]" />
+                ) : (
+                  <div className="absolute left-1/2 -translate-x-1/2 -top-3.5 px-3 py-1 rounded-full bg-black/55 border border-white/15 text-[10.5px] font-black tracking-wide whitespace-nowrap">
+                    ĐƯA TIÊU ĐỀ “BÀI …” VÀO KHUNG
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Đang nhận dạng */}
+          {phase === "scanning" && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 px-3.5 py-2 rounded-full bg-black/65 border border-white/15 backdrop-blur-md text-xs font-black flex items-center gap-2 whitespace-nowrap">
+              <span className="w-3.5 h-3.5 border-2 border-white/25 border-t-[#F08A3E] rounded-full animate-spin" />
+              {status || "Đang phân tích…"}
+            </div>
+          )}
+
+          {/* Mobile: kết quả trượt lên trên thanh nút chụp */}
+          {(resultCard || failCard) && <div className="md:hidden absolute inset-x-3 bottom-24 z-30">{resultCard || failCard}</div>}
+        </div>
+
+        {/* Nút chụp */}
+        <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-8 pb-[max(14px,env(safe-area-inset-bottom))] pt-6 bg-gradient-to-t from-black/75 to-transparent">
+          <button onClick={pickUpload} title="Tải ảnh trang sách" className="w-12 h-12 rounded-2xl bg-white/12 hover:bg-white/20 border border-white/15 backdrop-blur-md flex flex-col items-center justify-center cursor-pointer active:scale-95">
+            <ImageUp className="w-5 h-5" />
+          </button>
+          {preview ? (
+            <button onClick={retake} title="Chụp ảnh mới" disabled={phase === "scanning"}
+              className="w-[70px] h-[70px] rounded-full border-4 border-white/85 bg-white/10 flex items-center justify-center cursor-pointer active:scale-90 transition-all disabled:opacity-40">
+              <RotateCcw className="w-6 h-6" />
             </button>
+          ) : (
+            <button onClick={handleCapture} disabled={!live} title="Bấm chụp"
+              className="w-[70px] h-[70px] rounded-full border-4 border-white/90 p-1 flex items-center justify-center cursor-pointer active:scale-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+              <span className="w-full h-full rounded-full bg-[#DF742E] hover:bg-[#F08A3E] transition-colors shadow-[inset_0_-4px_8px_rgba(0,0,0,.25)]" />
+            </button>
+          )}
+          <button onClick={live ? stopCamera : startCamera} title={live ? "Tắt camera" : "Bật camera"}
+            className="w-12 h-12 rounded-2xl bg-white/12 hover:bg-white/20 border border-white/15 backdrop-blur-md flex items-center justify-center cursor-pointer active:scale-95">
+            {live ? <CameraOff className="w-5 h-5 text-rose-300" /> : <Camera className="w-5 h-5 text-[#F08A3E]" />}
+          </button>
+        </div>
+      </section>
+
+      {/* ===================== CỘT PHẢI (desktop) ===================== */}
+      <aside className="hidden md:flex w-[340px] lg:w-[380px] flex-shrink-0 flex-col gap-3 p-4 bg-[#FBF6EC] text-[#321E12] border-l border-[#E2DFD8] overflow-hidden">
+        <div className="flex items-center gap-1.5">
+          {["Căn tiêu đề", "Bấm chụp", "Vào Lab"].map((step, i) => {
+            const active = (phase === "idle" && i === 0) || (phase === "scanning" && i === 1) || ((phase === "done" || phase === "failed") && i === 2);
+            const done = (phase === "scanning" && i < 1) || (phase === "done" && i < 2);
+            return (
+              <div key={step} className={`flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-xl border text-[11px] font-black ${active ? "bg-white border-[#DF742E] text-[#C85A17]" : done ? "bg-[#F3F8F2] border-[#2E7D32]/30 text-[#2E7D32]" : "bg-white/60 border-[#E9E2D4] text-[#8C7B6B]"}`}>
+                <span className={`w-4.5 h-4.5 rounded-full grid place-items-center text-[10px] ${active ? "bg-[#DF742E] text-white" : done ? "bg-[#2E7D32] text-white" : "bg-[#EDE7DB]"}`}>{done ? "✓" : i + 1}</span>
+                {step}
+              </div>
+            );
+          })}
+        </div>
+
+        {resultCard || failCard || (
+          <div className="rounded-2xl bg-white border border-[#E9E2D4] p-3">
+            <div className="text-[10.5px] font-black uppercase tracking-wider text-[#C85A17]">Mẹo chụp nhanh</div>
+            <div className="mt-2 flex flex-col gap-2">
+              {TIPS.map(({ Icon, title, text }) => (
+                <div key={title} className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#FFF2E6] border border-[#F7D9BF] flex items-center justify-center flex-shrink-0"><Icon className="w-4 h-4 text-[#DF742E]" /></div>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-black leading-tight">{title}</div>
+                    <div className="text-[11px] font-bold text-[#605248] leading-snug">{text}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {status && phase !== "scanning" && <div className="text-[10.5px] font-bold text-[#8C7B6B] truncate -mt-1 px-1">{status}</div>}
+
+        <div className="mt-auto">
+          <div className="flex items-center justify-between mb-1.5 px-0.5">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-[#8C7B6B]">Không có sách? Chọn nhanh · {LESSONS.length} bài</span>
+            <button onClick={exit} className="text-[11px] font-black text-[#C85A17] hover:underline cursor-pointer">Tất cả bài →</button>
+          </div>
+          {quickPick}
+        </div>
+      </aside>
+
+      {/* ===================== MẸO CHỤP (mobile, sheet) ===================== */}
+      {guideOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/55 flex items-end" onClick={closeGuide}>
+          <div className="w-full rounded-t-3xl bg-[#FBF6EC] text-[#321E12] p-4 pb-[max(16px,env(safe-area-inset-bottom))] animate-[sheetUp_.25s_ease-out]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-black">Mẹo chụp để máy nhận ra bài</div>
+              <button onClick={closeGuide} aria-label="Đóng" className="w-8 h-8 rounded-full bg-white border border-[#E9E2D4] grid place-items-center cursor-pointer"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="mt-3 flex flex-col gap-2.5">
+              {TIPS.map(({ Icon, title, text }) => (
+                <div key={title} className="flex items-start gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#FFF2E6] border border-[#F7D9BF] flex items-center justify-center flex-shrink-0"><Icon className="w-4.5 h-4.5 text-[#DF742E]" /></div>
+                  <div>
+                    <div className="text-[13px] font-black leading-tight">{title}</div>
+                    <div className="text-[12px] font-bold text-[#605248] leading-snug">{text}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-[10.5px] font-black uppercase tracking-wider text-[#8C7B6B] mt-4 mb-1.5">Không có sách? Chọn nhanh</div>
+            {quickPick}
+            <button onClick={closeGuide} className="w-full mt-3 py-3 rounded-2xl bg-[#DF742E] text-white text-sm font-black cursor-pointer active:scale-[.98]">Bắt đầu chụp</button>
           </div>
         </div>
       )}

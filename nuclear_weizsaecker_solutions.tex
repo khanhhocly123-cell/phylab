@@ -1,0 +1,630 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[margin=2cm]{geometry}
+\begin{document}
+\begin{center}
+Lời giải bài năng lượng liên kết và phân rã hạt nhân
+\end{center}
+
+\begin{enumerate}[leftmargin=*,itemsep=1em]
+
+\item
+Phản ứng phân rã alpha có dạng
+$$
+{}^{A}X\longrightarrow {}^{A-4}Y+\alpha.
+$$
+
+Năng lượng tỏa ra trong phản ứng là
+$$
+Q_\alpha
+=\left(M_X-M_Y-M_\alpha\right)c^2
+=B_Y+B_\alpha-B_X.
+$$
+
+Điều kiện để phân rã alpha tự xảy ra là
+$$
+Q_\alpha>0.
+$$
+
+Từ đoạn gần tuyến tính của đồ thị với
+$$
+A\geq 100,
+$$
+ta đọc được gần đúng
+$$
+\frac{B}{A}=a+bA,
+\qquad
+a=9.6,
+\qquad
+b=-0.008,
+$$
+trong đó năng lượng được tính theo $\mathrm{MeV}$.
+
+Do đó
+$$
+B_X=A(a+bA)
+$$
+và
+$$
+B_Y=(A-4)\left[a+b(A-4)\right].
+$$
+
+Suy ra
+$$
+\begin{aligned}
+Q_\alpha
+&=(A-4)\left[a+b(A-4)\right]+B_\alpha-A(a+bA)\\
+&=-4a-8bA+16b+B_\alpha.
+\end{aligned}
+$$
+
+Với
+$$
+B_\alpha=25\,\mathrm{MeV},
+$$
+ta được
+$$
+Q_\alpha=0.064A-13.528\,\mathrm{MeV}.
+$$
+
+Điều kiện
+$$
+Q_\alpha>0
+$$
+cho
+$$
+A>211.375.
+$$
+
+Vì số khối là số nguyên nên giá trị ước lượng là
+$$
+A_a\simeq 212.
+$$
+
+\item
+\begin{enumerate}[label=\alph*.,leftmargin=2em,itemsep=1em]
+
+\item
+Bỏ qua số hạng ghép cặp, với
+$$
+N=A-Z,
+$$
+công thức Weizs\"acker trở thành
+$$
+B=a_vA-a_sA^{2/3}-a_cZ^2A^{-1/3}
+-a_a\frac{(A-2Z)^2}{A}.
+$$
+
+Với một giá trị $A$ xác định, hạt nhân bền nhất tương ứng với giá trị $Z$ làm
+cho $B$ cực đại. Do đó
+$$
+\frac{\partial B}{\partial Z}
+=-2a_cZA^{-1/3}
++\frac{4a_a}{A}(A-2Z)=0.
+$$
+
+Suy ra
+$$
+Z\left(2a_cA^{-1/3}+\frac{8a_a}{A}\right)=4a_a,
+$$
+hay
+$$
+Z_{\max}
+=\frac{4a_aA}{2a_cA^{2/3}+8a_a}.
+$$
+
+Vậy
+$$
+Z_{\max}
+=\frac{A}{2}
+\left(1+\frac{a_c}{4a_a}A^{2/3}\right)^{-1}.
+$$
+
+\item
+Với
+$$
+A=200,
+$$
+công thức liên tục ở trên cho
+$$
+Z_{\max}=79.24.
+$$
+
+Vì $A$ chẵn nên $N$ và $Z$ có cùng tính chẵn lẻ. Độ lớn của số hạng ghép cặp là
+$$
+a_pA^{-3/4}
+=33.5\times 200^{-3/4}
+=0.630\,\mathrm{MeV}.
+$$
+
+So sánh các số nguyên gần $Z_{\max}$ bằng công thức đầy đủ:
+$$
+\begin{array}{c|c|c}
+Z&\delta\ (\mathrm{MeV})&B/A\ (\mathrm{MeV})\\ \hline
+78&-0.630&8.0477\\
+79&+0.630&8.0458\\
+80&-0.630&8.0506
+\end{array}
+$$
+
+Do đó hạt nhân có năng lượng liên kết riêng lớn nhất ứng với
+$$
+Z=80.
+$$
+
+\item
+Với
+$$
+A=128,
+$$
+công thức ở câu a cho
+$$
+Z_{\max}=53.58.
+$$
+
+Để so sánh các đồng khối, ta tách phần phụ thuộc vào $Z$ trong năng lượng khối
+lượng thành
+$$
+X(Z)=a_cZ^2A^{-1/3}
++a_a\frac{(A-2Z)^2}{A}+\delta.
+$$
+
+Các số hạng còn lại giống nhau đối với mọi hạt nhân có cùng $A$. Tính từ công
+thức Weizs\"acker ta được
+$$
+\begin{array}{c|c}
+\text{Hạt nhân}&X\ (\mathrm{MeV})\\ \hline
+{}_{51}^{128}\mathrm{Sb}&496.58\\
+{}_{52}^{128}\mathrm{Te}&491.18\\
+{}_{53}^{128}\mathrm{I}&491.05\\
+{}_{54}^{128}\mathrm{Xe}&489.15\\
+{}_{55}^{128}\mathrm{Cs}&492.53\\
+{}_{56}^{128}\mathrm{Ba}&494.15\\
+{}_{57}^{128}\mathrm{La}&501.04
+\end{array}
+$$
+
+Gọi
+$$
+\Delta X=X_{\text{mẹ}}-X_{\text{con}}.
+$$
+
+Điều kiện năng lượng của các quá trình là
+$$
+\begin{array}{c|c|c}
+\text{Quá trình}&\text{Biến đổi}&\text{Điều kiện}\\ \hline
+\beta^-&Z\to Z+1&
+\Delta X>m_pc^2+m_ec^2-m_nc^2=-0.79\,\mathrm{MeV}\\
+\beta^+&Z\to Z-1&
+\Delta X>m_nc^2+m_ec^2-m_pc^2=1.81\,\mathrm{MeV}\\
+\text{Bắt electron}&Z\to Z-1&
+\Delta X>m_nc^2-m_pc^2-m_ec^2=0.79\,\mathrm{MeV}\\
+2\beta^-&Z\to Z+2&
+\Delta X>2(m_pc^2+m_ec^2-m_nc^2)=-1.58\,\mathrm{MeV}
+\end{array}
+$$
+
+Ví dụ, đối với hạt nhân
+$$
+{}_{53}^{128}\mathrm I,
+$$
+ta có
+$$
+\Delta X_{\beta^-}=491.05-489.15=1.90\,\mathrm{MeV}>-0.79\,\mathrm{MeV},
+$$
+nên phân rã $\beta^-$ xảy ra; đồng thời
+$$
+\Delta X_{2\beta^-}=491.05-492.53=-1.48\,\mathrm{MeV}>-1.58\,\mathrm{MeV},
+$$
+nên phân rã hai beta trừ cũng có thể xảy ra về mặt năng lượng.
+
+Kết quả cho ba hạt nhân trong đề là
+$$
+\begin{array}{c|c|c|c|c}
+\text{Hạt nhân}&\beta^-&\beta^+&\text{Bắt electron}&2\beta^-\\ \hline
+{}_{53}^{128}\mathrm I&\text{Có}&\text{Không}&\text{Không}&\text{Có}\\
+{}_{54}^{128}\mathrm{Xe}&\text{Không}&\text{Không}&\text{Không}&\text{Không}\\
+{}_{55}^{128}\mathrm{Cs}&\text{Không}&\text{Có}&\text{Có}&\text{Không}
+\end{array}
+$$
+
+Trong ba hạt nhân đã cho, hạt nhân bền nhất là
+$$
+{}_{54}^{128}\mathrm{Xe}.
+$$
+
+Cột cuối của bảng được hiểu là phân rã hai beta trừ $2\beta^-$, đúng với mô tả
+hai electron được phát ra trong đề.
+
+\end{enumerate}
+\end{enumerate}
+
+\newpage
+\begin{center}
+Lời giải bài mẫu giọt hạt nhân
+\end{center}
+
+\begin{enumerate}[leftmargin=*,itemsep=1em]
+
+\item
+Mật độ điện tích của quả cầu là
+$$
+\rho_Q=\frac{Q}{\frac43\pi R^3}
+=\frac{3Q}{4\pi R^3}.
+$$
+
+Áp dụng định luật Gauss, điện trường bên trong và bên ngoài quả cầu lần lượt là
+$$
+E(r)=
+\begin{cases}
+\displaystyle \frac{Qr}{4\pi\varepsilon_0R^3},&r\leq R,\\[2mm]
+\displaystyle \frac{Q}{4\pi\varepsilon_0r^2},&r>R.
+\end{cases}
+$$
+
+Năng lượng tĩnh điện bằng năng lượng của điện trường:
+$$
+E_c=\frac{\varepsilon_0}{2}\int_{0}^{\infty}E^2\,dV.
+$$
+
+Do đó
+$$
+\begin{aligned}
+E_c
+&=\frac{\varepsilon_0}{2}
+\left[
+\int_0^R
+\left(\frac{Qr}{4\pi\varepsilon_0R^3}\right)^2
+4\pi r^2\,dr
++\int_R^\infty
+\left(\frac{Q}{4\pi\varepsilon_0r^2}\right)^2
+4\pi r^2\,dr
+\right]\\
+&=\frac{Q^2}{8\pi\varepsilon_0}
+\left(\frac{1}{5R}+\frac{1}{R}\right).
+\end{aligned}
+$$
+
+Vậy
+$$
+E_c=\frac{3Q^2}{20\pi\varepsilon_0R}.
+$$
+
+\item
+Với
+$$
+Q=Ze,
+\qquad
+R=R_0A^{1/3},
+$$
+năng lượng Coulomb là
+$$
+E_c
+=\frac{3Z^2e^2}{20\pi\varepsilon_0R_0A^{1/3}}.
+$$
+
+So sánh với số hạng Coulomb trong công thức Weizs\"acker,
+$$
+E_c=a_3\frac{Z^2}{A^{1/3}},
+$$
+ta có
+$$
+R_0=\frac{3e^2}{20\pi\varepsilon_0a_3}.
+$$
+
+Đổi đơn vị
+$$
+a_3=0.72\,\mathrm{MeV}
+=0.72\times1.602\times10^{-13}\,\mathrm J,
+$$
+và dùng
+$$
+e=1.602\times10^{-19}\,\mathrm C,
+$$
+ta được
+$$
+R_0=1.20\times10^{-15}\,\mathrm m.
+$$
+
+\item
+Khối lượng hạt nhân gần đúng bằng
+$$
+M\simeq Am.
+$$
+
+Vì
+$$
+R^3=R_0^3A,
+$$
+mật độ khối lượng của hạt nhân là
+$$
+\rho_0
+=\frac{Am}{\frac43\pi R^3}
+=\frac{3m}{4\pi R_0^3}.
+$$
+
+Thay số:
+$$
+\rho_0
+=2.3\times10^{17}\,\mathrm{kg\,m^{-3}}.
+$$
+
+\item
+Năng lượng bề mặt của hạt nhân là
+$$
+E_s=\sigma S=4\pi\sigma R^2.
+$$
+
+Mặt khác, theo công thức Weizs\"acker,
+$$
+E_s=a_2A^{2/3}.
+$$
+
+Với
+$$
+R^2=R_0^2A^{2/3},
+$$
+ta được
+$$
+\sigma=\frac{a_2}{4\pi R_0^2}.
+$$
+
+Đổi
+$$
+a_2=16.8\,\mathrm{MeV}
+=16.8\times1.602\times10^{-13}\,\mathrm J,
+$$
+suy ra
+$$
+\sigma=1.5\times10^{17}\,\mathrm{N\,m^{-1}}.
+$$
+
+\item
+Sau phân hạch, hai mảnh có
+$$
+A_1=kA,
+\qquad
+Z_1=kZ,
+$$
+và
+$$
+A_2=(1-k)A,
+\qquad
+Z_2=(1-k)Z.
+$$
+
+Do tỉ số neutron và proton không đổi, số hạng thể tích và số hạng bất đối xứng
+không thay đổi. Độ biến thiên năng lượng bề mặt là
+$$
+\Delta E_s
+=a_2A^{2/3}
+\left[k^{2/3}+(1-k)^{2/3}-1\right].
+$$
+
+Độ biến thiên năng lượng Coulomb là
+$$
+\Delta E_c
+=a_3\frac{Z^2}{A^{1/3}}
+\left[k^{5/3}+(1-k)^{5/3}-1\right].
+$$
+
+Phân hạch tự phát thuận lợi về năng lượng khi
+$$
+\Delta E_s+\Delta E_c<0.
+$$
+
+Suy ra điều kiện
+$$
+\frac{Z^2}{A}>f(k),
+$$
+trong đó
+$$
+f(k)
+=\frac{a_2}{a_3}
+\frac{k^{2/3}+(1-k)^{2/3}-1}
+{1-k^{5/3}-(1-k)^{5/3}}.
+$$
+
+Hàm số đối xứng qua
+$$
+k=\frac12
+$$
+và tăng rất nhanh khi $k$ tiến tới $0$ hoặc $1$.
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=11cm,
+    height=7cm,
+    xmin=0,xmax=1,
+    ymin=15,ymax=42,
+    xlabel={$k$},
+    ylabel={$f(k)$},
+    xtick={0,0.2,0.4,0.5,0.6,0.8,1},
+    ytick={15,20,25,30,35,40},
+    axis line style={black},
+    tick style={black},
+    grid=major,
+    grid style={line width=0.2pt},
+    every axis plot/.append style={black},
+    clip=true
+]
+\addplot[thick,domain=0.006:0.994,samples=400]
+{(16.8/0.72)*
+ (x^(2/3)+(1-x)^(2/3)-1)/
+ (1-x^(5/3)-(1-x)^(5/3))};
+\addplot[dashed] coordinates {(0.5,15) (0.5,16.3897)};
+\addplot[only marks,mark=*] coordinates {(0.5,16.3897)};
+\node[above right] at (axis cs:0.5,16.3897)
+{$\left(0.5,16.39\right)$};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\item
+Do tính đối xứng, giá trị nhỏ nhất đạt tại
+$$
+k=\frac12.
+$$
+
+Khi đó
+$$
+\begin{aligned}
+f_{\min}
+&=\frac{a_2}{a_3}
+\frac{2(1/2)^{2/3}-1}
+{1-2(1/2)^{5/3}}\\
+&=16.39.
+\end{aligned}
+$$
+
+Với hai chữ số có nghĩa,
+$$
+\left(\frac{Z^2}{A}\right)_{\min}\simeq 16.
+$$
+
+\item
+Vì elipsoid quay có hai bán trục bằng nhau nên thể tích đúng là
+$$
+V=\frac43\pi ab^2.
+$$
+
+Điều kiện thể tích không đổi cho
+$$
+ab^2=R^3.
+$$
+
+Với
+$$
+a=R(1+\varepsilon),
+$$
+ta được
+$$
+b=\frac{R}{\sqrt{1+\varepsilon}}
+\simeq R\left(1-\frac{\varepsilon}{2}\right).
+$$
+
+Nếu đặt
+$$
+b=R\lambda,
+$$
+thì
+$$
+\lambda=\frac{1}{\sqrt{1+\varepsilon}}
+\simeq1-\frac{\varepsilon}{2}.
+$$
+
+Nếu giữ đúng ký hiệu $b=R/\lambda$ trong bản đề thì hệ số tương ứng là nghịch
+đảo:
+$$
+\lambda=\sqrt{1+\varepsilon}
+\simeq1+\frac{\varepsilon}{2}.
+$$
+
+Quan hệ hình học không phụ thuộc cách ký hiệu vẫn là
+$$
+b=\frac{R}{\sqrt{1+\varepsilon}}.
+$$
+
+\begin{center}
+\begin{tikzpicture}[>=stealth,scale=1.0]
+  \draw (0,0) ellipse (3.2cm and 1.75cm);
+  \draw[->] (0,0)--(3.2,0) node[midway,below] {$a$};
+  \draw[->] (0,0)--(0,1.75) node[midway,left] {$b$};
+  \draw[dashed] (-3.6,0)--(3.6,0);
+  \draw[dashed] (0,-2.1)--(0,2.1);
+  \fill (0,0) circle (1.5pt);
+\end{tikzpicture}
+\end{center}
+
+\item
+Với
+$$
+a=R(1+\varepsilon),
+\qquad
+b=c=\frac{R}{\sqrt{1+\varepsilon}},
+$$
+công thức gần đúng của diện tích mặt elipsoid cho
+$$
+S
+=4\pi R^2
+\left[
+\frac{2(1+\varepsilon)^{0.8}
++(1+\varepsilon)^{-1.6}}{3}
+\right]^{0.625}.
+$$
+
+Khai triển đến bậc hai:
+$$
+(1+\varepsilon)^{0.8}
+\simeq1+0.8\varepsilon-0.08\varepsilon^2
+$$
+và
+$$
+(1+\varepsilon)^{-1.6}
+\simeq1-1.6\varepsilon+2.08\varepsilon^2.
+$$
+
+Do đó
+$$
+\begin{aligned}
+S
+&\simeq4\pi R^2
+\left(1+0.64\varepsilon^2\right)^{0.625}\\
+&\simeq4\pi R^2
+\left(1+0.4\varepsilon^2\right).
+\end{aligned}
+$$
+
+Độ tăng diện tích mặt là
+$$
+\Delta S
+=\frac25\varepsilon^2\,4\pi R^2.
+$$
+
+Vì năng lượng bề mặt ban đầu bằng
+$$
+4\pi\sigma R^2=a_2A^{2/3},
+$$
+nên độ tăng năng lượng bề mặt là
+$$
+\Delta E_s
+=\frac25a_2A^{2/3}\varepsilon^2.
+$$
+
+Theo dữ kiện của đề, độ biến thiên năng lượng Coulomb là
+$$
+\Delta E_c
+=-\frac15E_c\varepsilon^2
+=-\frac15a_3\frac{Z^2}{A^{1/3}}\varepsilon^2.
+$$
+
+Trạng thái cầu mất ổn định khi tổng năng lượng không tăng dưới một biến dạng
+nhỏ:
+$$
+\Delta E_s+\Delta E_c\leq0.
+$$
+
+Tại giá trị tới hạn,
+$$
+\frac25a_2A^{2/3}
+=\frac15a_3\frac{Z^2}{A^{1/3}}.
+$$
+
+Vì vậy
+$$
+\left(\frac{Z^2}{A}\right)_{\text{tới hạn}}
+=\frac{2a_2}{a_3}
+=\frac{2\times16.8}{0.72}
+=46.7.
+$$
+
+\end{enumerate}
+\end{document}

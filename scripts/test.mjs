@@ -2,7 +2,8 @@ import { accel, velAt, computeTime, ballDiameterMm } from "../src/engine/physics
 import { freeFallTime, gFromMeasurement, computeFallTime, fitFreeFall } from "../src/engine/physicsFreeFall.js";
 import { ohmCircuit, heatedResistance, stepHeat } from "../src/engine/physicsElectric.ts";
 import { solveDC } from "../src/engine/circuit.js";
-import { CANONICAL_LAYOUT, planWires, analyzeBoard, solveBoard } from "../src/components/lab/electric/emfBoard.js";
+import { CANONICAL_LAYOUT, planWires, analyzeBoard, solveBoard, pinNodes, freeNodesIn } from "../src/components/lab/electric/emfBoard.js";
+import { moduleOf } from "../src/components/lab/electric/boardGeometry.js";
 import { normalizeVi, retrieveAnswer, buildRagContext } from "../src/lib/labKnowledge.ts";
 
 let passed = 0;
@@ -93,6 +94,25 @@ const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 42949672
   const bad = analyzeBoard({ placements, wires: reversed });
   assert("Bảng mạch: đảo dây ampe kế → báo lỗi đúng chỗ", !bad.valid && bad.issue.key === "ammeter-reversed");
   assert("Bảng mạch: thiếu dây → báo mạch hở", analyzeBoard({ placements, wires: [] }).issue.key === "open");
+
+  // Ôm kế (VOM nấc Ω): bơm dòng thử, R = ΔU/I₀; đoạn đo còn nguồn → báo live, số sai.
+  const ohmModes = { ammeter: "mA", voltmeter: "Ω" };
+  const onBattery = solveBoard({ placements, wires, switchClosed: false, rheostat: 50, cell, modes: ohmModes });
+  assert("Ôm kế trên hai cực pin: báo có nguồn (không đo được r bằng ôm kế)", onBattery.voltmeter.live && onBattery.voltmeter.across === "battery");
+  const others = wires.filter((w) => !(w.b.t === "jack" && w.b.meter === "voltmeter"));
+  const plugAt = (kind, pin) => {
+    const p = pinNodes(kind, placements[kind]).find((x) => x.pin === pin);
+    const free = freeNodesIn(moduleOf(p.X, p.Y), placements, others)[0];
+    return { t: "node", X: free.X, Y: free.Y };
+  };
+  const probeR0 = [...others,
+    { id: "p1", a: plugAt("protect", "a"), b: { t: "jack", meter: "voltmeter", jack: "V" } },
+    { id: "p2", a: plugAt("protect", "b"), b: { t: "jack", meter: "voltmeter", jack: "COM" } }];
+  const r0 = solveBoard({ placements, wires: probeR0, switchClosed: false, rheostat: 50, cell, modes: ohmModes });
+  assert("Ôm kế đo R₀ khi K mở: ≈ 10 Ω, không báo live", Math.abs(r0.voltmeter.value - 10) < 0.05 && !r0.voltmeter.live && r0.voltmeter.across === "protect");
+  const r0Live = solveBoard({ placements, wires: probeR0, switchClosed: true, rheostat: 50, cell, modes: ohmModes });
+  assert("Ôm kế đo R₀ khi K đóng: báo đoạn mạch còn điện", r0Live.voltmeter.live);
+  assert("Ôm kế chưa nối que: OL (hở mạch)", solveBoard({ placements, wires: others, switchClosed: false, rheostat: 50, cell, modes: ohmModes }).voltmeter.overload);
 }
 
 // 3. RAG tests

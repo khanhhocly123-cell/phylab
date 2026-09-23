@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { C, FONT } from "../../../engine/tokens.js";
 
 export const CELL_COLORS = { new: "#2563EB", old: "#64748B" };
@@ -18,7 +19,7 @@ const U_TICKS = [0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7];
  *    (nét đứt) tới trục U — chỗ cắt chính là E, độ dốc là r.
  */
 /** @param {{ rows: Array<{ id?: number, cell: "new" | "old", current: number, voltage: number }>, fits: Record<string, { emf: number, internalR: number } | null>, live?: { mA: number, u: number } | null, activeCell: "new" | "old", compact?: boolean, tall?: boolean }} props */
-export default function EmfGraph({ rows, fits, live = null, activeCell, compact = false, tall = false }) {
+function EmfGraph({ rows, fits, live = null, activeCell, compact = false, tall = false }) {
   const W = compact ? 480 : 960;
   const H = compact ? (tall ? 460 : 300) : 250;
   const M = { l: compact ? 44 : 56, r: compact ? 12 : 20, t: 22, b: 36 };
@@ -118,3 +119,6 @@ export default function EmfGraph({ rows, fits, live = null, activeCell, compact 
     </svg>
   );
 }
+
+/* Chỉ vẽ lại khi số liệu, đường khớp hay điểm làm việc đổi. */
+export default memo(EmfGraph);

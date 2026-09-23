@@ -733,13 +733,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
-            {/* Decorative background bottom footer */}
-            {!isDoingExperiment && !isScanMode && (
-              <footer className="mt-12 text-center text-[10px] font-black text-[#605248]/30 uppercase tracking-widest pb-4 print:hidden">
-                Phylab &copy; 2026 | Vietnamese Student HackAIthon
-              </footer>
-            )}
           </div>
         </main>
       </div>

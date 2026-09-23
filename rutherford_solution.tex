@@ -1,0 +1,371 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc}
+\usepackage[margin=2cm]{geometry}
+
+\begin{document}
+
+\begin{enumerate}[leftmargin=*,itemsep=1em]
+
+\item
+Vì hạt nhân được coi là đứng yên và lực Coulomb là lực thế nên động năng của hạt
+$\alpha$ trước và sau tán xạ bằng nhau. Do đó
+$$
+p_i=p_f=mv_0.
+$$
+
+Từ tam giác xung lượng,
+$$
+\Delta p=\left|\vec p_f-\vec p_i\right|
+=2mv_0\sin\frac{\theta}{2}.
+$$
+
+Chọn trục cực có phương trùng với $\Delta\vec p$. Gọi $\phi$ là góc giữa
+$\vec F_C$ và $\Delta\vec p$. Khi đó thành phần lực Coulomb theo phương
+$\Delta\vec p$ là
+$$
+F_{\Delta p}=F_C\cos\phi,
+\qquad
+F_C=\frac{2kZe^2}{r^2}.
+$$
+
+Định lí xung lượng cho
+$$
+2mv_0\sin\frac{\theta}{2}
+=\int_{-\infty}^{+\infty}F_C\cos\phi\,dt.
+$$
+
+Bảo toàn mômen động lượng đối với hạt nhân:
+$$
+mv_0b=mr^2\frac{d\phi}{dt},
+$$
+suy ra
+$$
+dt=\frac{r^2}{v_0b}\,d\phi.
+$$
+
+Quỹ đạo đối xứng qua phương $\Delta\vec p$, nên
+$$
+\phi_i=-\frac{\pi-\theta}{2},
+\qquad
+\phi_f=\frac{\pi-\theta}{2}.
+$$
+
+Thay vào tích phân xung lượng:
+$$
+\begin{aligned}
+2mv_0\sin\frac{\theta}{2}
+&=\frac{2kZe^2}{v_0b}
+\int_{-(\pi-\theta)/2}^{(\pi-\theta)/2}\cos\phi\,d\phi\\
+&=\frac{4kZe^2}{v_0b}\cos\frac{\theta}{2}.
+\end{aligned}
+$$
+
+Vậy
+$$
+\boxed{\cot\frac{\theta}{2}
+=\frac{mv_0^2b}{2kZe^2}}.
+$$
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,scale=0.82]
+  \coordinate (O) at (0,-1.5);
+  \coordinate (P) at (-0.85,0.28);
+
+  \draw[dashed] (-5.2,0)--(3.8,0);
+  \draw[dashed] (O)--(3.6,0);
+  \draw[dashed] (-0.45,0)--(3.4,2.25);
+  \draw[very thick,-{Stealth[length=3mm]}]
+    (-5,0).. controls (-2.2,0) and (-1.25,0.02) .. (P)
+    .. controls (-0.25,0.55) and (1.7,1.65) .. (3.35,2.2);
+
+  \fill (O) circle (2.4pt) node[right] {$+Ze$};
+  \fill (P) circle (1.8pt);
+  \draw[->,thick] (O)--(P) node[midway,left] {$\vec r$};
+  \draw[->,thick] (P)--++(115:1.8) node[above left] {$\vec F_C$};
+  \draw[dash dot,->] (P)--++(65:2.3) node[above] {$\Delta\vec p$};
+
+  \draw[<->] (-4.35,-1.5)--(-4.35,0) node[midway,left] {$b$};
+  \node[above] at (-4.55,0) {$m,\ v_0$};
+  \draw[->] (-4.8,0.18)--(-3.8,0.18);
+
+  \draw (0.55,0) arc[start angle=0,end angle=30,radius=0.7];
+  \node at (0.95,0.22) {$\theta$};
+  \draw ($(P)+(65:0.7)$) arc[start angle=65,end angle=115,radius=0.7];
+  \node at (-1.18,1.12) {$\phi$};
+  \node at (0,-2.12) {Hạt nhân $O$};
+
+  \begin{scope}[shift={(5.35,0.55)},scale=0.9]
+    \coordinate (A) at (0,0);
+    \coordinate (B) at (2.1,0);
+    \coordinate (C) at ({2.1*cos(38)},{2.1*sin(38)});
+    \draw[->,thick] (A)--(B) node[midway,below] {$\vec p_i$};
+    \draw[->,thick] (A)--(C) node[midway,above left] {$\vec p_f$};
+    \draw[->,thick] (B)--(C) node[midway,right] {$\Delta\vec p$};
+    \draw (0.65,0) arc[start angle=0,end angle=38,radius=0.65];
+    \node at (0.83,0.27) {$\theta$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\item
+Đặt
+$$
+T=\frac12mv_0^2,
+\qquad
+a=\frac{kZe^2}{T}=\frac{2kZe^2}{mv_0^2}.
+$$
+
+Tại điểm gần hạt nhân nhất, vận tốc chỉ có thành phần tiếp tuyến. Từ bảo toàn
+năng lượng và mômen động lượng,
+$$
+T=\frac{L^2}{2mr_{\min}^2}+\frac{2kZe^2}{r_{\min}},
+\qquad
+L=mv_0b.
+$$
+
+Giải phương trình theo $r_{\min}$:
+$$
+r_{\min}=a+\sqrt{a^2+b^2}.
+$$
+
+Theo kết quả câu 1,
+$$
+b=a\cot\frac{\theta}{2},
+$$
+nên
+$$
+\boxed{r_{\min}
+=a\left(1+\csc\frac{\theta}{2}\right)}.
+$$
+
+Với va chạm trực diện,
+$$
+b=0,
+\qquad
+\theta_{\max}=\pi,
+\qquad
+r_{\min}^{(0)}=2a
+=\frac{2kZe^2}{T}
+=\frac{4kZe^2}{mv_0^2}.
+$$
+
+Do hạt nhân có bán kính $R$, kết quả đầy đủ trong mô hình Coulomb bên ngoài hạt
+nhân là
+$$
+\boxed{
+\begin{cases}
+\theta_{\max}=\pi,
+\quad r_{\min}=2a,
+& 2a\ge R,\\[2mm]
+\displaystyle
+\theta_{\max}=2\arcsin\!\left(\frac{a}{R-a}\right),
+\quad r_{\min}=R,
+& 2a<R.
+\end{cases}}
+$$
+
+Trong trường hợp thứ hai, quỹ đạo giới hạn tiếp xúc với bề mặt hạt nhân và có
+khoảng ngắm
+$$
+b_R=\sqrt{R^2-2aR}.
+$$
+
+Nếu hạt $\alpha$ đi vào trong hạt nhân thì các dữ kiện của đề không đủ để xác
+định phần quỹ đạo bên trong.
+
+\item
+Để tránh nhầm với bán kính $b$ của chùm tia, gọi $s$ là khoảng ngắm của một hạt
+$\alpha$. Từ câu 1 và
+$$
+T=\frac12mv_0^2,
+$$
+ta có
+$$
+s(\theta)=\frac{kZe^2}{T}\cot\frac{\theta}{2}.
+$$
+
+Các hạt có góc tán xạ
+$$
+\theta'\ge\theta
+$$
+tương ứng với
+$$
+0\le s'\le s(\theta).
+$$
+
+Mật độ hạt tới trên tiết diện chùm tia là
+$$
+\frac{N_0}{\pi b^2},
+$$
+còn số hạt nhân nằm trong phần lá vàng được chiếu là
+$$
+n\pi b^2d.
+$$
+
+Mỗi hạt nhân có tiết diện hiệu dụng
+$$
+\sigma_{\ge\theta}=\pi s^2(\theta).
+$$
+
+Do đó
+$$
+N_{\ge\theta}
+=\frac{N_0}{\pi b^2}\,n\pi b^2d\,\pi s^2(\theta),
+$$
+và
+$$
+\boxed{
+u=\frac{N_{\ge\theta}}{N_0}
+=\pi nd\left(\frac{kZe^2}{T}\right)^2
+\cot^2\frac{\theta}{2}}.
+$$
+
+Như vậy bán kính chùm tia bị triệt tiêu khỏi kết quả.
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,scale=0.82]
+  \coordinate (N) at (0,0);
+  \coordinate (Q1) at ({5*cos(28)},{5*sin(28)});
+  \coordinate (Q2) at ({5*cos(32)},{5*sin(32)});
+
+  \draw[->] (-5.2,0)--(5.5,0);
+  \fill (N) circle (2.3pt) node[below] {Hạt nhân};
+
+  \draw (-3.75,-1.2) rectangle (-3.48,1.2);
+  \draw (-3.61,0) ellipse (0.42 and 0.75);
+  \draw (-3.61,0) ellipse (0.58 and 1.02);
+  \draw[dashed] (-5.05,0.75)--(-4.45,0.75);
+  \draw[dashed] (-5.05,1.02)--(-4.45,1.02);
+  \draw[<->] (-5.05,0)--(-5.05,0.75)
+    node[midway,left] {$s$};
+  \draw[<->] (-5.05,0.75)--(-5.05,1.02)
+    node[midway,left] {$|ds|$};
+  \node at (-3.6,-1.55) {$d\sigma=2\pi s|ds|$};
+
+  \draw[thick,-{Stealth[length=2.5mm]}]
+    (-4.45,0.75)--(-0.65,0.75)
+    .. controls (0.2,0.76) and (0.8,1.25) .. (Q2);
+  \draw[thick,-{Stealth[length=2.5mm]}]
+    (-4.45,1.02)--(-0.65,1.02)
+    .. controls (0.2,1.02) and (0.95,1.38) .. (Q1);
+
+  \draw[dashed] (N)--(Q1);
+  \draw[dashed] (N)--(Q2);
+  \draw (0.9,0) arc[start angle=0,end angle=28,radius=0.9];
+  \node at (1.15,0.23) {$\theta$};
+  \draw (N) ++(28:1.45)
+    arc[start angle=28,end angle=32,radius=1.45];
+  \node at (1.52,0.86) {$d\theta$};
+
+  \draw[very thick] (Q1)
+    arc[start angle=28,end angle=32,radius=5];
+  \draw (N) ++(26.5:5)
+    arc[start angle=26.5,end angle=33.5,radius=5];
+  \draw (N) ++(26.5:5.18)
+    arc[start angle=26.5,end angle=33.5,radius=5.18];
+  \node[align=center] at (4.75,3.25) {vành thu trên màn};
+\end{tikzpicture}
+\end{center}
+
+\item
+Những hạt có khoảng ngắm từ $s$ đến $s+ds$ nằm trong một vành khăn có diện
+tích
+$$
+d\sigma=2\pi s\,|ds|.
+$$
+
+Chúng bị tán xạ vào góc khối
+$$
+d\Omega=2\pi\sin\theta\,d\theta.
+$$
+
+Từ
+$$
+s=\frac{kZe^2}{T}\cot\frac{\theta}{2},
+$$
+ta có
+$$
+\left|\frac{ds}{d\theta}\right|
+=\frac{kZe^2}{2T}\csc^2\frac{\theta}{2}.
+$$
+
+Do đó tiết diện tán xạ vi phân là
+$$
+\begin{aligned}
+\frac{d\sigma}{d\Omega}
+&=\frac{2\pi s|ds|}{2\pi\sin\theta\,d\theta}\\
+&=\frac{s}{\sin\theta}
+\left|\frac{ds}{d\theta}\right|\\
+&=\left(\frac{kZe^2}{2T}\right)^2
+\frac{1}{\sin^4(\theta/2)}.
+\end{aligned}
+$$
+
+Ở khoảng cách $r$, diện tích $dS$ của máy thu chắn góc khối $d\Omega$ thỏa mãn
+$$
+dS=r^2d\Omega
+=2\pi r^2\sin\theta\,d\theta.
+$$
+
+Với lá vàng mỏng, số hạt nhân trên một đơn vị diện tích là
+$$
+nd.
+$$
+
+Vì vậy số hạt đi vào máy thu trên một đơn vị diện tích là
+$$
+\boxed{
+\frac{dN}{dS}
+=\frac{N_0nd}{r^2}
+\left(\frac{kZe^2}{2T}\right)^2
+\frac{1}{\sin^4(\theta/2)}}.
+$$
+
+Suy ra
+$$
+\boxed{\frac{dN}{dS}\propto
+\frac{1}{\sin^4(\theta/2)}}.
+$$
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth,scale=0.86]
+  \coordinate (O) at (-3.2,0);
+  \coordinate (P1) at ($(O)+(18:6.4)$);
+  \coordinate (P2) at ($(O)+(22:6.4)$);
+
+  \fill (O) circle (2.2pt) node[left] {Điểm tán xạ};
+  \draw[->] (O)--++(6.9,0);
+  \draw[dashed] (O)--(P1);
+  \draw[dashed] (O)--(P2);
+
+  \draw (O) ++(-28:6.4)
+    arc[start angle=-28,end angle=28,radius=6.4];
+  \draw[very thick] (P1)
+    arc[start angle=18,end angle=22,radius=6.4];
+
+  \draw[<->] (O)--($(O)+(20:6.05)$)
+    node[pos=0.62,below] {$r$};
+
+  \draw (O) ++(0:1.15)
+    arc[start angle=0,end angle=18,radius=1.15];
+  \node at ($(O)+(9:1.45)$) {$\theta$};
+
+  \draw (O) ++(18:1.65)
+    arc[start angle=18,end angle=22,radius=1.65];
+  \node[above] at ($(O)+(20:2.05)$) {$d\theta$};
+
+  \node[above right] at ($(O)+(20:6.4)$) {vành thu $dS$};
+  \node[align=left] at (2.2,-1.05)
+    {$dS=2\pi r^2\sin\theta\,d\theta$};
+\end{tikzpicture}
+\end{center}
+
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,102 @@
+\documentclass[border=8pt]{standalone}
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,angles,quotes,calc}
+
+\begin{document}
+
+% Hinh 1: Hinh hoc tan xa va tam giac xung luong
+\begin{tikzpicture}[>=Stealth,scale=0.95]
+  \coordinate (O) at (0,-1.5);
+  \coordinate (P) at (-0.85,0.28);
+
+  \draw[dashed] (-5.2,0)--(3.8,0);
+  \draw[dashed] (O)--(3.6,0);
+  \draw[dashed] (-0.45,0)--(3.4,2.25);
+  \draw[very thick,-{Stealth[length=3mm]}]
+    (-5,0).. controls (-2.2,0) and (-1.25,0.02) .. (P)
+    .. controls (-0.25,0.55) and (1.7,1.65) .. (3.35,2.2);
+
+  \fill (O) circle (2.4pt) node[below] {$+Ze$};
+  \fill (P) circle (1.8pt);
+  \draw[->,thick] (O)--(P) node[midway,left] {$\vec r$};
+  \draw[->,thick] (P)--++(115:1.8) node[above left] {$\vec F_C$};
+  \draw[dash dot,->] (P)--++(65:2.3) node[above] {$\Delta\vec p$};
+
+  \draw[<->] (-4.35,-1.5)--(-4.35,0) node[midway,left] {$b$};
+  \node[above] at (-4.55,0) {$m,\ v_0$};
+  \draw[->] (-4.8,0.18)--(-3.8,0.18);
+
+  \draw (0.55,0) arc[start angle=0,end angle=30,radius=0.7];
+  \node at (0.95,0.22) {$\theta$};
+  \draw ($(P)+(65:0.7)$) arc[start angle=65,end angle=115,radius=0.7];
+  \node at (-1.18,1.12) {$\phi$};
+
+  \node at (-0.4,-2.05) {Hạt nhân $O$};
+
+  % Tam giac xung luong
+  \begin{scope}[shift={(5.2,0.15)},scale=0.9]
+    \coordinate (A) at (0,0);
+    \coordinate (B) at (2.1,0);
+    \coordinate (C) at ({2.1*cos(38)},{2.1*sin(38)});
+    \draw[->,thick] (A)--(B) node[midway,below] {$\vec p_i$};
+    \draw[->,thick] (A)--(C) node[midway,above left] {$\vec p_f$};
+    \draw[->,thick] (B)--(C) node[midway,right] {$\Delta\vec p$};
+    \draw (0.65,0) arc[start angle=0,end angle=38,radius=0.65];
+    \node at (0.83,0.27) {$\theta$};
+    \node[align=center] at (1.05,-0.9)
+      {$p_i=p_f=mv_0$\\$\Delta p=2mv_0\sin\dfrac{\theta}{2}$};
+  \end{scope}
+\end{tikzpicture}
+
+% Hinh 2: Vanh khan khoang ngam va non tan xa
+\begin{tikzpicture}[>=Stealth,scale=0.95]
+  \coordinate (N) at (0,0);
+  \draw[->] (-5,0)--(5.4,0);
+  \fill (N) circle (2.3pt) node[below] {Hạt nhân};
+
+  \draw (-3.6,-1.1) rectangle (-3.35,1.1);
+  \draw (-3.48,0) ellipse (0.42 and 0.72);
+  \draw (-3.48,0) ellipse (0.58 and 0.92);
+  \draw[<->] (-4.25,0)--(-4.25,0.72) node[midway,left] {$s$};
+  \draw[<->] (-4.55,0.72)--(-4.55,0.92) node[midway,left] {$ds$};
+  \node at (-3.5,-1.45) {$d\sigma=2\pi s\,ds$};
+
+  \draw[thick,-{Stealth[length=2.5mm]}] (-5,0.72)--(-0.25,0.72)
+    .. controls (0.5,0.75) and (1.4,1.35) .. (4.4,2.15);
+  \draw[thick,-{Stealth[length=2.5mm]}] (-5,0.92)--(-0.25,0.92)
+    .. controls (0.55,0.95) and (1.55,1.55) .. (4.4,2.45);
+  \draw[dashed] (N)--(4.5,2.2);
+  \draw[dashed] (N)--(4.5,2.5);
+  \draw (0.9,0) arc[start angle=0,end angle=26,radius=0.9];
+  \node at (1.15,0.23) {$\theta$};
+  \draw (1.35,0.67) arc[start angle=26,end angle=29,radius=1.5];
+  \node at (1.73,0.93) {$d\theta$};
+
+  \draw (4.15,-1.35) arc[start angle=-90,end angle=90,x radius=0.65,y radius=2.45];
+  \draw (4.45,-1.18) arc[start angle=-90,end angle=90,x radius=0.55,y radius=2.30];
+  \node[align=center] at (4.7,-1.75) {vành thu\\trên màn};
+\end{tikzpicture}
+
+% Hinh 3: Dien tich doi cau cua may thu
+\begin{tikzpicture}[>=Stealth,scale=1.0]
+  \coordinate (O) at (-3,0);
+  \fill (O) circle (2.2pt) node[left] {Điểm tán xạ};
+  \draw[->] (O)--(4.2,0);
+  \draw[dashed] (O)--(3.7,2.0);
+  \draw[dashed] (O)--(3.65,2.28);
+  \draw (3.6,-2.2) arc[start angle=-90,end angle=90,x radius=0.75,y radius=2.2];
+  \draw[very thick] (3.62,1.95) arc[start angle=62,end angle=75,x radius=0.78,y radius=2.2];
+  \draw[<->] (O)--(3.55,2.08) node[midway,above] {$r$};
+  \draw (O) ++(0.95,0) arc[start angle=0,end angle=17,radius=0.95];
+  \node at (-1.75,0.18) {$\theta$};
+  \draw (O) ++(1.45,0.44) arc[start angle=17,end angle=19.4,radius=1.52];
+  \node at (-1.25,0.68) {$d\theta$};
+  \draw[<->] (3.88,0)--(3.88,2.02) node[midway,right] {$r\sin\theta$};
+  \node[align=center] at (4.8,1.4)
+    {$dS=2\pi r^2\sin\theta\,d\theta$};
+\end{tikzpicture}
+
+\end{document}

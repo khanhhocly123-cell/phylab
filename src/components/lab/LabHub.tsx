@@ -5,21 +5,12 @@ import { ArrowRight, BookOpen, Camera, Check, FileText, FlaskConical, Graduation
 import { MathText } from "@/components/Latex";
 import { EXPERIMENT_SPECS } from "@/experiments/specs";
 import type { ExperimentSpec, LessonId } from "@/lib/types";
+import { labEntry, lessonNo } from "@/data/labCatalog";
 
-const IMAGES: Record<string, string> = {
-  "do-toc-do-vat-chuyen-dong": "/images/marble_ramp.webp",
-  "do-gia-toc-roi-tu-do": "/images/free_fall.webp",
-  "do-dien-tro-dinh-luat-ohm": "/images/do-dien-tro-ohm.png",
-  "do-suat-dien-dong-pin-dien-hoa": "/images/do-suat-dien-dong.png",
-};
-
-/** Nội dung Prelab của từng bài — để HS biết trước chặng 1 gồm những gì. */
-const PRELAB_TOPICS: Record<string, string> = {
-  "do-toc-do-vat-chuyen-dong": "Cổng quang · MC964 · thước kẹp",
-  "do-gia-toc-roi-tu-do": "Cổng quang · MC964 · dây dọi",
-  "do-dien-tro-dinh-luat-ohm": "Đồng hồ đa năng · nguồn DC",
-  "do-suat-dien-dong-pin-dien-hoa": "Đồng hồ đa năng · bảng mạch",
-};
+// Ảnh bìa + nội dung Prelab lấy từ danh mục chung (src/data/labCatalog.ts).
+const imageOf = (id: string) => labEntry(id)?.image;
+const prelabOf = (id: string) => labEntry(id)?.prelab;
+const orderOf = (spec: ExperimentSpec) => { const e = labEntry(spec.id); return e ? lessonNo(e) : 999; };
 
 interface LabHubProps {
   prelabPassed: Record<string, boolean>;
@@ -42,10 +33,14 @@ function gradeOf(spec: ExperimentSpec) {
  * Prelab (làm quen dụng cụ) → Thực hành (lắp ráp & đo) → Sổ Báo Cáo.
  */
 export default function LabHub({ prelabPassed, completedLessonIds, assignedLessonIds, onStart, onReviewPrelab, onScan }: LabHubProps) {
-  const groups = Object.values(EXPERIMENT_SPECS).reduce<Record<string, ExperimentSpec[]>>((acc, spec) => {
-    (acc[gradeOf(spec)] ??= []).push(spec);
-    return acc;
-  }, {});
+  // Chỉ bài đang mở trong danh mục (bài "sắp ra mắt" chưa có bàn thí nghiệm); gom theo lớp, xếp theo số bài.
+  const groups = Object.values(EXPERIMENT_SPECS)
+    .filter((spec) => labEntry(spec.id)?.status !== "soon")
+    .sort((a, b) => orderOf(a) - orderOf(b))
+    .reduce<Record<string, ExperimentSpec[]>>((acc, spec) => {
+      (acc[gradeOf(spec)] ??= []).push(spec);
+      return acc;
+    }, {});
 
   return (
     <div className="max-w-5xl mx-auto px-1 sm:px-0 space-y-7">
@@ -119,7 +114,7 @@ function LabCard({ spec, passed, completed, assigned, onStart, onReviewPrelab }:
   onStart: () => void;
   onReviewPrelab: () => void;
 }) {
-  const img = IMAGES[spec.id];
+  const img = imageOf(spec.id);
   const lesson = spec.book.match(/Bài \d+/)?.[0] ?? spec.book;
   const cta = passed ? "Vào phòng Lab" : "Bắt đầu Prelab";
 
@@ -157,7 +152,7 @@ function LabCard({ spec, passed, completed, assigned, onStart, onReviewPrelab }:
         </div>
 
         <ol className="grid grid-cols-2 gap-2" aria-label="Tiến độ bài">
-          <StageChip n={1} label="Prelab" detail={passed ? "Đã hoàn thành" : PRELAB_TOPICS[spec.id] ?? "Làm quen dụng cụ"} state={passed ? "done" : "next"} />
+          <StageChip n={1} label="Prelab" detail={passed ? "Đã hoàn thành" : prelabOf(spec.id) ?? "Làm quen dụng cụ"} state={passed ? "done" : "next"} />
           <StageChip
             n={2}
             label="Thực hành"

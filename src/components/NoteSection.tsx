@@ -1,21 +1,24 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Table, LineChart as LineChartIcon, FileText, GraduationCap,
-  Save, CheckCircle2, AlertTriangle, Sparkles, Printer, RotateCcw, Info,
+  AlertTriangle, BookOpenCheck, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileText, FlaskConical, GraduationCap,
+  Info, LineChart as LineChartIcon, NotebookPen, Printer, RotateCcw, Save, Sparkles, Table,
 } from "lucide-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ExperimentReport, RichTrial } from "@/lib/types";
 import { EXPERIMENT_SPECS } from "@/experiments/specs";
 import { MathText } from "./Latex";
 import { getReview } from "@/data/quizBank";
 import { correctResultOf, LabKind } from "@/lib/grading";
-import GraphPlotter, { DataPoint } from "./notes/GraphPlotter";
+import NotebookGraph from "./notes/NotebookGraph";
+import { buildChart, columnsFor, fmt, G_REF, stats, type ChartSpec } from "./notes/notebookData";
+import { OPEN_LABS, groupLabs, type LabEntry } from "@/data/labCatalog";
 
 /*
- * Sổ Báo Cáo — nơi nhận số liệu từ Phòng Lab: bảng số liệu (HS tự tính kết quả),
- * tự vẽ đồ thị, lập báo cáo in được và ôn tập.
+ * Sổ Báo Cáo — nơi nhận số liệu từ Phòng Lab.
+ * "Sổ tay": số liệu (bảng gọn + kết quả nổi bật + độ chụm của các lần đo) nằm CẠNH đồ thị
+ * (máy vẽ sẵn hoặc em tự chấm điểm, tự kẻ đường) — không phải cuộn qua lại.
+ * "Báo cáo": bản in có cả đồ thị, kết quả và nhận xét. "Ôn tập": flashcard + trắc nghiệm.
  * Phần CHẤM ĐIỂM + nhận xét AI + chatbot đang tạm gỡ khỏi giao diện học sinh để làm lại
  * (logic chấm vẫn nằm ở src/lib/grading.ts, server vẫn tính điểm bài nộp cho giáo viên).
  */
@@ -34,29 +37,47 @@ interface NoteSectionProps {
   onReportSaved?: (report: ExperimentReport) => void;
 }
 
-type TabKey = "data" | "graph" | "report" | "review";
+type View = "book" | "report" | "review";
 
-const LAB_META: Record<LabKind, { title: string; formula: string; sLabel: string; tLabel: string; unit: string; resultLabel: string }> = {
-  average: { title: "Mẫu 1 — Vận tốc trung bình", formula: "v = \\dfrac{s_{EF}}{t}", sLabel: "sEF (m)", tLabel: "t (s)", unit: "m/s", resultLabel: "v" },
-  instant: { title: "Mẫu 2 — Vận tốc tức thời", formula: "v = \\dfrac{d}{t}", sLabel: "d (m)", tLabel: "t (s)", unit: "m/s", resultLabel: "v" },
-  freefall: { title: "Số liệu — Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", sLabel: "s (m)", tLabel: "t (s)", unit: "m/s²", resultLabel: "g" },
-  "ohm-x": { title: "Mẫu X — Điện trở theo định luật Ohm", formula: "R_X = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω", resultLabel: "R" },
-  "ohm-y": { title: "Mẫu Y — Điện trở theo định luật Ohm", formula: "R_Y = \\dfrac{U}{I}", sLabel: "U (V)", tLabel: "I (A)", unit: "Ω", resultLabel: "R" },
-  emf: { title: "Số liệu — Suất điện động pin", formula: "U = \\mathcal{E} - Ir", sLabel: "I (A)", tLabel: "U (V)", unit: "V", resultLabel: "E" },
+const LAB_META: Record<LabKind, { title: string; formula: string; unit: string; resultLabel: string; perRow: boolean }> = {
+  average: { title: "Tốc độ trung bình trên đoạn EF", formula: "v_{tb} = \\dfrac{s_{EF}}{t}", unit: "m/s", resultLabel: "v", perRow: true },
+  instant: { title: "Tốc độ tức thời tại cổng E", formula: "v = \\dfrac{d}{t}", unit: "m/s", resultLabel: "v", perRow: true },
+  freefall: { title: "Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", unit: "m/s²", resultLabel: "g", perRow: true },
+  "ohm-x": { title: "Vật dẫn X", formula: "R_X = \\dfrac{U}{I}", unit: "Ω", resultLabel: "R", perRow: true },
+  "ohm-y": { title: "Vật dẫn Y", formula: "R_Y = \\dfrac{U}{I}", unit: "Ω", resultLabel: "R", perRow: true },
+  emf: { title: "Pin điện hóa — U theo I", formula: "U = \\mathcal{E} - I\\,r", unit: "V", resultLabel: "E", perRow: false },
 };
 
+
+/* Số liệu mẫu (khớp vật lý của từng bàn Lab) để em xem cách trình bày khi chưa đo. */
+const ohm = (lab: "ohm-x" | "ohm-y", u: number, i: number): RichTrial => ({ lab, s: u, t: i, voltage: u, current: i, material: lab === "ohm-x" ? "X" : "Y", balanced: true });
+const cell = (c: "new" | "old", r: number, i: number, u: number): RichTrial => ({ lab: "emf", s: c === "new" ? 1.58 : 1.47, t: 1, voltage: u, current: i, resistance: r, cell: c, balanced: true });
 const DEMO_TRIALS: Record<string, RichTrial[]> = {
   "do-toc-do-vat-chuyen-dong": [
-    { lab: "average", s: 0.20, t: 0.635, theta: 15, balanced: true, studentResult: 0.315 },
-    { lab: "average", s: 0.35, t: 0.842, theta: 15, balanced: true, studentResult: 0.416 },
-    { lab: "average", s: 0.25, t: 0.536, theta: 20, balanced: true, studentResult: 0.466 },
-    { lab: "instant", s: 0.0182, t: 0.036, theta: 20, balanced: true, studentResult: 0.506 },
-    { lab: "instant", s: 0.0182, t: 0.032, theta: 30, balanced: true, studentResult: 0.569 },
+    { lab: "average", s: 0.10, t: 0.0776, theta: 20, balanced: true },
+    { lab: "average", s: 0.20, t: 0.1455, theta: 20, balanced: true },
+    { lab: "average", s: 0.30, t: 0.2076, theta: 20, balanced: true },
+    { lab: "average", s: 0.40, t: 0.2639, theta: 20, balanced: true },
+    { lab: "average", s: 0.20, t: 0.1205, theta: 30, balanced: true },
+    { lab: "average", s: 0.40, t: 0.2186, theta: 30, balanced: true },
+    { lab: "instant", s: 0.0182, t: 0.0152, theta: 20, balanced: true },
+    { lab: "instant", s: 0.0182, t: 0.0151, theta: 20, balanced: true },
+    { lab: "instant", s: 0.0182, t: 0.0126, theta: 30, balanced: true },
   ],
   "do-gia-toc-roi-tu-do": [
-    { lab: "freefall", s: 0.20, t: 0.203, balanced: true, studentResult: 9.71 },
-    { lab: "freefall", s: 0.40, t: 0.287, balanced: true, studentResult: 9.71 },
-    { lab: "freefall", s: 0.60, t: 0.352, balanced: true, studentResult: 9.69 },
+    { lab: "freefall", s: 0.20, t: 0.2031, balanced: true },
+    { lab: "freefall", s: 0.30, t: 0.2478, balanced: true },
+    { lab: "freefall", s: 0.40, t: 0.2862, balanced: true },
+    { lab: "freefall", s: 0.50, t: 0.3198, balanced: true },
+    { lab: "freefall", s: 0.60, t: 0.3505, balanced: true },
+  ],
+  "do-dien-tro-dinh-luat-ohm": [
+    ohm("ohm-x", 1.0, 0.0083), ohm("ohm-x", 2.0, 0.0167), ohm("ohm-x", 3.0, 0.0251), ohm("ohm-x", 4.0, 0.0333), ohm("ohm-x", 5.0, 0.0418), ohm("ohm-x", 6.0, 0.0501),
+    ohm("ohm-y", 2.0, 0.0091), ohm("ohm-y", 4.0, 0.0182), ohm("ohm-y", 6.0, 0.0273), ohm("ohm-y", 8.0, 0.0364), ohm("ohm-y", 10.0, 0.0453),
+  ],
+  "do-suat-dien-dong-pin-dien-hoa": [
+    cell("new", 10, 0.06752, 1.4855), cell("new", 25, 0.04115, 1.5224), cell("new", 40, 0.02959, 1.5386), cell("new", 60, 0.02153, 1.5499), cell("new", 80, 0.01692, 1.5563),
+    cell("old", 10, 0.05742, 1.2633), cell("old", 25, 0.03621, 1.3397), cell("old", 40, 0.02644, 1.3748), cell("old", 60, 0.01944, 1.4000), cell("old", 80, 0.01538, 1.4146),
   ],
 };
 
@@ -70,38 +91,31 @@ function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> 
 }
 
 const decimalsOf = (lab: LabKind) => (lab === "freefall" ? 2 : lab === "ohm-x" || lab === "ohm-y" ? 1 : 3);
-
-/** Trung bình kết quả; Bài 26 tách theo từng pin (trộn pin mới với pin cũ là vô nghĩa). */
-function meanGroups(lab: LabKind, rows: RichTrial[], results: Record<string, string>) {
-  const entries = rows.map((row, i) => ({ row, value: parseResult(results[`${lab}-${i}`]) }));
-  const groups = lab === "emf"
-    ? (["new", "old"] as const).map((cell) => ({ label: cell === "new" ? "Pin mới" : "Pin cũ", items: entries.filter((e) => e.row.cell === cell) }))
-    : [{ label: "", items: entries }];
-  return groups
-    .map((g) => {
-      const values = g.items.map((e) => e.value).filter((v): v is number => v != null);
-      return { label: g.label, count: values.length, mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : null };
-    })
-    .filter((g) => g.mean != null) as Array<{ label: string; count: number; mean: number }>;
-}
 const parseResult = (raw: string | undefined) => {
   if (raw == null || raw.trim() === "") return null;
   const v = parseFloat(raw.replace(",", "."));
   return Number.isFinite(v) ? v : null;
 };
+/** Kết quả theo công thức của một lần đo (điền sẵn để em kiểm tra/sửa). */
+function formulaResult(lab: LabKind, tr: RichTrial): number | null {
+  if (lab === "emf") return null;
+  if (lab === "ohm-x" || lab === "ohm-y") {
+    const i = tr.current ?? tr.t;
+    return i > 0 ? (tr.voltage ?? tr.s) / i : null;
+  }
+  const v = correctResultOf(lab, tr.s, tr.t);
+  return Number.isFinite(v) ? v : null;
+}
 
 export default function NoteSection({ reports, labData, studentName, hasAssignment, onReportSaved }: NoteSectionProps) {
-  const lessonIds = Object.keys(EXPERIMENT_SPECS);
-  const [activeLesson, setActiveLesson] = useState<string>(
-    () => labData?.lessonId || reports[0]?.lessonId || lessonIds[0] || ""
-  );
-  const [tab, setTab] = useState<TabKey>("data");
+  // Bài có trong Sổ = bài đang mở trong danh mục chung và có đặc tả (lý thuyết, dụng cụ) để lập báo cáo.
+  const lessonOptions = useMemo(() => OPEN_LABS.filter((l) => EXPERIMENT_SPECS[l.id]), []);
+  const lessonIds = lessonOptions.map((l) => l.id);
+  const [activeLesson, setActiveLesson] = useState<string>(() => labData?.lessonId || reports[0]?.lessonId || lessonIds[0] || "");
+  const [view, setView] = useState<View>("book");
 
   // Số liệu: ưu tiên dữ liệu mới lưu từ Lab; nếu không có, lấy từ báo cáo gần nhất; cuối cùng là số liệu mẫu.
-  const activeReport = useMemo(
-    () => reports.find((r) => r.lessonId === activeLesson) ?? null,
-    [reports, activeLesson]
-  );
+  const activeReport = useMemo(() => reports.find((r) => r.lessonId === activeLesson) ?? null, [reports, activeLesson]);
   const isFreshData = !!labData && labData.lessonId === activeLesson && labData.trials.length > 0;
   const trials: RichTrial[] = useMemo(() => {
     if (labData && labData.lessonId === activeLesson && labData.trials.length) return labData.trials;
@@ -109,69 +123,67 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
     return DEMO_TRIALS[activeLesson] ?? [];
   }, [labData, activeLesson, activeReport]);
   const isDemo = !isFreshData && !activeReport?.trials?.length && trials.length > 0;
-
   const samples = useMemo(() => groupByLab(trials), [trials]);
+  const chart = useMemo(() => buildChart(activeLesson, trials), [activeLesson, trials]);
   const spec = EXPERIMENT_SPECS[activeLesson];
 
-  // Kết quả HS tự tính, keyed "lab-index" (điền sẵn theo công thức, HS sửa lại theo cách tính của mình).
+  // Kết quả em tự tính, keyed "lab-index" (điền sẵn theo công thức, em sửa theo cách tính của mình).
   const [results, setResults] = useState<Record<string, string>>({});
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [confirmBlank, setConfirmBlank] = useState<number>(0);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (!trials.length) return;
-    setResults((prev) => {
+    const id = window.setTimeout(() => setResults((prev) => {
       if (Object.keys(prev).length) return prev;
       const next: Record<string, string> = {};
       const grouped = groupByLab(trials);
       (Object.keys(grouped) as LabKind[]).forEach((lab) => {
         (grouped[lab] || []).forEach((tr, i) => {
-          const value = tr.studentResult ?? correctResultOf(lab, tr.s, tr.t);
-          next[`${lab}-${i}`] = Number.isFinite(value) ? String(Number(value).toFixed(decimalsOf(lab))) : "";
+          const value = tr.studentResult ?? formulaResult(lab, tr);
+          next[`${lab}-${i}`] = value != null && Number.isFinite(value) ? String(Number(value).toFixed(decimalsOf(lab))) : "";
         });
       });
       return next;
-    });
+    }), 0);
+    return () => window.clearTimeout(id);
   }, [trials]);
 
   const flash = (msg: string, ok = true) => {
     setToast({ msg, ok });
-    setTimeout(() => setToast(null), 2600);
+    window.setTimeout(() => setToast(null), 2600);
   };
-
   const setResult = (lab: string, i: number, v: string) => {
     setResults((p) => ({ ...p, [`${lab}-${i}`]: v }));
     setSavedAt(null);
   };
-
   const changeLesson = (id: string) => {
     setActiveLesson(id);
     setResults({});
     setSavedAt(null);
-    setTab("data");
+    setConfirmBlank(0);
+    setNotes("");
+    setView("book");
   };
 
+  /** Bài 26: kết quả em "tìm được" cho mỗi lần đo là E đọc từ đồ thị của đúng pin đó. */
+  const emfOf = (c: RichTrial["cell"]) => chart?.series.find((s) => s.id === `emf-${c}`)?.fit?.intercept ?? null;
   const buildTrialsWithResults = (): RichTrial[] => {
     const out: RichTrial[] = [];
     (Object.keys(samples) as LabKind[]).forEach((lab) => {
       (samples[lab] || []).forEach((tr, i) => {
-        out.push({ ...tr, lab, studentResult: parseResult(results[`${lab}-${i}`]) });
+        const studentResult = lab === "emf" ? emfOf(tr.cell) : parseResult(results[`${lab}-${i}`]);
+        out.push({ ...tr, lab, studentResult });
       });
     });
     return out;
   };
 
-  const handleSave = () => {
-    if (trials.length === 0 || isDemo) {
-      flash("Chưa có số liệu của em — hãy đo ở Phòng Lab rồi lưu sang Sổ Báo Cáo.", false);
-      return;
-    }
+  const doSave = () => {
     const richTrials = buildTrialsWithResults();
-    const blank = richTrials.filter((t) => t.studentResult == null).length;
-    if (blank && !window.confirm(`Còn ${blank} ô "Kết quả" để trống. Vẫn lưu báo cáo?`)) return;
-    const date = new Date().toLocaleString("vi-VN", {
-      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-    });
+    const date = new Date().toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const report: ExperimentReport = {
       id: `rep-${Date.now()}`,
       lessonId: activeLesson,
@@ -184,138 +196,116 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
     };
     onReportSaved?.(report);
     setSavedAt(date);
-    setTab("report");
+    setConfirmBlank(0);
+    flash(hasAssignment ? "Đã lưu và nộp báo cáo cho giáo viên." : "Đã lưu báo cáo.");
+  };
+  const handleSave = () => {
+    if (trials.length === 0 || isDemo) {
+      flash("Chưa có số liệu của em — hãy đo ở Phòng Lab rồi lưu sang Sổ Báo Cáo.", false);
+      return;
+    }
+    const blank = buildTrialsWithResults().filter((t) => t.studentResult == null).length;
+    if (blank && !confirmBlank) { setConfirmBlank(blank); return; }
+    doSave();
   };
 
+  const labs = Object.keys(samples) as LabKind[];
+  const statusChip = isFreshData
+    ? { text: `Số liệu của em · ${trials.length} lần đo`, cls: "bg-[#F1F8F0] text-[#2E7D32] border-[#2E7D32]/25" }
+    : activeReport
+      ? { text: `Báo cáo đã lưu · ${activeReport.date}`, cls: "bg-[#EEF4FC] text-[#1D5FAF] border-[#1D5FAF]/20" }
+      : { text: "Số liệu mẫu", cls: "bg-sky-50 text-sky-800 border-sky-200" };
+
   return (
-    <div className="w-full space-y-5">
-      {/* Header + lesson selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2DFD8]/60 pb-3 print:hidden">
-        <div>
-          <h2 className="text-base md:text-lg font-black text-[#321E12] flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#C85A17] stroke-[2.5]" />
-            Sổ Báo Cáo
-          </h2>
-          <p className="text-[11px] font-bold text-[#605248] mt-0.5">Số liệu từ Phòng Lab → tự tính kết quả → vẽ đồ thị → lưu &amp; in báo cáo.</p>
+    <div className={`w-full flex flex-col gap-3 text-[#321E12] ${view === "book" ? "lg:h-[calc(100dvh-8rem)] lg:min-h-[540px]" : ""}`}>
+      {/* ===== Đầu trang: bài + chế độ xem + lưu ===== */}
+      <div className="flex items-center gap-2.5 flex-wrap print:hidden">
+        <div className="flex items-center gap-2 mr-1">
+          <span className="w-9 h-9 rounded-xl bg-[#FFF2E6] border border-[#F4D6BA] grid place-items-center"><NotebookPen className="w-4.5 h-4.5 text-[#C85A17]" /></span>
+          <div>
+            <h2 className="text-[17px] font-black leading-none">Sổ Báo Cáo</h2>
+            <span className={`inline-block mt-1 text-[10.5px] font-black px-1.5 py-0.5 rounded-md border ${statusChip.cls}`}>{statusChip.text}</span>
+          </div>
         </div>
-        <select
-          value={activeLesson}
-          onChange={(e) => changeLesson(e.target.value)}
-          aria-label="Chọn bài thực hành"
-          className="text-xs font-black text-[#321E12] bg-white border border-[#E2DFD8] rounded-lg px-3 py-1.5 outline-none cursor-pointer"
-        >
-          {lessonIds.map((id) => (
-            <option key={id} value={id}>{EXPERIMENT_SPECS[id].book} — {EXPERIMENT_SPECS[id].shortTitle}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1.5 flex-wrap print:hidden" role="tablist">
-        {([
-          ["data", "1. Số liệu", Table],
-          ["graph", "2. Đồ thị", LineChartIcon],
-          ["report", "3. Báo cáo", FileText],
-          ["review", "Ôn tập", GraduationCap],
-        ] as [TabKey, string, typeof Table][]).map(([key, label, Icon]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border ${
-              tab === key
-                ? "bg-[#C85A17] text-white border-[#C85A17] shadow-sm"
-                : "bg-white text-[#605248] border-[#E2DFD8] hover:border-[#C85A17]/40"
-            }`}
-          >
-            <Icon className="w-4 h-4" /> {label}
-          </button>
-        ))}
-      </div>
-
-      {isDemo && tab !== "review" && (
-        <div className="flex items-start gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-bold text-sky-900 print:hidden">
-          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <span>Đây là <b>số liệu mẫu</b> để em xem cách trình bày. Vào Phòng Lab, đo xong bấm “Lưu vào Sổ Báo Cáo” để có số liệu của chính em.</span>
-        </div>
-      )}
-
-      {/* ---------- TAB: SỐ LIỆU ---------- */}
-      {tab === "data" && (
-        <div className="space-y-5">
-          {trials.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <>
-              {(Object.keys(samples) as LabKind[]).map((lab) => (
-                <SampleTable
-                  key={lab}
-                  lab={lab}
-                  rows={samples[lab] || []}
-                  results={results}
-                  onChange={(i, v) => setResult(lab, i, v)}
-                />
-              ))}
-              <div className="flex items-center justify-between gap-3 flex-wrap bg-white border border-[#E2DFD8] rounded-2xl p-4">
-                <p className="text-[11px] font-bold text-[#605248] max-w-lg leading-relaxed">
-                  Cột <b>Kết quả</b> được điền sẵn theo công thức — em kiểm tra lại, sửa theo cách tính của mình,
-                  rồi sang <b>Đồ thị</b> và <b>lưu báo cáo</b>.
-                </p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={() => setTab("graph")}
-                    className="px-4 py-2.5 bg-white border border-[#E2DFD8] text-[#321E12] text-xs font-black rounded-xl hover:border-[#C85A17]/40 transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <LineChartIcon className="w-4 h-4" /> Vẽ đồ thị
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isDemo}
-                    className="px-5 py-2.5 bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-xs font-black rounded-xl shadow-sm hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                  >
-                    <Save className="w-4 h-4" /> {hasAssignment ? "Lưu & nộp cho giáo viên" : "Lưu báo cáo"}
-                  </button>
-                </div>
-              </div>
-              {savedAt && (
-                <p className="text-[11px] font-black text-emerald-700 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" /> Đã lưu báo cáo lúc {savedAt}.
-                </p>
-              )}
-            </>
+        <LessonPicker value={activeLesson} options={lessonOptions} onChange={changeLesson}
+          markOf={(id) => (labData?.lessonId === id && labData.trials.length > 0 ? "fresh" : reports.some((r) => r.lessonId === id) ? "saved" : null)} />
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-2xl border border-[#E2DFD8] bg-white p-1">
+            {([["book", "Sổ tay", Table], ["report", "Báo cáo", FileText], ["review", "Ôn tập", GraduationCap]] as const).map(([key, label, Icon]) => (
+              <button key={key} onClick={() => setView(key)} role="tab" aria-selected={view === key}
+                className={`px-2.5 py-1.5 rounded-xl text-[12px] font-black flex items-center gap-1 cursor-pointer transition-all ${view === key ? "bg-[#321E12] text-white" : "text-[#605248] hover:bg-[#FBF6EC]"}`}>
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </button>
+            ))}
+          </div>
+          {view !== "review" && (
+            <button onClick={handleSave} disabled={isDemo || !trials.length}
+              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-[12px] font-black flex items-center gap-1.5 cursor-pointer shadow-[0_6px_14px_rgba(200,90,23,.25)] disabled:opacity-40 disabled:cursor-not-allowed">
+              {savedAt ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />} {savedAt ? "Đã lưu" : hasAssignment ? "Lưu & nộp" : "Lưu báo cáo"}
+            </button>
           )}
         </div>
-      )}
-
-      {/* ---------- TAB: ĐỒ THỊ ---------- */}
-      {/* Luôn mount (chỉ ẩn/hiện) để không mất các điểm HS đã vẽ khi chuyển tab. */}
-      <div className={tab === "graph" ? "" : "hidden"}>
-        <GraphTab key={activeLesson} lessonId={activeLesson} trials={trials} />
       </div>
 
-      {/* ---------- TAB: BÁO CÁO ---------- */}
-      {tab === "report" && (
-        <ReportTab
-          spec={spec}
-          studentName={studentName}
-          samples={samples}
-          results={results}
-          report={activeReport}
-          savedAt={savedAt}
-          canSave={!isDemo && trials.length > 0}
-          hasAssignment={hasAssignment}
-          onSave={handleSave}
-        />
+      {confirmBlank > 0 && (
+        <div className="flex items-center gap-2 flex-wrap rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] font-bold text-amber-900 print:hidden">
+          <AlertTriangle className="w-4 h-4" /> Còn {confirmBlank} ô kết quả để trống. Vẫn lưu báo cáo?
+          <button onClick={doSave} className="ml-auto px-3 py-1 rounded-lg bg-amber-600 text-white text-[11.5px] font-black cursor-pointer">Vẫn lưu</button>
+          <button onClick={() => setConfirmBlank(0)} className="px-3 py-1 rounded-lg border border-amber-300 bg-white text-[11.5px] font-black cursor-pointer">Điền tiếp</button>
+        </div>
+      )}
+      {isDemo && view !== "review" && (
+        <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11.5px] font-bold text-sky-900 print:hidden">
+          <Info className="w-4 h-4 flex-shrink-0" />
+          <span>Đây là <b>số liệu mẫu</b> để em xem cách trình bày. Đo ở Phòng Lab rồi bấm “Lưu vào Sổ Báo Cáo” để có số liệu của chính em.</span>
+        </div>
       )}
 
-      {/* ---------- TAB: ÔN TẬP ---------- */}
-      {tab === "review" && <ReviewTab lessonId={activeLesson} />}
+      {/* ===== SỔ TAY: số liệu ↔ đồ thị ===== */}
+      {view === "book" && (
+        trials.length === 0 ? <EmptyState /> : (
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-3">
+            <div className="min-h-0 flex flex-col gap-3 order-2 lg:order-1">
+              <ResultHero lessonId={activeLesson} chart={chart} samples={samples} results={results} />
+              <section className="flex-1 min-h-[220px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] flex flex-col overflow-hidden">
+                <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-[#F1EBE0]">
+                  <Table className="w-4 h-4 text-[#C85A17]" />
+                  <h3 className="text-[13px] font-black">Bảng số liệu</h3>
+                  <span className="text-[11px] font-bold text-[#8C7B6B] truncate">Cột kết quả điền sẵn theo công thức — em kiểm tra &amp; sửa.</span>
+                </div>
+                <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col gap-3">
+                  {labs.map((lab) => (
+                    <SampleTable key={lab} lab={lab} rows={samples[lab] || []} results={results} onChange={(i, v) => setResult(lab, i, v)} />
+                  ))}
+                </div>
+              </section>
+            </div>
+            <section className="order-1 lg:order-2 min-h-[380px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <LineChartIcon className="w-4 h-4 text-[#C85A17]" />
+                <h3 className="text-[13px] font-black">Đồ thị</h3>
+                {chart && <span className="text-[11.5px] font-bold text-[#8C7B6B]">quan hệ <MathText text={`$${chart.relation}$`} /></span>}
+              </div>
+              <div className="flex-1 min-h-0">
+                {chart && chart.series.some((s) => s.points.length) ? <NotebookGraph key={activeLesson + trials.length} spec={chart} /> : <div className="h-full grid place-items-center text-[12px] font-bold text-[#8C7B6B]">Cần ít nhất 2 lần đo để vẽ đồ thị.</div>}
+              </div>
+              {chart && <FitReadout chart={chart} />}
+            </section>
+          </div>
+        )
+      )}
+
+      {/* ===== BÁO CÁO (in được) ===== */}
+      {view === "report" && (
+        <ReportView spec={spec} studentName={studentName} samples={samples} results={results} report={activeReport} savedAt={savedAt}
+          chart={chart} notes={notes} onNotes={setNotes} />
+      )}
+
+      {/* ===== ÔN TẬP ===== */}
+      {view === "review" && <ReviewTab lessonId={activeLesson} />}
 
       {toast && (
-        <div className={`fixed bottom-24 lg:bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl shadow-lg text-xs font-black flex items-center gap-2 animate-scale-up print:hidden ${
-          toast.ok ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-        }`}>
+        <div className={`fixed bottom-24 lg:bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl shadow-lg text-xs font-black flex items-center gap-2 animate-scale-up print:hidden ${toast.ok ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
           {toast.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
           {toast.msg}
         </div>
@@ -324,183 +314,280 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
   );
 }
 
-/* ============================ Sub-components ============================ */
+/* ============================ Thành phần con ============================ */
+
+/** Chọn bài: nút gọn + menu chia theo lớp (cuộn được) — thêm bao nhiêu bài cũng không vỡ hàng. */
+function LessonPicker({ value, options, onChange, markOf }: { value: string; options: LabEntry[]; onChange: (id: string) => void; markOf: (id: string) => "fresh" | "saved" | null }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => o.id === value);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", esc);
+    return () => { window.removeEventListener("pointerdown", close); window.removeEventListener("keydown", esc); };
+  }, [open]);
+  const dot = (id: string) => {
+    const m = markOf(id);
+    return m ? <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${m === "fresh" ? "bg-[#DF742E]" : "bg-[#2E7D32]"}`} title={m === "fresh" ? "Có số liệu mới" : "Đã có báo cáo"} /> : null;
+  };
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}
+        className="h-10 pl-1.5 pr-2.5 rounded-2xl border border-[#E2DFD8] bg-white hover:border-[#DF742E]/50 flex items-center gap-2 cursor-pointer max-w-[78vw]">
+        {current?.image
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={current.image} alt="" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
+          : <span className="w-7 h-7 rounded-lg bg-[#FFF2E6] flex-shrink-0" />}
+        <span className="min-w-0 text-left leading-tight">
+          <span className="block text-[10.5px] font-black text-[#C85A17]">{current ? `${current.code} · Lớp ${current.grade}` : "Chọn bài"}</span>
+          <span className="block text-[13px] font-black truncate">{current?.name ?? "—"}</span>
+        </span>
+        {current && dot(current.id)}
+        <ChevronDown className={`w-4 h-4 text-[#8C7B6B] transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div role="listbox" className="absolute z-40 left-0 mt-1.5 w-[300px] max-w-[88vw] max-h-[60vh] overflow-y-auto rounded-2xl border border-[#E2DFD8] bg-white shadow-[0_18px_40px_rgba(50,30,18,.18)] p-1.5">
+          {groupLabs(options, (l) => l.grade).map(([grade, labs]) => (
+            <div key={grade}>
+              <div className="px-2 pt-1.5 pb-1 text-[10.5px] font-black uppercase tracking-wider text-[#8C7B6B]">Lớp {grade}</div>
+              {labs.map((l) => (
+                <button key={l.id} role="option" aria-selected={l.id === value} onClick={() => { onChange(l.id); setOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-left cursor-pointer ${l.id === value ? "bg-[#FFF2E6]" : "hover:bg-[#FBF6EC]"}`}>
+                  <span className="text-[11px] font-black text-[#C85A17] w-12 flex-shrink-0">{l.code}</span>
+                  <span className="min-w-0 flex-1 text-[12.5px] font-black truncate">{l.name}</span>
+                  {dot(l.id)}
+                </button>
+              ))}
+            </div>
+          ))}
+          <div className="px-2 pt-1.5 pb-1 text-[10px] font-bold text-[#8C7B6B] flex items-center gap-3">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#DF742E]" /> số liệu mới</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#2E7D32]" /> đã có báo cáo</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EmptyState() {
   return (
     <div className="bg-white border border-[#E2DFD8] rounded-3xl p-12 text-center text-[#605248]">
-      <Table className="w-12 h-12 mx-auto mb-3 stroke-[1.5] text-[#605248]/40" />
+      <FlaskConical className="w-12 h-12 mx-auto mb-3 stroke-[1.5] text-[#605248]/40" />
       <h3 className="text-sm font-black text-[#321E12]">Chưa có số liệu</h3>
-      <p className="text-xs font-bold mt-2">
-        Vào <b>Phòng Lab</b>, đo các cấu hình trong nhiệm vụ rồi bấm <b>“Lưu vào Sổ Báo Cáo”</b>.
-      </p>
+      <p className="text-xs font-bold mt-2">Vào <b>Phòng Lab</b>, đo xong bấm <b>“Lưu vào Sổ Báo Cáo”</b>.</p>
     </div>
   );
 }
 
-function SampleTable({
-  lab, rows, results, onChange,
-}: {
-  lab: LabKind;
-  rows: RichTrial[];
-  results: Record<string, string>;
-  onChange: (i: number, v: string) => void;
-}) {
-  const meta = LAB_META[lab];
-  const showTheta = lab === "average" || lab === "instant";
-  const displayFirst = (r: RichTrial) => lab === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s);
-  const displaySecond = (r: RichTrial) => lab === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t);
-  const values = rows.map((_, i) => parseResult(results[`${lab}-${i}`])).filter((v): v is number => v != null);
-  const means = meanGroups(lab, rows, results);
+/** Dải chấm: mỗi lần đo một chấm quanh giá trị trung bình (độ chụm), vạch xanh = giá trị chuẩn nếu có. */
+function DotStrip({ values, mean, refValue, color, unit, dp }: { values: number[]; mean: number; refValue?: number | null; color: string; unit: string; dp: number }) {
+  const all = [...values, mean, ...(refValue != null ? [refValue] : [])];
+  let lo = Math.min(...all), hi = Math.max(...all);
+  const span = Math.max(hi - lo, Math.abs(mean) * 0.01, 1e-6);
+  lo -= span * 0.25; hi += span * 0.25;
+  const X = (v: number) => 10 + ((v - lo) / (hi - lo)) * 280;
   return (
-    <div className="bg-white rounded-2xl border border-[#E2DFD8] p-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-        <h3 className="text-xs font-black uppercase text-[#C85A17]">{meta.title}</h3>
-        <span className="text-[10px] font-bold text-[#605248]">
-          Công thức: <MathText text={`$${meta.formula}$`} />
-        </span>
-      </div>
-      <div className="overflow-x-auto rounded-xl border border-[#E2DFD8]">
-        <table className="w-full min-w-[420px] text-left text-[11px]">
-          <thead>
-            <tr className="bg-[#FAF6F0] border-b border-[#E2DFD8] font-black text-[#321E12]">
-              <th className="p-2 text-center w-8">#</th>
-              <th className="p-2 text-center">{meta.sLabel}</th>
-              <th className="p-2 text-center">{meta.tLabel}</th>
-              {showTheta && <th className="p-2 text-center">θ</th>}
-              <th className="p-2 text-center">Điều kiện</th>
-              <th className="p-2 text-center w-32">Kết quả {meta.resultLabel} ({meta.unit})</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-b border-[#E2DFD8]/60 font-semibold text-[#605248]">
-                <td className="p-2 text-center text-[#605248]/40 font-black">{i + 1}</td>
-                <td className="p-2 text-center font-mono">{displayFirst(r).toFixed(lab === "emf" ? 4 : 3)}</td>
-                <td className="p-2 text-center font-mono">{displaySecond(r).toFixed(lab === "emf" ? 3 : 4)}</td>
-                {showTheta && <td className="p-2 text-center">{r.theta ?? "—"}°</td>}
-                <td className="p-2 text-center">
-                  {lab === "emf"
-                    ? <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-black">{r.cell === "old" ? "Pin cũ" : r.cell === "new" ? "Pin mới" : "Pin"} · R={r.config ?? r.resistance ?? 0} Ω</span>
-                    : r.balanced === false
-                      ? <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black">Chưa cân bằng</span>
-                      : r.steady === false
-                        ? <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black" title="Thả khi máng/trụ còn rung — số đo dễ lệch">Thả khi còn rung</span>
-                        : <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-black">Cân bằng</span>}
-                </td>
-                <td className="p-2">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={results[`${lab}-${i}`] ?? ""}
-                    onChange={(e) => onChange(i, e.target.value)}
-                    placeholder="tự tính…"
-                    aria-label={`Kết quả lần đo ${i + 1}`}
-                    className="w-full px-1.5 py-1 border border-[#E2DFD8] focus:border-[#C85A17] outline-none rounded-md bg-white font-bold text-center text-[#321E12] text-xs"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {means.length > 0 && (
-        <p className="text-[11px] font-bold text-[#605248] mt-2">
-          Giá trị trung bình:{" "}
-          {means.map((g, i) => (
-            <span key={g.label || i}>
-              {i > 0 && " · "}
-              <b className="text-[#321E12]">{g.label ? `${g.label}: ` : ""}{meta.resultLabel}<sub>tb</sub> = {g.mean.toFixed(decimalsOf(lab) + 1)} {meta.unit}</b>
-            </span>
-          ))}
-          <span className="text-[#605248]/70"> (từ {values.length}/{rows.length} kết quả)</span>
-        </p>
+    <svg viewBox="0 0 300 40" className="w-full h-10" aria-label="Độ chụm các lần đo">
+      <line x1="10" y1="24" x2="290" y2="24" stroke="#EDE3D2" strokeWidth="2" strokeLinecap="round" />
+      {refValue != null && (
+        <g>
+          <line x1={X(refValue)} y1="10" x2={X(refValue)} y2="34" stroke="#16A34A" strokeWidth="2" strokeDasharray="3 2" />
+          <text x={X(refValue)} y="8" textAnchor="middle" fontSize="8.5" fontWeight="900" fill="#15803D">chuẩn {fmt(refValue, dp)}</text>
+        </g>
       )}
-    </div>
+      <line x1={X(mean)} y1="14" x2={X(mean)} y2="34" stroke={color} strokeWidth="2.5" />
+      {values.map((v, i) => <circle key={i} cx={X(v)} cy={24 + ((i % 3) - 1) * 3.5} r="4.2" fill={color} fillOpacity=".75" stroke="#fff" strokeWidth="1.2" />)}
+      <text x="10" y="39" fontSize="8" fontWeight="800" fill="#8C7B6B">{fmt(lo, dp)}</text>
+      <text x="290" y="39" textAnchor="end" fontSize="8" fontWeight="800" fill="#8C7B6B">{fmt(hi, dp)} {unit}</text>
+    </svg>
   );
 }
 
-function GraphTab({ lessonId, trials }: { lessonId: string; trials: RichTrial[] }) {
-  const isFreeFall = lessonId === "do-gia-toc-roi-tu-do";
-  const isOhm = lessonId === "do-dien-tro-dinh-luat-ohm";
-  const isEmf = lessonId === "do-suat-dien-dong-pin-dien-hoa";
+function HeroCard({ children }: { children: React.ReactNode }) {
+  return <section className="rounded-2xl border border-[#EBC9A8] bg-[linear-gradient(135deg,#FFF8F0,#FFEFDF)] p-3 flex flex-col gap-2">{children}</section>;
+}
+function Metric({ label, value, unit, sub, color = "#C85A17" }: { label: string; value: string; unit: string; sub?: string; color?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10.5px] font-black uppercase tracking-wide text-[#8C7B6B]">{label}</div>
+      <div className="flex items-baseline gap-1 leading-none mt-0.5"><span className="text-[26px] font-black tabular-nums" style={{ color }}>{value}</span><span className="text-[13px] font-black text-[#605248]">{unit}</span></div>
+      {sub && <div className="text-[11px] font-bold text-[#605248] mt-1">{sub}</div>}
+    </div>
+  );
+}
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">{children}</h2>;
+}
 
-  // Điểm số liệu để HS tự vẽ lại.
-  let data: DataPoint[] = [];
-  let xLabel = "", yLabel = "", relation = "";
-  if (isOhm) {
-    // Đặc tuyến I-U của vật dẫn X (Y vẫn có trong bảng/báo cáo).
-    data = trials.filter((t) => t.lab === "ohm-x" && (t.current ?? t.t) > 0)
-      .map((t) => ({ x: +(t.voltage ?? t.s).toFixed(2), y: +(t.current ?? t.t).toFixed(5) }))
-      .sort((a, b) => a.x - b.x);
-    xLabel = "U (V) — vật dẫn X"; yLabel = "I (A)"; relation = "$I = U/R_X$";
-  } else if (isEmf) {
-    // U = E - Ir: tung độ gốc là E, độ lớn hệ số góc là r.
-    const emfTrials = trials.some((t) => t.lab === "emf" && t.cell === "new")
-      ? trials.filter((t) => t.lab === "emf" && t.cell === "new")
-      : trials.filter((t) => t.lab === "emf");
-    data = emfTrials.filter((t) => (t.current ?? 0) > 0 && (t.voltage ?? 0) > 0)
-      .map((t) => ({ x: +(t.current ?? 0).toFixed(5), y: +(t.voltage ?? 0).toFixed(4) }))
-      .sort((a, b) => a.x - b.x);
-    xLabel = "I (A) — pin mới"; yLabel = "U (V)"; relation = "$U = \\mathcal{E} - Ir$";
-  } else if (isFreeFall) {
-    // s theo t² (độ dốc = g/2, đường thẳng qua gốc).
-    data = trials.filter((t) => t.lab === "freefall" && t.t > 0)
-      .map((t) => ({ x: +(t.t * t.t).toFixed(4), y: +t.s.toFixed(3) }));
-    xLabel = "t² (s²)"; yLabel = "s (m)"; relation = "$s = \\tfrac{1}{2}g\\,t^2$";
-  } else {
-    // Bài 6: v = s/t theo s.
-    data = trials.filter((t) => t.t > 0)
-      .map((t) => ({ x: +t.s.toFixed(3), y: +(t.s / t.t).toFixed(3) }))
-      .sort((a, b) => a.x - b.x);
-    xLabel = "s (m)"; yLabel = "v (m/s)"; relation = "$v = s/t$";
+/** Kết quả nổi bật của bài (to, rõ) + độ chụm các lần đo. */
+function ResultHero({ lessonId, chart, samples, results }: { lessonId: string; chart: ChartSpec | null; samples: Partial<Record<LabKind, RichTrial[]>>; results: Record<string, string> }) {
+  const valuesOf = (lab: LabKind) => (samples[lab] || []).map((_, i) => parseResult(results[`${lab}-${i}`])).filter((v): v is number => v != null);
+
+  if (lessonId === "do-gia-toc-roi-tu-do") {
+    const st = stats(valuesOf("freefall"));
+    const fit = chart?.series[0]?.fit;
+    const gFit = fit ? 2 * fit.slope : null;
+    if (!st) return null;
+    return (
+      <HeroCard>
+        <div className="grid grid-cols-2 gap-3">
+          <Metric label="g trung bình (bảng)" value={fmt(st.mean, 2)} unit="m/s²" sub={`± ${fmt(Math.max(st.sd, st.halfRange), 2)} · ${st.n} lần đo`} />
+          <Metric label="g từ đồ thị (2k)" value={fmt(gFit, 2)} unit="m/s²" color="#2563EB" sub={gFit ? `lệch ${fmt((Math.abs(gFit - G_REF) / G_REF) * 100, 1)}% so với 9,8` : "cần ≥ 2 điểm"} />
+        </div>
+        <DotStrip values={valuesOf("freefall")} mean={st.mean} refValue={G_REF} color="#DF742E" unit="m/s²" dp={2} />
+      </HeroCard>
+    );
   }
-
+  if (lessonId === "do-dien-tro-dinh-luat-ohm") {
+    const mats = (["ohm-x", "ohm-y"] as const).filter((m) => samples[m]?.length);
+    return (
+      <HeroCard><div className={`grid gap-3 ${mats.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        {mats.map((m) => {
+          const st = stats(valuesOf(m));
+          const fit = chart?.series.find((s) => s.id === `ohm-${m.slice(-1).toUpperCase()}`)?.fit;
+          const color = m === "ohm-x" ? "#2563EB" : "#DC2626";
+          return (
+            <div key={m} className="min-w-0 flex flex-col gap-1">
+              <Metric label={`R ${m === "ohm-x" ? "X" : "Y"} (đồ thị)`} value={fmt(fit ? 1000 / fit.slope : null, 1)} unit="Ω" color={color}
+                sub={st ? `U/I trung bình ${fmt(st.mean, 1)} Ω · ${st.n} điểm` : undefined} />
+              {st && <DotStrip values={valuesOf(m)} mean={st.mean} color={color} unit="Ω" dp={1} />}
+            </div>
+          );
+        })}
+      </div></HeroCard>
+    );
+  }
+  if (lessonId === "do-suat-dien-dong-pin-dien-hoa") {
+    const ss = chart?.series.filter((s) => s.fit) || [];
+    if (!ss.length) return null;
+    const rMax = Math.max(...ss.map((s) => -s.fit!.slope * 1000), 0.1);
+    return (
+      <HeroCard><div className={`grid gap-3 ${ss.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        {ss.map((s) => {
+          const r = -s.fit!.slope * 1000;
+          return (
+            <div key={s.id} className="min-w-0 flex flex-col gap-1.5">
+              <Metric label={`${s.name}: suất điện động`} value={fmt(s.fit!.intercept, 3)} unit="V" color={s.color} />
+              <div className="text-[11px] font-black text-[#605248]">Điện trở trong r = <span style={{ color: s.color }}>{fmt(r, 2)} Ω</span></div>
+              <div className="h-2 rounded-full bg-[#F3EADB] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (r / rMax) * 100)}%`, background: s.color }} /></div>
+            </div>
+          );
+        })}
+      </div></HeroCard>
+    );
+  }
+  // Bài 6: mỗi góc θ — tốc độ tại E suy từ đồ thị (sEF → 0) so với đo thẳng bằng MODE A.
+  const ss = (chart?.series || []).filter((s) => s.fit || s.extras?.length);
+  if (!ss.length) return null;
   return (
-    <div className="bg-white border border-[#E2DFD8] rounded-2xl p-5 space-y-3">
-      <div className="flex items-center gap-2">
-        <LineChartIcon className="w-5 h-5 text-[#C85A17]" />
-        <h3 className="text-sm font-black text-[#321E12]">Đồ thị — em tự vẽ từ số liệu</h3>
-      </div>
-      <p className="text-[11px] font-bold text-[#605248]">
-        Bấm lên lưới để đặt từng điểm theo bảng số liệu, rồi bấm “Đối chiếu” để hiện điểm số liệu thật và đường
-        khớp qua các điểm em vẽ. Quan hệ lý thuyết: <MathText text={relation} />.
-      </p>
+    <HeroCard><div className="flex flex-col gap-1.5">
+      <div className="text-[10.5px] font-black uppercase tracking-wide text-[#8C7B6B]">Tốc độ tức thời tại cổng E</div>
+      {ss.map((s) => {
+        const inst = stats((s.extras || []).map((p) => p.y));
+        const vFit = s.fit?.intercept ?? null;
+        const diff = vFit != null && inst ? Math.abs(vFit - inst.mean) / inst.mean : null;
+        return (
+          <div key={s.id} className="flex items-center gap-2 flex-wrap text-[12px] font-bold text-[#605248]">
+            <span className="px-1.5 py-0.5 rounded-md text-white text-[11px] font-black" style={{ background: s.color }}>{s.name}</span>
+            <span>đồ thị (sEF → 0): <b className="text-[18px] font-black tabular-nums" style={{ color: s.color }}>{fmt(vFit, 3)}</b> m/s</span>
+            <span>· đo MODE A: <b className="text-[#321E12]">{inst ? fmt(inst.mean, 3) : "—"}</b> m/s</span>
+            {diff != null && <span className={`font-black ${diff < 0.03 ? "text-[#15803D]" : "text-[#B45309]"}`}>{diff < 0.03 ? <><Sparkles className="inline w-3.5 h-3.5 -mt-0.5" /> khớp</> : `lệch ${fmt(diff * 100, 1)}%`}</span>}
+          </div>
+        );
+      })}
+    </div></HeroCard>
+  );
+}
 
-      {/* Bảng số liệu tham chiếu để HS biết cần vẽ điểm nào */}
-      {data.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {data.map((d, i) => (
-            <span key={i} className="text-[10px] font-bold text-[#605248] bg-[#FAF6F0] border border-[#E2DFD8] rounded-lg px-2 py-1">
-              ({d.x}, {d.y})
-            </span>
+/** Dòng diễn giải dưới đồ thị: độ dốc / tung độ gốc → đại lượng cần tìm. */
+function FitReadout({ chart }: { chart: ChartSpec }) {
+  const rows = chart.series.filter((s) => s.fit);
+  if (!rows.length) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      {rows.map((s) => (
+        <div key={s.id} className="flex items-center gap-x-3 gap-y-1 flex-wrap rounded-xl bg-[#FBF8F3] border border-[#EFE6D6] px-2.5 py-1.5 text-[11.5px] font-bold text-[#605248]">
+          {rows.length > 1 && <span className="font-black" style={{ color: s.color }}>{s.name}</span>}
+          {chart.explain(s).map((r) => (
+            <span key={r.label}>{r.label}: <b className={r.strong ? "text-[#C85A17] text-[12.5px]" : "text-[#321E12]"}>{r.value}</b></span>
           ))}
         </div>
-      )}
+      ))}
+    </div>
+  );
+}
 
-      {data.length >= 2 ? (
-        <GraphPlotter data={data} xLabel={xLabel} yLabel={yLabel} />
-      ) : (
-        <div className="text-center py-10 text-[#605248]/60 text-xs font-bold">
-          Cần ít nhất 2 lần đo (lưu từ Phòng Lab) để vẽ đồ thị.
+function SampleTable({ lab, rows, results, onChange }: { lab: LabKind; rows: RichTrial[]; results: Record<string, string>; onChange: (i: number, v: string) => void }) {
+  const meta = LAB_META[lab];
+  const cols = columnsFor(lab);
+  const values = rows.map((_, i) => parseResult(results[`${lab}-${i}`])).filter((v): v is number => v != null);
+  const st = stats(values);
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-2 mb-1">
+        <h4 className="text-[11.5px] font-black uppercase tracking-wide text-[#C85A17]">{meta.title}</h4>
+        <span className="text-[11px] font-bold text-[#8C7B6B]"><MathText text={`$${meta.formula}$`} /></span>
+        <span className="ml-auto text-[10.5px] font-black text-[#8C7B6B]">{rows.length} lần đo</span>
+      </div>
+      <table className="w-full text-[12px] border-separate border-spacing-0">
+        <thead>
+          <tr className="text-[10.5px] font-black text-[#8C7B6B]">
+            <th className="text-left py-1 pl-1 w-6">#</th>
+            {cols.map((c) => <th key={c.key} className="text-right py-1 px-1.5">{c.label} <span className="font-bold">({c.unit})</span></th>)}
+            {meta.perRow && <th className="text-right py-1 px-1.5 w-[92px]">{meta.resultLabel} ({meta.unit})</th>}
+            {lab === "emf" && <th className="text-right py-1 px-1.5">Pin</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const warn = r.balanced === false || r.steady === false;
+            return (
+              <tr key={i} className="font-bold text-[#321E12] odd:bg-[#FBF8F3]">
+                <td className="py-1 pl-1 text-[#B5A590] font-black rounded-l-lg">
+                  {warn ? <span title={r.balanced === false ? "Chưa cân bằng" : "Thả khi còn rung"} className="text-[#B45309]">⚠</span> : i + 1}
+                </td>
+                {cols.map((c) => {
+                  const v = c.get(r);
+                  return <td key={c.key} className="py-1 px-1.5 text-right font-mono tabular-nums">{typeof v === "number" ? v.toFixed(c.dp ?? 3) : v ?? "—"}</td>;
+                })}
+                {meta.perRow && (
+                  <td className="py-0.5 px-1 rounded-r-lg">
+                    <input type="text" inputMode="decimal" value={results[`${lab}-${i}`] ?? ""} onChange={(e) => onChange(i, e.target.value)} placeholder="tự tính…"
+                      aria-label={`Kết quả lần đo ${i + 1}`}
+                      className="w-full px-1.5 py-1 border border-[#E2DFD8] focus:border-[#C85A17] outline-none rounded-lg bg-white font-black text-right font-mono text-[12px] text-[#321E12]" />
+                  </td>
+                )}
+                {lab === "emf" && <td className="py-1 px-1.5 text-right rounded-r-lg"><span className={`text-[10.5px] font-black px-1.5 py-0.5 rounded-md ${r.cell === "old" ? "bg-slate-100 text-slate-600" : "bg-blue-50 text-blue-700"}`}>{r.cell === "old" ? "cũ" : "mới"}</span></td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {meta.perRow && st && (
+        <div className="mt-1 text-[11px] font-bold text-[#605248]">
+          Trung bình <b className="text-[#321E12]">{meta.resultLabel}<sub>tb</sub> = {fmt(st.mean, decimalsOf(lab) + 1)} {meta.unit}</b>
+          {st.n > 1 && lab !== "average" && <> · sai số ±{fmt(Math.max(st.sd, st.halfRange), decimalsOf(lab) + 1)}</>}
+          <span className="text-[#8C7B6B]"> ({values.length}/{rows.length} ô)</span>
         </div>
       )}
     </div>
   );
 }
 
-function ReportTab({
-  spec, studentName, samples, results, report, savedAt, canSave, hasAssignment, onSave,
-}: {
+function ReportView({ spec, studentName, samples, results, report, savedAt, chart, notes, onNotes }: {
   spec: (typeof EXPERIMENT_SPECS)[string] | undefined;
   studentName?: string;
   samples: Partial<Record<LabKind, RichTrial[]>>;
   results: Record<string, string>;
   report: ExperimentReport | null;
   savedAt: string | null;
-  canSave: boolean;
-  hasAssignment?: boolean;
-  onSave: () => void;
+  chart: ChartSpec | null;
+  notes: string;
+  onNotes: (v: string) => void;
 }) {
   const labs = Object.keys(samples) as LabKind[];
   if (!labs.length) {
@@ -511,31 +598,18 @@ function ReportTab({
       </div>
     );
   }
-
   const today = savedAt || report?.date || new Date().toLocaleDateString("vi-VN");
   const isGrade11 = spec?.id === "do-dien-tro-dinh-luat-ohm" || spec?.id === "do-suat-dien-dong-pin-dien-hoa";
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end gap-2 flex-wrap print:hidden">
-        {canSave && !savedAt && (
-          <button
-            onClick={onSave}
-            className="px-4 py-2 bg-white border border-[#C85A17]/40 text-[#B24A0C] text-xs font-black rounded-lg hover:bg-[#FFF0E0] transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Save className="w-4 h-4" /> {hasAssignment ? "Lưu & nộp cho giáo viên" : "Lưu báo cáo"}
-          </button>
-        )}
-        <button
-          onClick={() => window.print()}
-          className="px-4 py-2 bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-xs font-black rounded-lg hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-        >
-          <Printer className="w-4 h-4" /> Xuất PDF (In báo cáo)
+        <button onClick={() => window.print()} className="px-4 py-2 bg-white border border-[#E2DFD8] text-[#321E12] text-xs font-black rounded-xl hover:border-[#C85A17]/40 transition-all flex items-center gap-1.5 cursor-pointer">
+          <Printer className="w-4 h-4" /> Xuất PDF / In
         </button>
       </div>
 
       <article id="phylab-report" className="bg-white rounded-3xl border border-[#E2DFD8] shadow-sm p-6 md:p-10 space-y-6 print:rounded-none print:border-0 print:shadow-none print:p-0">
-        {/* ===== Đầu trang kiểu báo cáo trường học ===== */}
         <header className="text-center border-b-2 border-[#321E12] pb-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-0.5 text-[10px] font-black uppercase text-[#605248] print:flex-row">
             <span>Trường THPT Chuyên Lê Hồng Phong</span>
@@ -546,7 +620,6 @@ function ReportTab({
           <p className="text-[10px] font-bold text-[#605248] mt-0.5">{spec?.book}</p>
         </header>
 
-        {/* ===== Thông tin học sinh ===== */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs font-bold text-[#321E12] print:grid-cols-2">
           <p>Họ và tên: <b className="border-b border-dotted border-[#605248]">{studentName?.split(" (")[0] || "—"}</b></p>
           <p>Lớp: <b>{isGrade11 ? "11A1" : "10A1"}</b> · Mã HS: <b>PH-2026-09</b></p>
@@ -554,57 +627,45 @@ function ReportTab({
           <p>Lần lập báo cáo: <b>{report?.attempt ?? 1}</b></p>
         </section>
 
-        {/* ===== I. Mục đích ===== */}
         <section className="space-y-1.5">
-          <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">I. Mục đích thí nghiệm</h2>
+          <SectionTitle>I. Mục đích thí nghiệm</SectionTitle>
           <p className="text-[11px] font-semibold text-[#605248] leading-relaxed"><MathText text={spec?.theory.objective || ""} /></p>
         </section>
 
-        {/* ===== II. Bảng số liệu & kết quả từng mẫu ===== */}
         <section className="space-y-4">
-          <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">II. Số liệu đo &amp; kết quả tính</h2>
+          <SectionTitle>II. Số liệu đo &amp; kết quả tính</SectionTitle>
           {labs.map((lab) => {
             const meta = LAB_META[lab];
             const rows = samples[lab] || [];
+            const cols = columnsFor(lab);
             const values = rows.map((_, i) => parseResult(results[`${lab}-${i}`]));
-            const means = meanGroups(lab, rows, results);
-            const showTheta = lab === "average" || lab === "instant";
+            const st = stats(values.filter((v): v is number => v != null));
             return (
               <div key={lab} className="space-y-1.5 break-inside-avoid">
-                <h3 className="text-[11px] font-black text-[#C85A17] uppercase">{meta.title} <span className="text-[#605248] normal-case">— công thức <MathText text={`$${meta.formula}$`} /></span></h3>
-                <div className="overflow-x-auto print:overflow-visible">
-                  <table className="w-full min-w-[420px] print:min-w-0 text-[10px] border-collapse">
-                    <thead>
-                      <tr className="bg-[#FAF6F0] font-black text-[#321E12]">
-                        <th className="border border-[#C9C2B6] p-1.5 w-8">Lần</th>
-                        <th className="border border-[#C9C2B6] p-1.5">{meta.sLabel}</th>
-                        <th className="border border-[#C9C2B6] p-1.5">{meta.tLabel}</th>
-                        {showTheta && <th className="border border-[#C9C2B6] p-1.5">θ (°)</th>}
-                        <th className="border border-[#C9C2B6] p-1.5">{meta.resultLabel} ({meta.unit})</th>
+                <h3 className="text-[11px] font-black text-[#C85A17] uppercase">{meta.title} <span className="text-[#605248] normal-case">— <MathText text={`$${meta.formula}$`} /></span></h3>
+                <table className="w-full text-[10px] border-collapse">
+                  <thead>
+                    <tr className="bg-[#FAF6F0] font-black text-[#321E12]">
+                      <th className="border border-[#C9C2B6] p-1.5 w-8">Lần</th>
+                      {cols.map((c) => <th key={c.key} className="border border-[#C9C2B6] p-1.5">{c.label} ({c.unit})</th>)}
+                      {meta.perRow && <th className="border border-[#C9C2B6] p-1.5">{meta.resultLabel} ({meta.unit})</th>}
+                      {lab === "emf" && <th className="border border-[#C9C2B6] p-1.5">Pin</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="font-semibold text-[#321E12] text-center">
+                    {rows.map((r, i) => (
+                      <tr key={i}>
+                        <td className="border border-[#C9C2B6] p-1.5 font-black">{i + 1}</td>
+                        {cols.map((c) => { const v = c.get(r); return <td key={c.key} className="border border-[#C9C2B6] p-1.5 font-mono">{typeof v === "number" ? v.toFixed(c.dp ?? 3) : v ?? "—"}</td>; })}
+                        {meta.perRow && <td className="border border-[#C9C2B6] p-1.5 font-mono">{values[i] != null ? values[i]!.toFixed(decimalsOf(lab)) : "(bỏ trống)"}</td>}
+                        {lab === "emf" && <td className="border border-[#C9C2B6] p-1.5">{r.cell === "old" ? "Pin cũ" : "Pin mới"}</td>}
                       </tr>
-                    </thead>
-                    <tbody className="font-semibold text-[#321E12] text-center">
-                      {rows.map((r, i) => (
-                        <tr key={i}>
-                          <td className="border border-[#C9C2B6] p-1.5 font-black">{i + 1}</td>
-                          <td className="border border-[#C9C2B6] p-1.5 font-mono">{(lab === "emf" ? (r.current ?? 0) : (r.voltage ?? r.s)).toFixed(lab === "emf" ? 4 : 3)}</td>
-                          <td className="border border-[#C9C2B6] p-1.5 font-mono">{(lab === "emf" ? (r.voltage ?? 0) : (r.current ?? r.t)).toFixed(lab === "emf" ? 3 : 4)}</td>
-                          {showTheta && <td className="border border-[#C9C2B6] p-1.5">{r.theta ?? "—"}</td>}
-                          <td className="border border-[#C9C2B6] p-1.5 font-mono">{values[i] != null ? values[i]!.toFixed(decimalsOf(lab)) : "(bỏ trống)"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {means.length > 0 && (
-                  <p className="text-[10px] font-bold text-[#605248]">
-                    Giá trị trung bình:{" "}
-                    {means.map((g, i) => (
-                      <span key={g.label || i}>
-                        {i > 0 && " · "}
-                        <b className="text-[#321E12]">{g.label ? `${g.label}: ` : ""}{meta.resultLabel}<sub>tb</sub> = {g.mean.toFixed(decimalsOf(lab) + 1)} {meta.unit}</b>
-                      </span>
                     ))}
+                  </tbody>
+                </table>
+                {meta.perRow && st && (
+                  <p className="text-[10px] font-bold text-[#605248]">
+                    Giá trị trung bình: <b className="text-[#321E12]">{meta.resultLabel}<sub>tb</sub> = {fmt(st.mean, decimalsOf(lab) + 1)} {meta.unit}</b>
                     {rows.some((r) => r.balanced === false) && <span className="text-amber-700"> · có lần đo khi chưa cân bằng</span>}
                     {rows.some((r) => r.steady === false) && <span className="text-amber-700"> · có lần thả khi còn rung</span>}
                   </p>
@@ -614,15 +675,26 @@ function ReportTab({
           })}
         </section>
 
-        {/* ===== III. Nhận xét ===== */}
+        {chart && chart.series.some((s) => s.points.length >= 2) && (
+          <section className="space-y-2 break-inside-avoid">
+            <SectionTitle>III. Đồ thị &amp; xử lý số liệu</SectionTitle>
+            <div className="max-w-[560px] mx-auto aspect-[16/10]"><NotebookGraph spec={chart} printable /></div>
+            <div className="flex flex-col gap-1 text-[11px] font-bold text-[#605248]">
+              {chart.series.filter((s) => s.fit).map((s) => (
+                <p key={s.id}>{chart.series.length > 1 && <b style={{ color: s.color }}>{s.name}: </b>}{chart.explain(s).map((r) => `${r.label} = ${r.value}`).join(" · ")}</p>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="space-y-1.5 break-inside-avoid">
-          <h2 className="text-xs font-black uppercase text-[#321E12] border-l-[3px] border-[#C85A17] pl-2">III. Nhận xét &amp; kết luận</h2>
-          <div className="border border-dashed border-[#C9C2B6] rounded-xl p-4 min-h-[90px] text-[10px] font-bold text-[#605248]/60 italic print:rounded-none">
-            (Học sinh tự viết nhận xét về kết quả, nguyên nhân sai số và cách khắc phục.)
-          </div>
+          <SectionTitle>{chart ? "IV" : "III"}. Nhận xét &amp; kết luận</SectionTitle>
+          <textarea value={notes} onChange={(e) => onNotes(e.target.value)} rows={4}
+            placeholder="Em nhận xét kết quả: so với lý thuyết thế nào, nguyên nhân sai số, cách khắc phục…"
+            className="w-full border border-dashed border-[#C9C2B6] rounded-xl p-3 text-[11.5px] font-semibold text-[#321E12] outline-none focus:border-[#C85A17] resize-y print:hidden" />
+          <div className="hidden print:block border border-dashed border-[#C9C2B6] p-3 min-h-[90px] text-[11px] whitespace-pre-wrap">{notes || " "}</div>
         </section>
 
-        {/* ===== Chữ ký ===== */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 break-inside-avoid print:grid-cols-2">
           <div className="text-center text-[11px] font-bold text-[#321E12]">
             <p className="font-black uppercase">Học sinh thực hiện</p>
@@ -639,6 +711,7 @@ function ReportTab({
           Báo cáo xuất từ Phylab — phòng thí nghiệm vật lí ảo.
         </footer>
       </article>
+      <p className="text-[10.5px] font-bold text-[#8C7B6B] flex items-center gap-1.5 print:hidden"><BookOpenCheck className="w-3.5 h-3.5" /> Nhận xét em gõ ở đây sẽ in cùng báo cáo.</p>
     </div>
   );
 }

@@ -41,7 +41,9 @@ export const PIN_LABEL = {
 export const METER_KEYS = ["ammeter", "voltmeter"];
 export const METER_JACKS = ["A", "mA", "COM", "V"];
 export const METER_NAME = { ammeter: "ĐO1", voltmeter: "ĐO2" };
-const METER_MODEL = { shunt: { mA: 2, "µA": 100 }, volt: 1e7, fuse: 0.4 };
+// ohmTest: dòng thử ôm kế bơm từ lỗ VΩ qua mạch về COM; ohmLive: điện áp sẵn có giữa hai que (V)
+// lớn hơn mức này nghĩa là đoạn đang đo còn nguồn → số Ω sai.
+const METER_MODEL = { shunt: { mA: 2, "µA": 100 }, volt: 1e7, fuse: 0.4, ohmTest: 1e-3, ohmLive: 0.005, ohmOpen: 2e7 };
 
 /* ---------------- Chỉ số "nút điện" trước khi gộp: 24 mạng + 8 lỗ cắm đồng hồ ---------------- */
 const MODULE_COUNT = GRID.moduleCols * GRID.moduleRows;
@@ -272,12 +274,29 @@ export function solveBoard({ placements, wires, switchClosed, rheostat, cell, mo
     const mode = modes[meter];
     if (!metersPlaced[meter] || mode === "OFF") { meterParts[meter] = { mode }; continue; }
     const V = nets.jackNet(meter, "V"), COM = nets.jackNet(meter, "COM"), mA = nets.jackNet(meter, "mA");
+    // Nấc Ω: đồng hồ là nguồn dòng thử (tính riêng ở dưới), lỗ mA hở — không có trở vôn kế hay shunt.
+    if (mode === "Ω") { meterParts[meter] = { mode, V, COM }; continue; }
     add(V, COM, METER_MODEL.volt);
     const shunt = METER_MODEL.shunt[mode];
     if (shunt) add(mA, COM, shunt);
     meterParts[meter] = { mode, V, COM, mA, shunt };
   }
   const potentials = solveDC({ nodeCount: NODE_COUNT, conductances, sources, ground });
+  // Linh kiện nằm đúng giữa hai que đo (để lời giải thích nói rõ đang đo cái gì).
+  const acrossOf = (V, COM) => {
+    const across = (kind, p, q) => {
+      if (!placements[kind]) return false;
+      const a = nets.pinNet(kind, p), b = nets.pinNet(kind, q);
+      return (a === V && b === COM) || (a === COM && b === V);
+    };
+    if (across("battery", "+", "-")) return "battery";
+    if (across("protect", "a", "b")) return "protect";
+    if (across("switch", "in", "out")) return "switch";
+    if (across("rheostat", "A", "C")) return "rheostat-AC";
+    if (across("rheostat", "C", "B")) return "rheostat-CB";
+    if (across("rheostat", "A", "B")) return "rheostat-AB";
+    return null;
+  };
   const read = (meter) => {
     const m = meterParts[meter];
     if (!m || m.mode === "OFF") return { mode: m?.mode ?? "OFF", value: 0, overload: false };
@@ -288,7 +307,15 @@ export function solveBoard({ placements, wires, switchClosed, rheostat, cell, mo
       return { mode: m.mode, value: shown, current, overload };
     }
     if (m.mode === "V") return { mode: "V", value: potentials[m.V] - potentials[m.COM], overload: false };
-    return { mode: m.mode, value: 0, overload: true };                             // Ω khi mạch có điện: "OL"
+    // Ôm kế như máy thật: bơm dòng thử I₀ từ lỗ VΩ qua mạch về COM, số chỉ = ΔU / I₀.
+    // Nguồn trong mạch bị "tắt" khi tính điện trở thật (chồng chập); nếu giữa hai que sẵn có điện áp
+    // (đoạn đo còn nguồn, K đang đóng…) thì ΔU lẫn cả điện áp đó → số Ω SAI, báo `live`.
+    const vOpen = potentials[m.V] - potentials[m.COM];
+    const test = solveDC({ nodeCount: NODE_COUNT, conductances, sources: [{ from: m.COM, to: m.V, i: METER_MODEL.ohmTest }], ground });
+    const ohms = (test[m.V] - test[m.COM]) / METER_MODEL.ohmTest;
+    const live = Math.abs(vOpen) > METER_MODEL.ohmLive;
+    const value = live ? ohms + vOpen / METER_MODEL.ohmTest : ohms;
+    return { mode: "Ω", value, ohms, live, across: acrossOf(m.V, m.COM), overload: Math.abs(value) >= METER_MODEL.ohmOpen };
   };
   let batteryCurrent = 0;
   if (placements.battery) {

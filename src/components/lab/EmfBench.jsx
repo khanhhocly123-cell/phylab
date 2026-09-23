@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Power } from "lucide-react";
 import { C, FONT } from "../../engine/tokens.js";
 import { seededCellEmf, flickerCount } from "../../engine/physicsElectric";
@@ -8,7 +8,7 @@ import {
   LabTopBar, NextStepCard, ChecklistCard, FinishButton, MobileLabSheet, LabToast, LabDialog, ProgressPills, NudgeSlider,
   panelCard, sectionHead, sectionTitle, countPill, btnSecondary,
 } from "./LabChrome.jsx";
-import { METER_MODES, terminalAt, partCenter, Multimeter, CircuitBoard } from "./electric/ElectricParts.jsx";
+import { METER_MODES, terminalAt, partCenter, Multimeter, CircuitBoard, ohmDisplay } from "./electric/ElectricParts.jsx";
 import { BoardBattery, BoardSwitch, BoardResistor, BoardRheostat, localPoint } from "./electric/BoardParts.jsx";
 import { GRID, BOARD_SIZE, nodePos, moduleOf, moduleRC, moduleAtPoint, nearestNode, boardModuleRect } from "./electric/boardGeometry.js";
 import {
@@ -80,7 +80,6 @@ function wireGeom(w) {
     mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 0.75 * bend },
   };
 }
-const wirePath = (w) => wireGeom(w).d;
 const wireColor = (w) => {
   const jacks = [w.a, w.b].filter((e) => e.t === "jack");
   if (jacks.some((e) => e.jack === "COM")) return "#1F2937";
@@ -101,6 +100,30 @@ function linearFit(rows) {
   return { emf: (sy - slope * sx) / n, internalR: -slope };
 }
 const uniqSorted = (values) => [...new Set(values.filter((v) => Number.isFinite(v) && v > 0))].sort((a, b) => a - b);
+
+/** Chữ hiển thị số đo một đồng hồ ở thẻ đo (theo nấc đang chọn). */
+function meterText(read, shown) {
+  if (read.mode === "mA") return read.overload ? "OL" : `${shown.toFixed(1)} mA`;
+  if (read.mode === "V") return `${shown.toFixed(3)} V`;
+  if (read.mode === "µA") return read.overload ? "OL" : `${read.value.toFixed(0)} µA`;
+  if (read.mode === "Ω") {
+    const o = ohmDisplay(read.value);
+    return o.open ? "OL · hở mạch" : `${o.text} ${o.unit}${read.live ? " ⚠" : ""}`;
+  }
+  return "----";
+}
+/** Số trên màn hình đồng hồ trong bàn: mA/V là số đã làm tròn (chữ số cuối nhảy nhẹ); µA, Ω lấy số đo. */
+const sceneReading = (read, shown) => (read.mode === "mA" || read.mode === "V" ? shown : read.mode === "µA" || read.mode === "Ω" ? read.value : 0);
+/** Sự kiện đáng giải thích khi một đồng hồ đang ở nấc Ω (mỗi loại chỉ nói một lần). */
+function ohmEvent(read) {
+  if (read.mode !== "Ω") return null;
+  if (read.live) return read.across === "battery" ? "battery" : "live";
+  if (read.overload) return null;
+  if (read.across === "protect") return "protect";
+  if (read.across?.startsWith("rheostat")) return "rheostat";
+  if (read.across === "switch") return "switch";
+  return null;
+}
 
 export default function EmfBench({ studentName, assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
   const name = studentName || "Học sinh";
@@ -223,11 +246,14 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
 
   /* ---------------- Số liệu & yêu cầu ---------------- */
   const rowsOf = (id) => rows.filter((row) => row.cell === id);
-  const newRows = rowsOf("new");
-  const oldRows = rowsOf("old");
+  const newRows = useMemo(() => rows.filter((row) => row.cell === "new"), [rows]);
+  const oldRows = useMemo(() => rows.filter((row) => row.cell === "old"), [rows]);
   const fitNew = useMemo(() => linearFit(newRows), [newRows]);
   const fitOld = useMemo(() => linearFit(oldRows), [oldRows]);
-  const fits = { new: newRows.length >= 2 ? fitNew : null, old: oldRows.length >= 2 ? fitOld : null };
+  const fits = useMemo(
+    () => ({ new: newRows.length >= 2 ? fitNew : null, old: oldRows.length >= 2 ? fitOld : null }),
+    [newRows, oldRows, fitNew, fitOld]
+  );
   const missingOf = (id) => targets.filter((value) => !rowsOf(id).some((row) => Math.abs(row.resistance - value) <= 1));
   const subjectDone = (id) => rowsOf(id).length >= EMF_MIN_POINTS && missingOf(id).length === 0;
   const canExport = subjectDone("new") && subjectDone("old");
@@ -545,6 +571,25 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [r0Hot]);
 
+  // VOM ở nấc Ω = ôm kế: giải thích ngay điều em vừa đo (mỗi loại một lần).
+  const ohmMeter = ohmEvent(vmRead) ? vmRead : ohmEvent(amRead) ? amRead : null;
+  const ohmKey = ohmMeter ? ohmEvent(ohmMeter) : null;
+  useEffect(() => {
+    if (!ohmKey || milestones.current.has(`ohm-${ohmKey}`)) return;
+    milestones.current.add(`ohm-${ohmKey}`);
+    const o = ohmDisplay(ohmMeter.value);
+    const note = {
+      battery: { text: "🔋 Ôm kế KHÔNG đo được điện trở trong r của pin: pin tự có suất điện động nên số Ω chỉ là số ảo. Vì vậy bài này phải đo U và I rồi suy ra E, r!", kind: "warn" },
+      live: { text: "⚠ Đang đo Ω trên đoạn mạch còn điện (có nguồn trong vòng đo) — số chỉ SAI và dễ hỏng đồng hồ. Mở K / tách nguồn rồi mới đo điện trở.", kind: "warn" },
+      protect: { text: `🔎 Ôm kế đo R₀ = ${o.text} ${o.unit} — đúng giá trị ghi trên điện trở bảo vệ. R₀ nóng lên thì số này tăng nhẹ!`, kind: "win" },
+      rheostat: { text: `🔎 Ôm kế đo biến trở: ${o.text} ${o.unit}. Kéo con chạy — số Ω đổi theo đúng R(AC).`, kind: "win" },
+      switch: { text: "🔎 Khóa K đóng: ôm kế chỉ ≈ 0 Ω (thông mạch). Khóa hở thì điện trở rất lớn.", kind: "win" },
+    }[ohmKey];
+    const id = window.setTimeout(() => { flash(note, false, 5600); sound(note.kind === "warn" ? "warn" : "win"); }, 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ohmKey]);
+
   const removeRow = (id) => setRows((old) => old.filter((row) => row.id !== id));
   const record = () => {
     if (!circuitReady) { flash(analysis?.issue?.text || "Mạch chưa đúng sơ đồ."); return; }
@@ -647,6 +692,27 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     if (payload === "auto_open_switch") { setSwitchClosed(false); flash("Đã mở khóa K."); return; }
     if (payload === "auto_cell") { setSwitchClosed(false); setCell(otherCell); flash(`Đã mở K và thay sang ${CELL_NAMES[otherCell].toLowerCase()}.`); }
   };
+
+  // Hàm xử lý thao tác trên bàn: tham chiếu CỐ ĐỊNH (đọc bản mới nhất qua ref) để các lớp vẽ
+  // được memo — kéo biến trở hay đồng hồ nhảy số chỉ vẽ lại đúng phần thay đổi.
+  const act = useRef(null);
+  useLayoutEffect(() => {
+    act.current = {
+      tapModule, tapPin, beginWire, beginPartDrag, setR, cycleMode, removeWire, selectWire,
+      cancelPending: () => { setPending(null); setSelectedWire(null); },
+    };
+  });
+  const handlers = useMemo(() => ({
+    onModule: (m, e) => act.current.tapModule(m, e),
+    onPin: (kind, pin, e) => act.current.tapPin(kind, pin, e),
+    onJack: (meter, jack, e) => act.current.beginWire({ t: "jack", meter, jack }, e),
+    onPartDown: (kind, e) => act.current.beginPartDrag(kind, e),
+    onRheostat: (value) => act.current.setR(value),
+    onCycleMode: (which) => act.current.cycleMode(which),
+    onRemoveWire: (id) => act.current.removeWire(id),
+    onSelectWire: (id) => act.current.selectWire(id),
+    onCancelPending: () => act.current.cancelPending(),
+  }), []);
 
   /* ======================= BƯỚC TIẾP THEO (một nguồn sự thật) ======================= */
   const setupDone = circuitReady && modesOK;
@@ -776,8 +842,9 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: 8 }}>
         <div style={{ flex: 1, minWidth: 0, fontFamily: "monospace", fontWeight: 900, lineHeight: 1.3 }}>
-          <div style={{ fontSize: 15, color: live ? C.ink : C.sub }}><span style={meterTag}>ĐO1</span>{amRead.mode === "mA" ? (amRead.overload ? "OL" : `${ammeterShown.toFixed(1)} mA`) : "----"}</div>
-          <div style={{ fontSize: 15, color: vmRead.mode === "V" ? C.ink : C.sub }}><span style={meterTag}>ĐO2</span>{vmRead.mode === "V" ? `${voltmeterShown.toFixed(3)} V` : "----"}</div>
+          <div style={{ fontSize: 15, color: live ? C.ink : amRead.mode === "Ω" ? C.navy : C.sub }}><span style={meterTag}>ĐO1</span>{meterText(amRead, ammeterShown)}</div>
+          <div style={{ fontSize: 15, color: vmRead.mode === "V" ? C.ink : vmRead.mode === "Ω" ? C.navy : C.sub }}><span style={meterTag}>ĐO2</span>{meterText(vmRead, voltmeterShown)}</div>
+          {ohmMeter?.live && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B45309", fontFamily: FONT }}>⚠ Nấc Ω trên đoạn mạch còn điện — số chỉ sai</div>}
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={miniLabel}>Biến trở trong mạch</div>
@@ -816,7 +883,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     </section>
   );
 
-  const emfFits = { new: fits.new, old: fits.old };
+  const emfFits = fits;
   const dataCard = (
     <section style={{ ...panelCard, padding: 10, flexShrink: 1, minHeight: 96, display: "flex", flexDirection: "column" }}>
       <div style={{ ...sectionHead, marginBottom: 6 }}>
@@ -838,7 +905,9 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     </section>
   );
 
-  const emfLivePoint = circuitReady && modesOK ? { mA: Math.max(0, switchClosed ? ammeterShown : 0), u: Math.max(0, voltmeterShown) } : null;
+  const liveMa = circuitReady && modesOK ? Math.max(0, switchClosed ? ammeterShown : 0) : null;
+  const liveU = circuitReady && modesOK ? Math.max(0, voltmeterShown) : null;
+  const emfLivePoint = useMemo(() => (liveMa === null ? null : { mA: liveMa, u: liveU }), [liveMa, liveU]);
   const emfStageGraph = (
     <section style={{ height: "100%", display: "flex", flexDirection: "column", background: "#fff", border: `1px solid ${C.line}`, borderRadius: 15, padding: "8px 10px 2px", minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -931,16 +1000,13 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
           <div style={portraitStack ? { flex: "0 0 auto", height: sceneH } : { flex: "1 1 0", minHeight: 0 }}>
             <EmfScene
               placed={placed} placements={placements} wires={wires} pending={pending} wireDrag={wireDrag} partDrag={partDrag}
-              activeGroup={activeGroup} flyTool={flyTool} isMobile={isMobile} assembled={assembled}
-              switchClosed={switchClosed} ammeterMode={ammeterMode} voltmeterMode={voltmeterMode}
-              ammeterRead={{ ...amRead, shown: ammeterShown }} voltmeterRead={{ ...vmRead, shown: voltmeterShown }}
+              activeGroup={activeGroup} flyTool={flyTool} isMobile={isMobile} assembled={assembled} switchClosed={switchClosed}
+              am={{ mode: ammeterMode, reading: sceneReading(amRead, ammeterShown), overload: amRead.overload, alert: Boolean(amRead.live) }}
+              vm={{ mode: voltmeterMode, reading: sceneReading(vmRead, voltmeterShown), overload: vmRead.overload, alert: Boolean(vmRead.live) }}
               cell={cell} rheostat={rheostat} rheostatSpan={live ? (analysis?.rheostatPins?.includes("A") ? "AC" : "CB") : null}
               focusModules={focusModules} flow={flow} currentMa={currentMa}
               cellHeat={live ? Math.min(1, ((currentMa / 1000) ** 2 * cellPhysics[cell].r) / 0.04) : 0}
-              onModule={tapModule} onPin={tapPin} onJack={(meter, jack, event) => beginWire({ t: "jack", meter, jack }, event)}
-              onPartDown={beginPartDrag} onRheostat={setR} onCycleMode={cycleMode} onRemoveWire={removeWire}
-              selectedWire={selectedWire} onSelectWire={selectWire} heat={heat}
-              onCancelPending={() => { setPending(null); setSelectedWire(null); }}
+              heatR0={heat.r0} heatRh={heat.rh} selectedWire={selectedWire} handlers={handlers}
             />
           </div>
           {showStageGraph && (
@@ -975,34 +1041,33 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
   );
 }
 
-/* ============================ Bàn thí nghiệm (SVG) ============================ */
+/* ============================ Bàn thí nghiệm (SVG) ============================
+   Chia thành các lớp memo: bảng + vùng chạm, từng linh kiện, dây nối, hạt dòng điện, đồng hồ.
+   Kéo biến trở chỉ vẽ lại biến trở + hai đồng hồ; chữ số đồng hồ nhảy chỉ vẽ lại đồng hồ. */
+const JACKS_HOT = { mA: ["mA", "COM"], "µA": ["mA", "COM"], V: ["V", "COM"], "Ω": ["V", "COM"] };
+const NO_JACKS = [];
+
 function EmfScene({
-  placed, placements, wires, pending, wireDrag, partDrag, activeGroup, flyTool, isMobile, assembled,
-  switchClosed, ammeterMode, voltmeterMode, ammeterRead, voltmeterRead, cell, rheostat, rheostatSpan,
-  focusModules, flow, currentMa, cellHeat, heat, selectedWire,
-  onModule, onPin, onJack, onPartDown, onRheostat, onCycleMode, onRemoveWire, onSelectWire, onCancelPending,
+  placed, placements, wires, pending, wireDrag, partDrag, activeGroup, flyTool, isMobile, assembled, switchClosed,
+  am, vm, cell, rheostat, rheostatSpan, focusModules, flow, currentMa, cellHeat, heatR0, heatRh, selectedWire, handlers,
 }) {
-  const [hoverWire, setHoverWire] = useState(null);
   const has = (key) => placed.has(key);
   const flowDur = flowDuration(currentMa);
   const pendingModule = pending?.t === "node" ? moduleOf(pending.X, pending.Y) : null;
   const glowFlow = flow.length > 0;
-  const renderPart = (kind, at, ghost = false) => {
-    if (!at) return null;
-    const pins = pinNodes(kind, at).map((p) => ({ pin: p.pin, ...nodePos(p.X, p.Y) }));
-    const common = ghost ? {} : { onBodyPointerDown: (e) => onPartDown(kind, e), onPinPointerDown: assembled ? (pin, e) => { e.stopPropagation(); onPin(kind, pin, e); } : null };
-    if (kind === "battery") return <BoardBattery key={`${kind}${ghost ? "-g" : ""}`} pins={pins} cell={cell} heat={ghost ? 0 : cellHeat} {...common} />;
-    if (kind === "switch") return <BoardSwitch key={`${kind}${ghost ? "-g" : ""}`} pins={pins} closed={switchClosed} glow={!ghost && glowFlow} {...common} />;
-    if (kind === "protect") return <BoardResistor key={`${kind}${ghost ? "-g" : ""}`} pins={pins} heat={ghost ? 0 : heat.r0} {...common} />;
-    return <BoardRheostat key={`${kind}${ghost ? "-g" : ""}`} pins={pins} value={rheostat} glow={!ghost && glowFlow} activeSpan={ghost ? null : rheostatSpan} heat={ghost ? 0 : heat.rh} onChange={ghost ? null : onRheostat} {...common} />;
-  };
+  const partProps = (kind) => ({
+    battery: { cell, heat: cellHeat },
+    switch: { closed: switchClosed, glow: glowFlow },
+    protect: { heat: heatR0 },
+    rheostat: { value: rheostat, glow: glowFlow, activeSpan: rheostatSpan, heat: heatRh },
+  }[kind]);
 
   return (
     <svg
       data-emf-scene="1"
       viewBox={`0 0 ${VBW} ${VBH}`}
       preserveAspectRatio="xMidYMid meet"
-      onPointerDown={(event) => { if (pending && (event.target === event.currentTarget || event.target.closest?.("[data-bg]"))) onCancelPending(); }}
+      onPointerDown={(event) => { if (pending && (event.target === event.currentTarget || event.target.closest?.("[data-bg]"))) handlers.onCancelPending(); }}
       style={{ width: "100%", height: "100%", minHeight: 0, display: "block", border: `1px solid ${C.line}`, borderRadius: 15, background: "linear-gradient(#fff,#FBF6EC)", touchAction: "none", fontFamily: FONT }}
     >
       <rect data-bg="1" x="0" y={VBH - 44} width={VBW} height="44" fill="#F3EBDD" />
@@ -1010,91 +1075,29 @@ function EmfScene({
 
       {has("board") && (
         <g transform={`translate(${B.x} ${B.y}) scale(${B.s})`}>
-          <g data-bg="1"><CircuitBoard at={{ x: 0, y: 0, s: 1 }} /></g>
-
-          {/* Mạng cần chú ý (theo gợi ý) — nhấp nháy cam */}
-          {focusModules.map((m) => {
-            const { row, col } = moduleRC(m);
-            const r = boardModuleRect(row, col, 26);
-            return (
-              <rect key={`focus-${m}`} x={r.x} y={r.y} width={r.w} height={r.h} rx="22" fill={`${C.orange}22`} stroke={C.orange} strokeWidth="5" strokeDasharray="14 10" style={{ pointerEvents: "none" }}>
-                <animate attributeName="opacity" values="0.45;1;0.45" dur="1.2s" repeatCount="indefinite" />
-              </rect>
-            );
-          })}
-          {pendingModule != null && (() => {
-            const { row, col } = moduleRC(pendingModule);
-            const r = boardModuleRect(row, col, 26);
-            return <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="22" fill={`${C.orange}30`} stroke={C.orangeDk} strokeWidth="6" style={{ pointerEvents: "none" }} />;
-          })()}
-
-          {/* Vùng chạm: mỗi mạng 9 nút */}
-          {assembled && Array.from({ length: GRID.moduleRows * GRID.moduleCols }, (_, m) => {
-            const { row, col } = moduleRC(m);
-            const r = boardModuleRect(row, col, 26);
-            return <rect key={`hit-${m}`} x={r.x} y={r.y} width={r.w} height={r.h} rx="22" fill="transparent" style={{ cursor: "crosshair" }} onPointerDown={(e) => onModule(m, e)} />;
-          })}
+          <BoardBase assembled={assembled} onModule={handlers.onModule} />
+          <FocusMarks focusKey={focusModules.join(",")} pendingModule={pendingModule} />
 
           {/* Linh kiện cắm trên bảng */}
-          {BOARD_PART_KEYS.map((kind) => (partDrag?.kind === kind ? null : renderPart(kind, placements[kind])))}
-          {partDrag?.at && <g opacity="0.55" style={{ pointerEvents: "none" }}>{renderPart(partDrag.kind, partDrag.at, true)}</g>}
+          {BOARD_PART_KEYS.map((kind) => (partDrag?.kind === kind ? null : (
+            <BoardPart key={kind} kind={kind} at={placements[kind]} interactive={assembled} handlers={handlers} {...partProps(kind)} />
+          )))}
+          {partDrag?.at && (
+            <g opacity="0.55" style={{ pointerEvents: "none" }}>
+              <BoardPart kind={partDrag.kind} at={partDrag.at} ghost handlers={handlers} {...partProps(partDrag.kind)} />
+            </g>
+          )}
 
           {/* Dòng điện chạy QUA MẠNG của bảng */}
-          {flow.filter((s) => s.kind === "module").map((s, i) => (
-            <path key={`mf-${i}`} d={`M${s.a.x} ${s.a.y} L${s.b.x} ${s.b.y}`} fill="none" stroke="#FDE047" strokeWidth="9" strokeLinecap="round" strokeDasharray="3 22" style={{ pointerEvents: "none" }}>
-              <animate attributeName="stroke-dashoffset" from="0" to="-25" dur={flowDur} repeatCount="indefinite" />
-            </path>
-          ))}
+          <ModuleFlow flow={flow} dur={flowDur} />
         </g>
       )}
 
-      {has("voltmeter") && <Multimeter at={METERS.voltmeter} title="ĐO2 · VÔN KẾ" mode={voltmeterMode} reading={voltmeterRead.mode === "V" ? voltmeterRead.shown : 0} overload={voltmeterRead.overload} onCycleMode={() => onCycleMode("voltmeter")} highlightJacks={pending ? ["V", "COM"] : []} />}
-      {has("ammeter") && <Multimeter at={METERS.ammeter} title="ĐO1 · AMPE KẾ" mode={ammeterMode} reading={ammeterRead.mode === "mA" ? ammeterRead.shown : 0} overload={ammeterRead.overload} onCycleMode={() => onCycleMode("ammeter")} highlightJacks={pending ? ["mA", "COM"] : []} />}
+      {has("voltmeter") && <MeterView meter="voltmeter" title="ĐO2 · VÔN KẾ" {...vm} jacksHot={Boolean(pending)} onCycleMode={handlers.onCycleMode} />}
+      {has("ammeter") && <MeterView meter="ammeter" title="ĐO1 · AMPE KẾ" {...am} jacksHot={Boolean(pending)} onCycleMode={handlers.onCycleMode} />}
 
-      {/* Dây nối */}
-      {wires.map((w) => {
-        const { d } = wireGeom(w);
-        const color = wireColor(w);
-        const a = endpointScene(w.a), b = endpointScene(w.b);
-        const active = selectedWire === w.id || hoverWire === w.id;
-        return (
-          <g key={w.id} role="button" aria-label="Chọn dây để gỡ" onClick={(e) => { e.stopPropagation(); onSelectWire(w.id); }}
-            onPointerEnter={() => setHoverWire(w.id)} onPointerLeave={() => setHoverWire((h) => (h === w.id ? null : h))} style={{ cursor: "pointer" }}>
-            {active && <path d={d} fill="none" stroke="#FACC15" strokeWidth="12" strokeLinecap="round" opacity=".55" />}
-            <path d={d} fill="none" stroke="rgba(15,23,42,.55)" strokeWidth="6.5" strokeLinecap="round" />
-            <path d={d} fill="none" stroke={color} strokeWidth="4.4" strokeLinecap="round" />
-            <path d={d} fill="none" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" opacity=".45" transform="translate(-0.8 -1)" />
-            <path d={d} fill="none" stroke="transparent" strokeWidth="18" />
-            {[a, b].map((p, i) => (
-              <g key={i}>
-                <circle cx={p.x} cy={p.y} r="6.5" fill={color} stroke="#fff" strokeWidth="2" />
-                <circle cx={p.x - 1.8} cy={p.y - 1.8} r="1.8" fill="#fff" opacity=".6" />
-              </g>
-            ))}
-          </g>
-        );
-      })}
-      {/* Dòng điện chạy trên dây (dây vôn kế gần như không có dòng nên không có hạt) */}
-      {flow.filter((s) => s.kind === "wire").map((s, i) => {
-        const w = wires.find((item) => item.id === s.id);
-        if (!w) return null;
-        return (
-          <path key={`wf-${i}`} d={wirePath(w)} fill="none" stroke="#FDE047" strokeWidth="3.2" strokeLinecap="round" strokeDasharray="1.5 13" style={{ pointerEvents: "none" }}>
-            <animate attributeName="stroke-dashoffset" from="0" to={s.reverse ? "14.5" : "-14.5"} dur={flowDur} repeatCount="indefinite" />
-          </path>
-        );
-      })}
-      {/* Nút gỡ dây: hiện khi rê chuột / chọn một dây */}
-      {wires.filter((w) => w.id === selectedWire || w.id === hoverWire).map((w) => {
-        const { mid } = wireGeom(w);
-        return (
-          <g key={`rm-${w.id}`} role="button" aria-label="Gỡ dây này" onClick={(e) => { e.stopPropagation(); onRemoveWire(w.id); }}
-            onPointerEnter={() => setHoverWire(w.id)} onPointerLeave={() => setHoverWire((h) => (h === w.id ? null : h))} style={{ cursor: "pointer" }}>
-            <rect x={mid.x - 40} y={mid.y - 13} width="80" height="26" rx="13" fill="#B91C1C" stroke="#fff" strokeWidth="2" />
-            <text x={mid.x} y={mid.y + 4.5} textAnchor="middle" fontSize="12" fontWeight="900" fill="#fff">✕ Gỡ dây</text>
-          </g>
-        );
-      })}
+      {/* Dây nối + hạt điện tích trên dây + nút gỡ dây */}
+      <WiresLayer wires={wires} flow={flow} dur={flowDur} selectedWire={selectedWire} onSelectWire={handlers.onSelectWire} onRemoveWire={handlers.onRemoveWire} />
       {pending && wireDrag && (() => {
         const a = endpointScene(pending);
         return <path d={`M${a.x} ${a.y} Q${(a.x + wireDrag.x) / 2} ${Math.max(a.y, wireDrag.y) + 40},${wireDrag.x} ${wireDrag.y}`} fill="none" stroke={C.orangeDk} strokeWidth="3.5" strokeDasharray="8 6" strokeLinecap="round" style={{ pointerEvents: "none" }} />;
@@ -1105,10 +1108,7 @@ function EmfScene({
       })()}
 
       {/* Lỗ cắm đồng hồ — vùng chạm */}
-      {assembled && METER_KEYS.map((meter) => METER_JACKS.map((jack) => {
-        const j = jackScene(meter, jack);
-        return <circle key={`${meter}-${jack}`} cx={j.x} cy={j.y} r={isMobile ? 14 : 12} fill="transparent" style={{ cursor: "crosshair" }} onPointerDown={(e) => onJack(meter, jack, e)} />;
-      }))}
+      <JackHits assembled={assembled} isMobile={isMobile} onJack={handlers.onJack} />
 
       {/* Ô thả khi lắp ráp */}
       {activeGroup.map((key) => {
@@ -1150,6 +1150,136 @@ function EmfScene({
     </svg>
   );
 }
+
+/** Ảnh bảng + 24 vùng chạm (mỗi mạng 9 nút) — gần như không bao giờ vẽ lại. */
+const BoardBase = memo(function BoardBase({ assembled, onModule }) {
+  return (
+    <>
+      <g data-bg="1"><CircuitBoard at={{ x: 0, y: 0, s: 1 }} /></g>
+      {assembled && Array.from({ length: GRID.moduleRows * GRID.moduleCols }, (_, m) => {
+        const { row, col } = moduleRC(m);
+        const r = boardModuleRect(row, col, 26);
+        return <rect key={`hit-${m}`} x={r.x} y={r.y} width={r.w} height={r.h} rx="22" fill="transparent" style={{ cursor: "crosshair" }} onPointerDown={(e) => onModule(m, e)} />;
+      })}
+    </>
+  );
+});
+
+/** Mạng cần chú ý (theo gợi ý, nhấp nháy cam) + mạng đang chọn chờ nối dây. */
+const FocusMarks = memo(function FocusMarks({ focusKey, pendingModule }) {
+  const focus = focusKey ? focusKey.split(",").map(Number) : [];
+  return (
+    <>
+      {focus.map((m) => {
+        const { row, col } = moduleRC(m);
+        const r = boardModuleRect(row, col, 26);
+        return (
+          <rect key={`focus-${m}`} x={r.x} y={r.y} width={r.w} height={r.h} rx="22" fill={`${C.orange}22`} stroke={C.orange} strokeWidth="5" strokeDasharray="14 10" style={{ pointerEvents: "none" }}>
+            <animate attributeName="opacity" values="0.45;1;0.45" dur="1.2s" repeatCount="indefinite" />
+          </rect>
+        );
+      })}
+      {pendingModule != null && (() => {
+        const { row, col } = moduleRC(pendingModule);
+        const r = boardModuleRect(row, col, 26);
+        return <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="22" fill={`${C.orange}30`} stroke={C.orangeDk} strokeWidth="6" style={{ pointerEvents: "none" }} />;
+      })()}
+    </>
+  );
+});
+
+/** Một linh kiện cắm trên bảng; chỉ vẽ lại khi CHÍNH nó đổi (vị trí, nóng, con chạy…). */
+const BoardPart = memo(function BoardPart({ kind, at, ghost = false, interactive = false, handlers, cell = "new", closed = false, glow = false, value = 0, activeSpan = null, heat = 0 }) {
+  const pins = useMemo(() => (at ? pinNodes(kind, at).map((p) => ({ pin: p.pin, ...nodePos(p.X, p.Y) })) : null), [kind, at]);
+  const onBody = useCallback((e) => handlers.onPartDown(kind, e), [handlers, kind]);
+  const onPin = useCallback((pin, e) => { e.stopPropagation(); handlers.onPin(kind, pin, e); }, [handlers, kind]);
+  if (!pins) return null;
+  const common = ghost ? {} : { onBodyPointerDown: onBody, onPinPointerDown: interactive ? onPin : null };
+  if (kind === "battery") return <BoardBattery pins={pins} cell={cell} heat={ghost ? 0 : heat} {...common} />;
+  if (kind === "switch") return <BoardSwitch pins={pins} closed={closed} glow={!ghost && glow} {...common} />;
+  if (kind === "protect") return <BoardResistor pins={pins} heat={ghost ? 0 : heat} {...common} />;
+  return <BoardRheostat pins={pins} value={value} glow={!ghost && glow} activeSpan={ghost ? null : activeSpan} heat={ghost ? 0 : heat} onChange={ghost ? null : handlers.onRheostat} {...common} />;
+});
+
+/** Hạt sáng chạy dọc dải kim loại của các mạng mà dòng điện đi qua. */
+const ModuleFlow = memo(function ModuleFlow({ flow, dur }) {
+  return flow.filter((s) => s.kind === "module").map((s, i) => (
+    <path key={`mf-${i}`} d={`M${s.a.x} ${s.a.y} L${s.b.x} ${s.b.y}`} fill="none" stroke="#FDE047" strokeWidth="9" strokeLinecap="round" strokeDasharray="3 22" style={{ pointerEvents: "none" }}>
+      <animate attributeName="stroke-dashoffset" from="0" to="-25" dur={dur} repeatCount="indefinite" />
+    </path>
+  ));
+});
+
+const MeterView = memo(function MeterView({ meter, title, mode, reading, overload, alert, jacksHot, onCycleMode }) {
+  const cycle = useCallback(() => onCycleMode(meter), [onCycleMode, meter]);
+  return (
+    <Multimeter at={METERS[meter]} title={title} mode={mode} reading={reading} overload={overload} alert={alert}
+      onCycleMode={cycle} highlightJacks={jacksHot ? JACKS_HOT[mode] || JACKS_HOT[meter === "ammeter" ? "mA" : "V"] : NO_JACKS} />
+  );
+});
+
+/** Dây nối (rê chuột/chọn → nút gỡ dây) + hạt điện tích chạy trên dây. Trạng thái rê chuột nằm ở đây. */
+const WiresLayer = memo(function WiresLayer({ wires, flow, dur, selectedWire, onSelectWire, onRemoveWire }) {
+  const [hoverWire, setHoverWire] = useState(null);
+  const geoms = useMemo(() => new Map(wires.map((w) => [w.id, wireGeom(w)])), [wires]);
+  const leave = (id) => setHoverWire((h) => (h === id ? null : h));
+  return (
+    <>
+      {wires.map((w) => {
+        const { d } = geoms.get(w.id);
+        const color = wireColor(w);
+        const a = endpointScene(w.a), b = endpointScene(w.b);
+        const active = selectedWire === w.id || hoverWire === w.id;
+        return (
+          <g key={w.id} role="button" aria-label="Chọn dây để gỡ" onClick={(e) => { e.stopPropagation(); onSelectWire(w.id); }}
+            onPointerEnter={() => setHoverWire(w.id)} onPointerLeave={() => leave(w.id)} style={{ cursor: "pointer" }}>
+            {active && <path d={d} fill="none" stroke="#FACC15" strokeWidth="12" strokeLinecap="round" opacity=".55" />}
+            <path d={d} fill="none" stroke="rgba(15,23,42,.55)" strokeWidth="6.5" strokeLinecap="round" />
+            <path d={d} fill="none" stroke={color} strokeWidth="4.4" strokeLinecap="round" />
+            <path d={d} fill="none" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" opacity=".45" transform="translate(-0.8 -1)" />
+            <path d={d} fill="none" stroke="transparent" strokeWidth="18" />
+            {[a, b].map((p, i) => (
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r="6.5" fill={color} stroke="#fff" strokeWidth="2" />
+                <circle cx={p.x - 1.8} cy={p.y - 1.8} r="1.8" fill="#fff" opacity=".6" />
+              </g>
+            ))}
+          </g>
+        );
+      })}
+      {/* Dòng điện chạy trên dây (dây vôn kế gần như không có dòng nên không có hạt) */}
+      {flow.filter((s) => s.kind === "wire").map((s, i) => {
+        const g = geoms.get(s.id);
+        if (!g) return null;
+        return (
+          <path key={`wf-${i}`} d={g.d} fill="none" stroke="#FDE047" strokeWidth="3.2" strokeLinecap="round" strokeDasharray="1.5 13" style={{ pointerEvents: "none" }}>
+            <animate attributeName="stroke-dashoffset" from="0" to={s.reverse ? "14.5" : "-14.5"} dur={dur} repeatCount="indefinite" />
+          </path>
+        );
+      })}
+      {/* Nút gỡ dây: hiện khi rê chuột / chọn một dây */}
+      {wires.filter((w) => w.id === selectedWire || w.id === hoverWire).map((w) => {
+        const { mid } = geoms.get(w.id);
+        return (
+          <g key={`rm-${w.id}`} role="button" aria-label="Gỡ dây này" onClick={(e) => { e.stopPropagation(); onRemoveWire(w.id); }}
+            onPointerEnter={() => setHoverWire(w.id)} onPointerLeave={() => leave(w.id)} style={{ cursor: "pointer" }}>
+            <rect x={mid.x - 40} y={mid.y - 13} width="80" height="26" rx="13" fill="#B91C1C" stroke="#fff" strokeWidth="2" />
+            <text x={mid.x} y={mid.y + 4.5} textAnchor="middle" fontSize="12" fontWeight="900" fill="#fff">✕ Gỡ dây</text>
+          </g>
+        );
+      })}
+    </>
+  );
+});
+
+/** Vùng chạm các lỗ cắm của hai đồng hồ. */
+const JackHits = memo(function JackHits({ assembled, isMobile, onJack }) {
+  if (!assembled) return null;
+  return METER_KEYS.map((meter) => METER_JACKS.map((jack) => {
+    const j = jackScene(meter, jack);
+    return <circle key={`${meter}-${jack}`} cx={j.x} cy={j.y} r={isMobile ? 14 : 12} fill="transparent" style={{ cursor: "crosshair" }} onPointerDown={(e) => onJack(meter, jack, e)} />;
+  }));
+});
 
 const btnSmall = { flex: 1, border: `1px solid ${C.line}`, borderRadius: 9, background: "#fff", color: C.ink, padding: "6px 6px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: FONT };
 const choiceButton = { border: `1px solid ${C.line}`, borderRadius: 8, background: "#fff", color: C.sub, padding: "4px 8px", fontSize: 11, fontWeight: 850, cursor: "pointer", fontFamily: FONT };

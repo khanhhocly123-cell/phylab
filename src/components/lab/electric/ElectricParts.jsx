@@ -202,21 +202,46 @@ function formatReading(mode, value) {
   return value.toFixed(1);
 }
 
-/** @param {{ at: Placement, mode?: string, reading?: number, overload?: boolean, title?: string | null, onCycleMode?: (() => void) | null, selectedJack?: string | null, highlightJacks?: string[], onJack?: ((id: string) => void) | null }} props */
-export function Multimeter({ at, mode = "OFF", reading = 0, overload = false, title = null, onCycleMode = null, selectedJack = null, highlightJacks = [], onJack = null }) {
+/** Ôm kế tự chọn thang như VOM số: 0,1 Ω → Ω → kΩ → MΩ; từ 20 MΩ trở lên (hở mạch) hiện "OL". */
+export function ohmDisplay(value) {
+  const v = Math.abs(value);
+  if (!Number.isFinite(value) || v >= 2e7) return { text: "OL", unit: "MΩ", open: true };
+  if (v < 200) return { text: value.toFixed(1), unit: "Ω" };
+  if (v < 2000) return { text: value.toFixed(0), unit: "Ω" };
+  if (v < 2e4) return { text: (value / 1e3).toFixed(2), unit: "kΩ" };
+  if (v < 2e5) return { text: (value / 1e3).toFixed(1), unit: "kΩ" };
+  if (v < 2e6) return { text: (value / 1e3).toFixed(0), unit: "kΩ" };
+  return { text: (value / 1e6).toFixed(2), unit: "MΩ" };
+}
+
+/**
+ * reading: số đo theo nấc (V, mA, µA, hoặc Ω — tự đổi thang kΩ/MΩ). alert: nấc Ω mà đoạn đo còn điện
+ * (số chỉ sai) → màn hình nhấp nháy tam giác cảnh báo.
+ * @param {{ at: Placement, mode?: string, reading?: number, overload?: boolean, alert?: boolean, title?: string | null, onCycleMode?: (() => void) | null, selectedJack?: string | null, highlightJacks?: string[], onJack?: ((id: string) => void) | null }} props
+ */
+export function Multimeter({ at, mode = "OFF", reading = 0, overload = false, alert = false, title = null, onCycleMode = null, selectedJack = null, highlightJacks = [], onJack = null }) {
   const knob = { x: 65, y: 118 };
   const tip = polar(knob.x, knob.y, 16, METER_MODE_ANGLE[mode] ?? 0);
+  const ohm = mode === "Ω" ? ohmDisplay(reading) : null;
+  const text = mode === "OFF" ? "" : overload ? "OL" : ohm ? ohm.text : formatReading(mode, reading);
+  const lcd = mode === "OFF" ? "#334155" : overload || ohm?.open ? "#FCA5A5" : alert ? "#FDE68A" : "#86EFAC";
   return (
     <Place at={at}>
       <rect x="1" y="1" width="128" height="212" rx="18" fill="#F5A623" stroke="#9A5B0C" strokeWidth="2" />
       <rect x="9" y="9" width="112" height="196" rx="12" fill="#FFFDF8" />
       {title && <text x="65" y="22" textAnchor="middle" fontSize="9.5" fontWeight="900" fill="#9A5B0C" fontFamily={FONT}>{title}</text>}
 
-      <rect x="16" y="28" width="98" height="42" rx="6" fill="#172033" />
-      <text x="107" y="56" textAnchor="end" fontFamily="monospace" fontSize="19" fontWeight="900" fill={mode === "OFF" ? "#334155" : overload ? "#FCA5A5" : "#86EFAC"}>
-        {mode === "OFF" ? "" : overload ? "OL" : formatReading(mode, reading)}
-      </text>
-      <text x="21" y="39" fontSize="7.5" fontWeight="900" fill="#BBF7D0" fontFamily={FONT}>{METER_UNIT[mode]}</text>
+      <rect x="16" y="28" width="98" height="42" rx="6" fill="#172033" stroke={alert ? "#F59E0B" : "none"} strokeWidth="2" />
+      <text x="107" y="56" textAnchor="end" fontFamily="monospace" fontSize="19" fontWeight="900" fill={lcd}>{text}</text>
+      <text x="21" y="39" fontSize="7.5" fontWeight="900" fill="#BBF7D0" fontFamily={FONT}>{ohm ? ohm.unit : METER_UNIT[mode]}</text>
+      {alert && (
+        <g style={{ pointerEvents: "none" }}>
+          <path d="M24 64 L30 53 L36 64 Z" fill="#F59E0B" stroke="#78350F" strokeWidth="1" strokeLinejoin="round">
+            <animate attributeName="opacity" values="1;0.25;1" dur="0.9s" repeatCount="indefinite" />
+          </path>
+          <text x="30" y="62.5" textAnchor="middle" fontSize="8" fontWeight="900" fill="#78350F" fontFamily={FONT}>!</text>
+        </g>
+      )}
 
       <g {...clickable(onCycleMode)} aria-label={`Núm xoay đang ở ${mode}; bấm để chuyển nấc`}>
         <circle cx={knob.x} cy={knob.y} r="44" fill="transparent" />

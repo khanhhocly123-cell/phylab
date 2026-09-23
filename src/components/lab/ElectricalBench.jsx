@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Power } from "lucide-react";
 import { C, FONT } from "../../engine/tokens.js";
-import { OHM_CONDUCTORS, OHM_SETUP, ohmCircuit, stepHeat, flickerCount } from "../../engine/physicsElectric";
+import { OHM_CONDUCTORS, OHM_SETUP, ohmCircuit, heatedResistance, stepHeat, flickerCount } from "../../engine/physicsElectric";
 import {
   LabTopBar, NextStepCard, ChecklistCard, FinishButton, MobileLabSheet, LabToast, LabDialog, ProgressPills, NudgeSlider,
   panelCard, sectionHead, sectionTitle, countPill, btnSecondary,
 } from "./LabChrome.jsx";
-import { METER_MODES, partCenter, terminalAt, DcSource, SwitchK, Multimeter, Resistor } from "./electric/ElectricParts.jsx";
+import { METER_MODES, partCenter, terminalAt, DcSource, SwitchK, Multimeter, Resistor, ohmDisplay } from "./electric/ElectricParts.jsx";
 import LiveGraph, { niceRange } from "./LiveGraph.jsx";
 import { labSound } from "./labSound.js";
 import { flowDuration } from "./animStore.js";
@@ -106,6 +106,11 @@ function fitResistance(rows) {
 }
 
 const heatWord = (h) => (h < 0.12 ? "nguội" : h < 0.35 ? "hơi ấm" : h < 0.6 ? "ấm lên" : "nóng!");
+/** Số đo ôm kế ở thẻ đo: tự đổi thang, hở mạch → OL, mạch còn điện → ⚠. */
+function ohmText(o) {
+  const d = ohmDisplay(o.value);
+  return d.open ? "OL · hở mạch" : `${d.text} ${d.unit}${o.live ? " ⚠" : ""}`;
+}
 
 export default function ElectricalBench({ assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
   // Toạ độ chốt nối TÍNH từ hình học linh kiện + bố cục.
@@ -162,6 +167,19 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
   const ammeterShown = circuit ? Math.max(0, Math.round(circuit.current * 1e4) / 10 + flick.a * 0.1) : 0;   // mA
   const voltmeterShown = circuit ? Math.max(0, Math.round(circuit.voltage * 1e3) / 1e3 + flick.v * 0.001) : 0; // V
   const rShown = ammeterShown > 0.05 ? voltmeterShown / (ammeterShown / 1000) : null;
+  // VOM ở nấc Ω = ôm kế (que VΩ, COM). ĐO2 nối sẵn vào hai đầu vật dẫn → đo thẳng R (nóng thì R tăng).
+  // Nguồn đang đẩy dòng qua vật dẫn thì ôm kế cộng cả điện áp đó → số SAI (báo live). ĐO1 không cắm lỗ VΩ → OL.
+  const loopWired = FLOW.every(([a, b]) => wires.has(edgeKey(a, b)));
+  const powered = assembled && loopWired && switchClosed && sourceOn && (ammeterMode === "mA" || ammeterMode === "µA");
+  const ohmAcross = wires.has(edgeKey("voltmeter-V", "conductor-left")) && wires.has(edgeKey("voltmeter-COM", "conductor-right"));
+  const ohmRead = (mode, across) => {
+    if (mode !== "Ω") return null;
+    if (!across) return { value: Infinity, live: false };
+    const r = heatedResistance(material, heat[material]);
+    return powered ? { value: r + ohmCircuit(setting, material, heat[material]).voltage / 1e-3, live: true } : { value: r, live: false };
+  };
+  const vmOhm = ohmRead(voltmeterMode, ohmAcross);
+  const amOhm = ohmRead(ammeterMode, false);
 
   useEffect(() => {
     const update = () => {
@@ -209,6 +227,20 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
     if (voice && speak) speak(next.text);
   };
   const sound = (name) => { if (!muted) labSound[name]?.(); };
+
+  // Ôm kế: khen khi đo đúng cách, nhắc khi đo lúc mạch còn điện (mỗi loại một lần).
+  const ohmKey = vmOhm ? (vmOhm.live ? "live" : Number.isFinite(vmOhm.value) ? "conductor" : null) : null;
+  useEffect(() => {
+    if (!ohmKey || milestones.current.has(`ohm-${ohmKey}`)) return;
+    milestones.current.add(`ohm-${ohmKey}`);
+    const o = ohmDisplay(vmOhm.value);
+    const note = ohmKey === "live"
+      ? { text: "⚠ Không đo Ω khi mạch đang có điện: nguồn đặt điện áp lên vật dẫn nên số chỉ SAI (và dễ hỏng đồng hồ). Mở K hoặc tắt nguồn trước.", kind: "warn" }
+      : { text: `🔎 Ôm kế đo thẳng vật dẫn ${material}: R ≈ ${o.text} ${o.unit}. So với R = U/I em tính từ số đo — gần bằng nhau! Vật dẫn nóng thì số này tăng.`, kind: "win" };
+    const id = window.setTimeout(() => { flash(note, false, 5600); sound(note.kind === "warn" ? "warn" : "win"); }, 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ohmKey]);
 
   /* ---------------- Số liệu & yêu cầu ---------------- */
   const rowsOf = (id) => rows.filter((row) => row.material === id);
@@ -626,8 +658,9 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: 8 }}>
         <div style={{ flex: 1, minWidth: 0, fontFamily: "monospace", fontWeight: 900, lineHeight: 1.3 }}>
-          <div style={{ fontSize: 15, color: live ? C.ink : C.sub }}><span style={meterTag}>ĐO1</span>{live ? `${ammeterShown.toFixed(1)} mA` : "----"}</div>
-          <div style={{ fontSize: 15, color: live ? C.ink : C.sub }}><span style={meterTag}>ĐO2</span>{live ? `${voltmeterShown.toFixed(3)} V` : "----"}</div>
+          <div style={{ fontSize: 15, color: live ? C.ink : amOhm ? C.navy : C.sub }}><span style={meterTag}>ĐO1</span>{amOhm ? ohmText(amOhm) : live ? `${ammeterShown.toFixed(1)} mA` : "----"}</div>
+          <div style={{ fontSize: 15, color: live ? C.ink : vmOhm ? C.navy : C.sub }}><span style={meterTag}>ĐO2</span>{vmOhm ? ohmText(vmOhm) : live ? `${voltmeterShown.toFixed(3)} V` : "----"}</div>
+          {vmOhm?.live && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B45309", fontFamily: FONT }}>⚠ Nấc Ω khi mạch còn điện — số chỉ sai</div>}
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={miniLabel}>R = U / I</div>
@@ -803,7 +836,8 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
               placed={placed} ports={ports} wires={wires} wireDrag={wireDrag}
               pendingPort={pendingPort} validTargets={validTargets} activeGroup={activeGroup} flyTool={flyTool} isMobile={isMobile}
               sourceOn={sourceOn} setting={setting} switchClosed={switchClosed} ammeterMode={ammeterMode} voltmeterMode={voltmeterMode}
-              ammeterReading={ammeterShown} voltmeterReading={voltmeterShown} material={material} heat={heat[material]}
+              ammeterReading={amOhm ? amOhm.value : ammeterShown} voltmeterReading={vmOhm ? vmOhm.value : voltmeterShown}
+              ammeterAlert={Boolean(amOhm?.live)} voltmeterAlert={Boolean(vmOhm?.live)} material={material} heat={heat[material]}
               onPortStart={startWire} onPortTap={tapPort} onCancelPending={() => setPendingPort(null)} onCycleMode={cycleMode}
               onToggleSource={toggleSource} onKnob={setKnob} onToggleSwitch={toggleSwitch} onRemoveWire={removeWire}
               currentMa={live ? ammeterShown : 0}
@@ -844,9 +878,10 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
 /* ============================ Bàn thí nghiệm (SVG) ============================ */
 function OhmScene({
   placed, ports, wires, wireDrag, pendingPort, validTargets, activeGroup, flyTool, isMobile,
-  sourceOn, setting, switchClosed, ammeterMode, voltmeterMode, ammeterReading, voltmeterReading, material, heat,
+  sourceOn, setting, switchClosed, ammeterMode, voltmeterMode, ammeterReading, voltmeterReading, ammeterAlert, voltmeterAlert, material, heat,
   onPortStart, onPortTap, onCancelPending, onCycleMode, onToggleSource, onKnob, onToggleSwitch, onRemoveWire, currentMa,
 }) {
+  const shownIn = (mode, value) => (mode === "mA" || mode === "V" || mode === "Ω" ? value : 0);
   const has = (key) => placed.has(key);
   const at = (key) => LAYOUT[key].at;
   const allPlaced = placed.size === TOOLS.length;
@@ -869,8 +904,8 @@ function OhmScene({
       {has("source") && <DcSource at={at("source")} on={sourceOn} voltage={setting} onTogglePower={onToggleSource} onChange={onKnob} />}
       {has("switch") && <SwitchK at={at("switch")} closed={switchClosed} onToggle={onToggleSwitch} />}
       {has("conductor") && <Resistor at={at("conductor")} label={`VẬT DẪN ${material}`} tint={`${OHM_CONDUCTORS[material].color}2E`} bands={CONDUCTOR_BANDS[material]} heat={heat} />}
-      {has("ammeter") && <Multimeter at={at("ammeter")} title="ĐO1 · AMPE KẾ" mode={ammeterMode} reading={ammeterMode === "mA" ? ammeterReading : 0} onCycleMode={() => onCycleMode("a")} />}
-      {has("voltmeter") && <Multimeter at={at("voltmeter")} title="ĐO2 · VÔN KẾ" mode={voltmeterMode} reading={voltmeterMode === "V" ? voltmeterReading : 0} onCycleMode={() => onCycleMode("v")} />}
+      {has("ammeter") && <Multimeter at={at("ammeter")} title="ĐO1 · AMPE KẾ" mode={ammeterMode} reading={shownIn(ammeterMode, ammeterReading)} alert={ammeterAlert} onCycleMode={() => onCycleMode("a")} />}
+      {has("voltmeter") && <Multimeter at={at("voltmeter")} title="ĐO2 · VÔN KẾ" mode={voltmeterMode} reading={shownIn(voltmeterMode, voltmeterReading)} alert={voltmeterAlert} onCycleMode={() => onCycleMode("v")} />}
 
       {/* Dây đã nối */}
       {[...wires].map((key) => {

@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Camera, GraduationCap, ChevronRight, Thermometer,
-  Atom, FileText, FlaskConical, History, Compass, Zap, Lightbulb,
-  Sparkles, Check, ArrowRight, Clock, Lock, FileBarChart
+  Camera, ChevronLeft, ChevronRight, Clock, FileText, FlaskConical, GraduationCap, History, Lock, Play, ScanLine, Sparkles, Trophy,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { OPEN_GRADES, OPEN_LABS, OPEN_SUBJECTS, SOON_LABS, type LabEntry } from "@/data/labCatalog";
 
 interface HomeScreenProps {
   studentName: string;
@@ -19,6 +18,15 @@ interface HomeScreenProps {
   onSubjectClick?: (subject: string) => void;
 }
 
+type Grade = "all" | LabEntry["grade"];
+
+const DIFF_STYLE: Record<string, string> = {
+  "Dễ": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Trung bình": "bg-amber-50 text-amber-700 border-amber-200",
+  "Khó": "bg-rose-50 text-rose-700 border-rose-200",
+};
+const SUBJECT_COLOR: Record<string, string> = { "Cơ học": "#DF742E", "Điện": "#2563EB", "Quang học": "#0D9488", "Nhiệt học": "#DC2626", "Hạt nhân": "#7C3AED" };
+
 export default function HomeScreen({
   studentName,
   completedCount,
@@ -28,948 +36,281 @@ export default function HomeScreen({
   onOpenLab,
   onSubjectClick,
 }: HomeScreenProps) {
-  const [selectedGrade, setSelectedGrade] = useState<10 | 11 | 12>(10);
-  const [greeting, setGreeting] = useState("Chào buổi sáng");
+  const [grade, setGrade] = useState<Grade>("all");
+  const [greeting, setGreeting] = useState("Xin chào");
 
+  // Lời chào theo giờ (tính sau khi gắn để tránh lệch giờ server/client).
   useEffect(() => {
-    const hours = new Date().getHours();
-    let currentGreeting = "Chào buổi sáng";
-    if (hours >= 12 && hours < 18) {
-      currentGreeting = "Chào buổi chiều";
-    } else if (hours >= 18 || hours < 5) {
-      currentGreeting = "Chào buổi tối";
-    }
-    const timer = setTimeout(() => {
-      setGreeting(currentGreeting);
-    }, 0);
+    const h = new Date().getHours();
+    const text = h >= 5 && h < 12 ? "Chào buổi sáng" : h >= 12 && h < 18 ? "Chào buổi chiều" : "Chào buổi tối";
+    const timer = setTimeout(() => setGreeting(text), 0);
     return () => clearTimeout(timer);
   }, []);
 
-  // Format short display name
-  const getFirstName = (fullName: string) => {
-    if (!fullName) return "Khánh";
-    const cleanName = fullName.split(" (")[0]; // remove class tags
-    const parts = cleanName.trim().split(" ");
-    return parts[parts.length - 1] || "Khánh";
-  };
+  const firstName = (() => {
+    const clean = (studentName || "").split(" (")[0].trim();
+    return clean.split(" ").pop() || "bạn";
+  })();
 
-  const firstName = getFirstName(studentName);
+  // Tiến độ thật: có báo cáo → 100%; đang làm dở → 25%; chưa vào → 0%.
+  const reported = (id: string) => reports.some((r) => r.lessonId === id);
+  const pctOf = (id: string) => (reported(id) ? 100 : inProgressLabIds.includes(id) ? 25 : 0);
+  const doneCount = Math.max(Math.min(completedCount, OPEN_LABS.length), OPEN_LABS.filter((l) => reported(l.id)).length);
+  const overallPct = OPEN_LABS.length ? Math.round(OPEN_LABS.reduce((s, l) => s + pctOf(l.id), 0) / OPEN_LABS.length) : 0;
 
-  // Logic tiến độ:
-  //   - Chưa vào: 0%
-  //   - Đã vào (in progress): 25%
-  //   - Đã nộp báo cáo của đúng bài: 100%
-  const calcPct = (labId: string) => {
-    if (inProgressLabIds.includes(labId)) return 25;
-    if (reports.some((report) => report.lessonId === labId)) return 100;
-    return 0;
-  };
+  // Bài nên làm tiếp: đang dở → chưa làm → (đã xong hết) bài đầu tiên để ôn.
+  const nextLab = OPEN_LABS.find((l) => inProgressLabIds.includes(l.id) && !reported(l.id)) || OPEN_LABS.find((l) => !reported(l.id)) || OPEN_LABS[0];
+  const nextVerb = nextLab && inProgressLabIds.includes(nextLab.id) && !reported(nextLab.id) ? "Tiếp tục" : nextLab && reported(nextLab.id) ? "Làm lại" : "Bắt đầu";
+  const shown = OPEN_LABS.filter((l) => grade === "all" || l.grade === grade);
+  const soon = SOON_LABS.filter((l) => grade === "all" || l.grade === grade);
 
-  const quickActions = [
-    {
-      label: "Quét tài liệu",
-      desc: "Chụp ảnh bài thực hành từ SGK",
-      icon: Camera,
-      tab: "scan" as const,
-    },
-    {
-      label: "Vào Phòng Lab",
-      desc: "Tiến hành thí nghiệm tương tác",
-      icon: FlaskConical,
-      tab: "lab" as const,
-    },
-    {
-      label: "Sổ Báo Cáo",
-      desc: "Ghi chép & xem lại kiến thức",
-      icon: FileText,
-      tab: "notes" as const,
-    },
-    {
-      label: "Lớp của tôi",
-      desc: "Bài giáo viên giao & trạng thái nộp",
-      icon: GraduationCap,
-      tab: "myclass" as const,
-    },
-  ];
-
-  // Subjects List: Simple Horizontal Pills
-  const subjects = [
-    { title: "Cơ học", icon: Compass, ready: true },
-    { title: "Nhiệt học", icon: Thermometer, ready: false },
-    { title: "Điện", icon: Zap, ready: true },
-    { title: "Quang học", icon: Lightbulb, ready: false },
-    { title: "Vật lý hạt nhân", icon: Atom, ready: false }
-  ];
-
-  // Course labs listing
-  const experiments = [
-    {
-      id: "do-toc-do-vat-chuyen-dong",
-      grade: 10,
-      subject: "Cơ học",
-      name: "Đo vận tốc tức thời và vận tốc trung bình",
-      sgk: "Bài 6 SGK Vật lý 10 - Kết nối tri thức",
-      desc: "Khảo sát chuyển động thẳng biến đổi đều bằng máng nghiêng và cổng quang điện.",
-      difficulty: "Dễ",
-      duration: "10 phút",
-      image: "/images/marble_ramp.webp",
-      active: true
-    },
-    {
-      id: "do-gia-toc-roi-tu-do",
-      grade: 10,
-      subject: "Cơ học",
-      name: "Xác định gia tốc rơi tự do",
-      sgk: "Bài 11 SGK Vật lý 10 - Kết nối tri thức",
-      desc: "Thả rơi bi sắt từ tính qua cổng quang điện để đo gia tốc trọng trường g.",
-      difficulty: "Trung bình",
-      duration: "15 phút",
-      image: "/images/free_fall.webp",
-      active: true
-    },
-    {
-      id: "dong-luong",
-      grade: 10,
-      subject: "Cơ học",
-      name: "Khảo sát định luật bảo toàn động lượng",
-      sgk: "Bài 19 SGK Vật lý 10 - Kết nối tri thức",
-      desc: "Thí nghiệm va chạm xe trượt trên đệm khí.",
-      difficulty: "Khó",
-      duration: "20 phút",
-      image: "",
-      active: false
-    },
-    // Grade 11
-    {
-      id: "do-tieu-cu",
-      grade: 11,
-      subject: "Quang học",
-      name: "Đo tiêu cự của thấu kính hội tụ",
-      sgk: "Bài 22 SGK Vật lý 11 - Kết nối tri thức",
-      desc: "Đo tiêu cự f bằng phương pháp ảnh ảo Bessel.",
-      difficulty: "Dễ",
-      duration: "15 phút",
-      image: "",
-      active: false
-    },
-    {
-      id: "do-dien-tro-dinh-luat-ohm",
-      grade: 11,
-      subject: "Điện",
-      name: "Đo điện trở theo định luật Ohm",
-      sgk: "Bài 23 SGK Vật lý 11 - Kết nối tri thức",
-      desc: "Đo đặc tuyến I–U của hai vật dẫn X, Y bằng hai đồng hồ đa năng hiện số.",
-      difficulty: "Trung bình",
-      duration: "20 phút",
-      image: "/images/do-dien-tro-ohm.png",
-      active: true
-    },
-    {
-      id: "do-suat-dien-dong-pin-dien-hoa",
-      grade: 11,
-      subject: "Điện",
-      name: "Thực hành đo suất điện động pin điện hóa",
-      sgk: "Bài 26 SGK Vật lý 11 - Kết nối tri thức",
-      desc: "Đo nhiều cặp U–I, vẽ đồ thị U = E − Ir để xác định suất điện động của pin.",
-      difficulty: "Khó",
-      duration: "25 phút",
-      image: "/images/do-suat-dien-dong.png",
-      active: true
-    },
-    // Grade 12
-    {
-      id: "giao-thoa-anh-sang",
-      grade: 12,
-      subject: "Quang học",
-      name: "Đo bước sóng ánh sáng bằng phương pháp giao thoa",
-      sgk: "Bài 15 SGK Vật lý 12 - Kết nối tri thức",
-      desc: "Đo bước sóng nguồn laser qua khe Young.",
-      difficulty: "Khó",
-      duration: "25 phút",
-      image: "",
-      active: false
-    }
-  ];
-
-  // Tiến độ thật: tính tổng % của tất cả bài đã hoàn thành 50% hoặc 100%
-  const totalPct = experiments.reduce((sum, lab) => sum + calcPct(lab.id), 0);
-  const overallPct = experiments.length ? Math.round(totalPct / experiments.length) : 0;
-  const completedLabCount = Math.max(completedCount, new Set(reports.map((report) => report.lessonId).filter(Boolean)).size);
-
-  const filteredLabs = experiments.filter(lab => lab.grade === selectedGrade);
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.04 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 12, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 100, damping: 15 } }
-  };
+  const fade = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 120, damping: 18 } } };
 
   return (
-    <motion.div 
-      initial="hidden"
-      animate="show"
-      variants={containerVariants}
-      className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-[#321E12] font-nunito"
-    >
-      {/* ================= LEFT SECTION: MAIN DASHBOARD ================= */}
-      <div className="lg:col-span-9 space-y-6 md:space-y-8">
-        
-        {/* Banner: mobile = cozy claymorphic card; desktop = full card with illustration */}
-        <motion.div
-          variants={itemVariants}
-          className="rounded-[24px] overflow-hidden shadow-[0_6px_20px_rgba(50,30,18,0.02)] group"
-        >
-          {/* Mobile banner — Cozy minimalist card */}
-          <div className="md:hidden p-5 bg-[#FFF8F2] text-[#321E12] rounded-[24px] border-2 border-[#E2DFD8] relative">
-            <h2 className="text-xl font-black tracking-tight leading-tight text-[#321E12]">
-              {greeting}, <span className="text-[#C85A17]">{firstName}</span>
-            </h2>
-            <p className="text-xs font-semibold text-[#605248] mt-1.5 leading-relaxed">
-              Chào mừng bạn đến với PhyLab. Hôm nay bạn muốn tự tay khám phá thí nghiệm nào?
-            </p>
-            <div className="mt-4 pt-3.5 border-t border-[#E2DFD8]/60 flex items-center justify-between text-[10px] font-black text-[#605248]">
-              <span>Khối Cơ Học • Lớp 10</span>
-              <span className="text-[#C85A17]">Tiến độ học tập: {overallPct}%</span>
-            </div>
-          </div>
+    <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+      className="w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4 lg:gap-5 items-start text-[#321E12] font-nunito">
 
-          {/* Desktop banner — full layout with illustration */}
-          <div className="hidden md:flex p-8 flex-row justify-between items-center relative bg-[#FFF8F2] border border-[#E2DFD8]">
-            <div className="absolute inset-0 blueprint-grid opacity-[0.02] pointer-events-none" />
-            <div className="space-y-2 text-left z-10 max-w-lg">
-              <h2 className="text-4xl font-black tracking-tight leading-tight text-[#321E12]">
+      {/* ======================= CỘT CHÍNH ======================= */}
+      <div className="min-w-0 flex flex-col gap-4 lg:gap-5">
+
+        {/* Hero: lời chào + bài nên làm tiếp + 2 hành động chính */}
+        <motion.section variants={fade}
+          className="relative overflow-hidden rounded-3xl border border-[#EBC9A8] bg-[linear-gradient(120deg,#FFF6EC_0%,#FFE9D4_55%,#FFDDBE_100%)] p-4 md:p-5 flex flex-col md:flex-row gap-4 md:items-stretch">
+          <div className="pointer-events-none absolute -right-10 -top-16 w-64 h-64 rounded-full bg-[#DF742E]/10" />
+          <div className="pointer-events-none absolute right-40 -bottom-20 w-44 h-44 rounded-full bg-[#DF742E]/8" />
+          <div className="relative min-w-0 flex-1 flex flex-col justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/70 border border-[#EBC9A8] px-2.5 py-1 text-[10.5px] font-black text-[#C85A17]">
+                <Sparkles className="w-3.5 h-3.5" /> {OPEN_LABS.length} phòng Lab đang mở{SOON_LABS.length ? ` · ${SOON_LABS.length} bài sắp ra mắt` : ""}
+              </div>
+              <h1 className="mt-2 text-2xl md:text-[30px] font-black tracking-tight leading-tight">
                 {greeting}, <span className="text-[#C85A17]">{firstName}!</span>
-              </h2>
-              <p className="text-base font-bold text-[#605248] leading-relaxed">
-                Hôm nay bạn muốn khám phá hiện tượng vật lý nào?
+              </h1>
+              <p className="mt-1 text-[13px] md:text-sm font-bold text-[#605248] leading-snug">
+                Tự tay lắp dụng cụ, đo số liệu thật và xem đồ thị hiện ra ngay trên bàn thí nghiệm.
               </p>
             </div>
-            <div className="relative z-10 w-[220px] h-[130px] rounded-2xl overflow-hidden shadow-sm flex-shrink-0 bg-white/40 border border-[#E2DFD8]">
-              <img
-                src="/images/prism_light.webp"
-                alt="Prism splitting light spectrum"
-                loading="lazy"
-                decoding="async"
-                draggable={false}
-                className="w-full h-full object-cover select-none transition-transform duration-[1.2s] ease-out group-hover:scale-105"
-              />
+            <div className="flex gap-2">
+              <button onClick={() => onNav("scan")}
+                className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-2xl bg-[#321E12] hover:bg-[#4A2E1C] text-white text-[13px] font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all shadow-[0_8px_18px_rgba(50,30,18,.18)] whitespace-nowrap">
+                <ScanLine className="w-4 h-4" /> Quét trang SGK
+              </button>
+              <button onClick={() => onNav("lab")}
+                className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-2xl bg-white/85 hover:bg-white border border-[#EBC9A8] text-[#321E12] text-[13px] font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all whitespace-nowrap">
+                <FlaskConical className="w-4 h-4 text-[#C85A17]" /> Tất cả phòng Lab
+              </button>
             </div>
           </div>
-        </motion.div>
 
-        {/* Mobile Subject Filter Carousel */}
-        <motion.div
-          variants={itemVariants}
-          className="lg:hidden flex items-center gap-3 overflow-x-auto scrollbar-none pb-2 pt-1 w-full snap-x snap-mandatory"
-        >
-          {subjects.map((sub, idx) => {
-            const Icon = sub.icon;
-            // Cozy clay colors for each subject
-            const colorTheme = {
-              bg: "bg-[#FFFBF7] border-[#E2DFD8]",
-              activeBg: "bg-[#FFF2E6] border-[#D56A17] text-[#321E12] shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_6px_12px_rgba(213,106,23,0.04)]",
-              accent: "bg-[#FAF8F5] text-[#605248] border-[#E2DFD8]",
-              activeAccent: "bg-[#D56A17] text-white border-transparent"
-            };
-
-            if (sub.title === "Nhiệt học") {
-              colorTheme.accent = "bg-[#FFF5F5] text-[#C62828] border-[#FFCDD2]";
-            } else if (sub.title === "Điện") {
-              colorTheme.accent = "bg-[#FFFDE6] text-[#F57F17] border-[#FFE082]";
-            } else if (sub.title === "Quang học") {
-              colorTheme.accent = "bg-[#F0FDFA] text-[#00695C] border-[#B2DFDB]";
-            } else if (sub.title === "Vật lý hạt nhân") {
-              colorTheme.accent = "bg-[#F5F3FF] text-[#6D28D9] border-[#DDD6FE]";
-            }
-
-            const active = sub.ready;
-            
-            return (
-              <button
-                key={idx}
-                onClick={() => { if (sub.title === "Điện") setSelectedGrade(11); onSubjectClick?.(sub.title); }}
-                className={`snap-start flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all duration-200 flex-shrink-0 w-[145px] select-none active:scale-97 cursor-pointer ${
-                  active ? colorTheme.activeBg : `${colorTheme.bg} shadow-xs`
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${
-                  active ? colorTheme.activeAccent : colorTheme.accent
-                }`}>
-                  <Icon className="w-4.5 h-4.5 stroke-[2.5]" />
-                </div>
-                <div className="text-left min-w-0 flex-1">
-                  <h4 className="text-xs font-black text-[#321E12] leading-tight truncate">
-                    {sub.title}
-                  </h4>
-                  <span className={`text-[8px] font-black uppercase tracking-wider block mt-0.5 ${
-                    active ? "text-[#D56A17]" : "text-[#605248]/50"
-                  }`}>
-                    {active ? "Có Lab" : "Sắp ra mắt"}
+          {/* Bài nên làm tiếp */}
+          {nextLab && (
+            <button onClick={() => onOpenLab(nextLab.id)}
+              className="relative md:w-[300px] flex-shrink-0 text-left rounded-2xl bg-white border border-[#EBC9A8] shadow-[0_10px_24px_rgba(200,90,23,.12)] overflow-hidden flex md:flex-col cursor-pointer group active:scale-[.99] transition-all">
+              <div className="relative w-28 md:w-full h-auto md:h-[92px] flex-shrink-0 overflow-hidden bg-[#EAE8E3]">
+                {nextLab.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={nextLab.image} alt="" draggable={false} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                <span className="absolute left-2 bottom-2 text-[10px] font-black text-white bg-[#C85A17] rounded-md px-1.5 py-0.5">{nextVerb === "Tiếp tục" ? "ĐANG LÀM DỞ" : nextVerb === "Làm lại" ? "ÔN LẠI" : "GỢI Ý TIẾP THEO"}</span>
+              </div>
+              <div className="min-w-0 flex-1 p-3 flex flex-col gap-1.5">
+                <div className="text-[10.5px] font-black text-[#C85A17]">{nextLab.code} · Lớp {nextLab.grade} · {nextLab.subject}</div>
+                <div className="text-[14px] font-black leading-snug line-clamp-2 group-hover:text-[#C85A17] transition-colors">{nextLab.name}</div>
+                <div className="mt-auto flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-[#EDE7DB] overflow-hidden"><div className="h-full rounded-full bg-[#DF742E]" style={{ width: `${pctOf(nextLab.id)}%` }} /></div>
+                  <span className="h-8 px-3 rounded-xl bg-[#C85A17] group-hover:bg-[#B24A0C] text-white text-[12px] font-black flex items-center gap-1">
+                    {nextVerb} <Play className="w-3 h-3 fill-current" />
                   </span>
                 </div>
+              </div>
+            </button>
+          )}
+        </motion.section>
+
+        {/* Phòng Lab — hàng thẻ cuộn ngang: ít bài thì giãn đầy hàng, nhiều bài thì cuộn */}
+        <motion.section variants={fade} className="flex flex-col gap-2.5 min-w-0">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-lg md:text-xl font-black tracking-tight">Phòng Lab <span className="text-[13px] font-black text-[#8C7B6B]">{shown.length} bài</span></h2>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-2xl border border-[#E2DFD8] bg-white p-1 overflow-x-auto max-w-[70vw] scrollbar-none">
+                {(["all", ...OPEN_GRADES] as Grade[]).map((g) => (
+                  <button key={String(g)} onClick={() => setGrade(g)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-[12px] font-black cursor-pointer transition-all ${grade === g ? "bg-[#C85A17] text-white shadow-[0_4px_10px_rgba(200,90,23,.2)]" : "text-[#605248] hover:bg-[#FFF2E6] hover:text-[#C85A17]"}`}>
+                    {g === "all" ? "Tất cả" : `Lớp ${g}`}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => onNav("lab")} className="hidden sm:flex items-center gap-0.5 text-[12px] font-black text-[#C85A17] hover:underline cursor-pointer whitespace-nowrap">
+                Xem tất cả <ChevronRight className="w-3.5 h-3.5" />
               </button>
-            );
-          })}
-        </motion.div>
-
-        {/* Mobile Quick Action Console / Desktop Action grid */}
-        <div className="md:hidden space-y-3">
-          {/* Main Action: Scan SGK (Cozy minimalist claymorphism) */}
-          <button
-            onClick={() => onNav("scan")}
-            className="w-full bg-[#FFF2E6] text-[#321E12] p-4.5 rounded-[24px] border-2 border-[#C85A17]/25 shadow-[inset_0_2px_4px_rgba(255,255,255,0.85),0_6px_12px_rgba(50,30,18,0.02)] flex items-center justify-between gap-4 active:scale-98 transition-all group cursor-pointer"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-[#C85A17]/10 flex items-center justify-center border border-[#C85A17]/20 flex-shrink-0">
-                <Camera className="w-6 h-6 text-[#C85A17] stroke-[2.5]" />
-              </div>
-              <div className="text-left">
-                <h4 className="text-sm font-black text-[#321E12] leading-tight">
-                  Quét Sách Giáo Khoa
-                </h4>
-                <p className="text-[10px] font-bold text-[#605248] mt-0.5">Chụp hình trang sách để nhận diện bài học nhanh</p>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-white border border-[#E2DFD8] flex items-center justify-center text-[#605248] flex-shrink-0">
-              <ChevronRight className="w-4 h-4 stroke-[3]" />
-            </div>
-          </button>
-
-          {/* Sub Actions: 3 Columns Grid */}
-          <div className="grid grid-cols-3 gap-2.5">
-            {[
-              {
-                label: "Vào Lab",
-                desc: "Đo đạc ảo",
-                icon: FlaskConical,
-                tab: "lab" as const,
-                color: "bg-[#FFF2E6] text-[#C85A17] border-[#C85A17]/15",
-              },
-              {
-                label: "Lớp học",
-                desc: "Bài được giao",
-                icon: GraduationCap,
-                tab: "myclass" as const,
-                color: "bg-[#F3F8F2] text-[#2E7D32] border-[#2E7D32]/15",
-              },
-              {
-                label: "Sổ Báo Cáo",
-                desc: "Ghi chép",
-                icon: FileText,
-                tab: "notes" as const,
-                color: "bg-[#F2F6FC] text-[#1976D2] border-[#1976D2]/15",
-              }
-            ].map((act) => {
-              const Icon = act.icon;
-              return (
-                <button
-                  key={act.label}
-                  onClick={() => onNav(act.tab)}
-                  className="bg-white border-2 border-[#E2DFD8] rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all text-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),0_4px_8px_rgba(50,30,18,0.015)] cursor-pointer"
-                >
-                  <div className={`w-8.5 h-8.5 rounded-xl flex items-center justify-center ${act.color} flex-shrink-0`}>
-                    <Icon className="w-4.5 h-4.5 stroke-[2.5]" />
-                  </div>
-                  <div className="min-w-0">
-                    <h5 className="text-[11px] font-black text-[#321E12] truncate leading-tight">
-                      {act.label}
-                    </h5>
-                    <p className="text-[8px] text-[#605248] font-bold mt-0.5 truncate leading-none">
-                      {act.desc}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 4 Quick Action Shortcuts — Desktop only */}
-        <motion.div variants={itemVariants} className="hidden md:grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-          {quickActions.map((act) => {
-            const Icon = act.icon;
-            return (
-              <button
-                key={act.label}
-                onClick={() => onNav(act.tab)}
-                className="bg-[#FFFFFF] hover:bg-[#FFFBF5] border border-[#E2DFD8] hover:border-[#C85A17]/45 rounded-2xl p-3.5 md:p-5 text-left transition-all duration-200 active:scale-97 cursor-pointer shadow-[0_4px_16px_rgba(50,30,18,0.005)] hover:shadow-[0_8px_20px_rgba(50,30,18,0.02)] flex flex-col gap-2.5 md:gap-4 min-h-[112px] md:min-h-[160px] group relative"
-              >
-                <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-[#FFF2E6] flex items-center justify-center text-[#C85A17] border border-[#C85A17]/10 group-hover:bg-[#C85A17] group-hover:text-white transition-colors duration-250 flex-shrink-0">
-                  <Icon className="w-4.5 h-4.5 md:w-5.5 md:h-5.5 stroke-[2.5]" />
-                </div>
-                <div>
-                  <h4 className="text-[11px] md:text-sm font-black text-[#321E12] group-hover:text-[#C85A17] transition-colors duration-200 leading-snug">
-                    {act.label}
-                  </h4>
-                  <p className="hidden md:block text-[10px] text-[#605248] font-bold leading-normal mt-0.5">
-                    {act.desc}
-                  </p>
-                </div>
-                <ChevronRight className="absolute bottom-3.5 right-3.5 md:bottom-5 md:right-5 w-3.5 h-3.5 text-[#605248]/40 group-hover:text-[#C85A17] transition-colors duration-200 flex-shrink-0" />
-              </button>
-            );
-          })}
-        </motion.div>
-
-        {/* Thí nghiệm gần đây: Swipable horizontal carousel on mobile, 2-column grid on desktop */}
-        <motion.div variants={itemVariants} className="space-y-4">
-          <h3 className="text-lg md:text-xl font-extrabold text-[#321E12] tracking-tight px-0.5 flex items-center justify-between">
-            <span>Thí nghiệm gần đây</span>
-            <span className="text-[10px] font-black text-[#C85A17] bg-[#FFF2E6] px-2.5 py-1 rounded-lg border border-[#C85A17]/10 md:hidden animate-pulse">
-              Vuốt ngang &rarr;
-            </span>
-          </h3>
-          
-          <div className="w-full">
-            <div
-              className="flex lg:grid overflow-x-auto lg:overflow-x-visible lg:grid-cols-2 gap-4 lg:gap-5 pb-4 lg:pb-0 snap-x snap-mandatory scrollbar-none w-full scroll-smooth"
-              style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain" }}
-            >
-              {/* Card 1: Ramp experiment (Bài 6) */}
-              <div
-                onClick={() => onOpenLab("do-toc-do-vat-chuyen-dong")}
-                className="min-w-[76vw] sm:min-w-0 snap-start bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] hover:border-[#C85A17]/35 shadow-[0_6px_20px_rgba(50,30,18,0.015)] hover:shadow-[0_12px_32px_rgba(50,30,18,0.03)] transition-all duration-300 overflow-hidden flex flex-col justify-between cursor-pointer group relative flex-shrink-0 sm:w-auto"
-              >
-                {/* Visual Thumbnail with Gradient Overlay */}
-                <div className="h-28 md:h-44 overflow-hidden relative bg-[#EAE8E3] border-b border-[#E2DFD8]/70">
-                  <img
-                    src="/images/marble_ramp.webp"
-                    alt="Đo tốc độ tức thời và tốc độ trung bình"
-                    loading="lazy"
-                    decoding="async"
-                    draggable={false}
-                    className="w-full h-full object-cover select-none transition-transform duration-[1.5s] ease-out group-hover:scale-103"
-                  />
-                  {/* Subtle dark gradient overlay to highlight text */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                  
-                  {/* Badges on Thumbnail */}
-                  <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-                    <span className="text-[8px] font-black text-[#C85A17] bg-[#FFF8F2] px-2 py-0.5 rounded border border-[#C85A17]/15 shadow-xs uppercase tracking-wider">
-                      Bài 6 SGK
-                    </span>
-                    <span className="text-[8px] font-black text-white bg-[#00695C]/80 backdrop-blur-xs px-2 py-0.5 rounded shadow-xs uppercase tracking-wider">
-                      Lớp 10 • Cơ học
-                    </span>
-                  </div>
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute bottom-3 right-3 z-10 w-9 h-9 rounded-full bg-[#C85A17] text-white flex items-center justify-center shadow-lg group-hover:scale-105 active:scale-95 transition-all">
-                    <ChevronRight className="w-5 h-5 stroke-[3] ml-0.5" />
-                  </div>
-                </div>
-
-                <div className="p-4 md:p-6 space-y-3.5">
-                  <div className="space-y-1">
-                    <h4 className="text-sm md:text-lg font-black text-[#321E12] group-hover:text-[#C85A17] transition-colors leading-snug truncate">
-                      Đo vận tốc tức thời và vận tốc trung bình
-                    </h4>
-                    <p className="text-[10px] md:text-xs text-[#605248] font-bold">
-                      Thiết bị: Máng nghiêng & Cổng quang điện kép
-                    </p>
-                  </div>
-
-                  {/* Progress bar - 0/25/50/100 thật */}
-                  {(() => {
-                    const pct = calcPct("do-toc-do-vat-chuyen-dong");
-                    return (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex justify-between items-center text-[10px] md:text-xs font-extrabold text-[#605248]">
-                          <span>
-                            {pct === 0 ? "Chưa bắt đầu" : pct === 25 ? "Đang tiến hành" : pct >= 50 ? "Đã hoàn thành" : ""}
-                          </span>
-                          <span className={`font-black ${pct > 0 ? "text-[#C85A17]" : "text-[#605248]"}`}>
-                            {pct}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-[#E2DFD8]/45 h-2 rounded-full overflow-hidden shadow-inner">
-                          <div
-                            className={`h-full transition-all duration-300 rounded-full bg-gradient-to-r ${pct >= 50 ? "from-[#DF742E] to-[#C85A17]" : "from-[#FFB74D] to-[#DF742E]"}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* Card 2: Free fall experiment (Bài 11) */}
-              <div
-                onClick={() => onOpenLab("do-gia-toc-roi-tu-do")}
-                className="min-w-[76vw] sm:min-w-0 snap-start bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] hover:border-[#C85A17]/35 shadow-[0_6px_20px_rgba(50,30,18,0.015)] hover:shadow-[0_12px_32px_rgba(50,30,18,0.03)] transition-all duration-300 overflow-hidden flex flex-col justify-between cursor-pointer group relative flex-shrink-0 sm:w-auto"
-              >
-                {/* Visual Thumbnail with Gradient Overlay */}
-                <div className="h-28 md:h-44 overflow-hidden relative bg-[#EAE8E3] border-b border-[#E2DFD8]/70">
-                  <img
-                    src="/images/free_fall.webp"
-                    alt="Xác định gia tốc rơi tự do"
-                    loading="lazy"
-                    decoding="async"
-                    draggable={false}
-                    className="w-full h-full object-cover select-none transition-transform duration-[1.5s] ease-out group-hover:scale-103"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                  
-                  {/* Badges on Thumbnail */}
-                  <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-                    <span className="text-[8px] font-black text-[#C85A17] bg-[#FFF8F2] px-2 py-0.5 rounded border border-[#C85A17]/15 shadow-xs uppercase tracking-wider">
-                      Bài 11 SGK
-                    </span>
-                    <span className="text-[8px] font-black text-white bg-[#00695C]/80 backdrop-blur-xs px-2 py-0.5 rounded shadow-xs uppercase tracking-wider">
-                      Lớp 10 • Cơ học
-                    </span>
-                  </div>
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute bottom-3 right-3 z-10 w-9 h-9 rounded-full bg-[#C85A17] text-white flex items-center justify-center shadow-lg group-hover:scale-105 active:scale-95 transition-all">
-                    <ChevronRight className="w-5 h-5 stroke-[3] ml-0.5" />
-                  </div>
-                </div>
-
-                <div className="p-4 md:p-6 space-y-3.5">
-                  <div className="space-y-1">
-                    <h4 className="text-sm md:text-lg font-black text-[#321E12] group-hover:text-[#C85A17] transition-colors leading-snug truncate">
-                      Xác định gia tốc rơi tự do
-                    </h4>
-                    <p className="text-[10px] md:text-xs text-[#605248] font-bold">
-                      Thiết bị: Trụ thép rơi & Cổng quang điện hồng ngoại
-                    </p>
-                  </div>
-
-                  {/* Progress bar */}
-                  {(() => {
-                    const pct = calcPct("do-gia-toc-roi-tu-do");
-                    return (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex justify-between items-center text-[10px] md:text-xs font-extrabold text-[#605248]">
-                          <span>
-                            {pct === 0 ? "Chưa bắt đầu" : pct === 25 ? "Đang tiến hành" : pct >= 50 ? "Đã hoàn thành" : ""}
-                          </span>
-                          <span className={`font-black ${pct > 0 ? "text-[#C85A17]" : "text-[#605248]"}`}>
-                            {pct}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-[#E2DFD8]/45 h-2 rounded-full overflow-hidden shadow-inner">
-                          <div
-                            className={`h-full transition-all duration-300 rounded-full bg-gradient-to-r ${pct >= 50 ? "from-[#DF742E] to-[#C85A17]" : "from-[#FFB74D] to-[#DF742E]"}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            {/* Carousel Dots Indicators */}
-            <div className="flex lg:hidden justify-center items-center gap-1.5 pt-2">
-              {[0, 1].map((dot) => (
-                <span 
-                  key={dot} 
-                  className={`w-1.5 h-1.5 rounded-full transition-colors duration-200 ${
-                    dot === 0 ? "bg-[#C85A17]" : "bg-[#E2DFD8]/80"
-                  }`}
-                />
-              ))}
             </div>
           </div>
-        </motion.div>
+          <CardRow>
+            {shown.map((lab) => <LabCard key={lab.id} lab={lab} pct={pctOf(lab.id)} onOpen={() => onOpenLab(lab.id)} />)}
+          </CardRow>
 
-        {/* Khám phá theo chủ đề — desktop only (mobile đã có pills compact ở trên banner) */}
-        <motion.div variants={itemVariants} className="hidden lg:block space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg md:text-xl font-extrabold text-[#321E12] tracking-tight">
-              Khám phá theo chủ đề
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-5 gap-3 w-full">
-            {subjects.map((sub, idx) => {
-              const Icon = sub.icon;
-              return (
-                <div
-                  key={idx}
-                  onClick={() => { if (sub.title === "Điện") setSelectedGrade(11); onSubjectClick?.(sub.title); }}
-                  className="bg-[#FFFFFF] border border-[#E2DFD8] rounded-2xl p-4 flex items-center shadow-[0_2px_8px_rgba(50,30,18,0.005)] hover:border-[#C85A17]/25 transition-all group cursor-pointer"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/5 flex items-center justify-center flex-shrink-0 group-hover:bg-[#C85A17] group-hover:text-white transition-colors duration-250">
-                    <Icon className="w-4.5 h-4.5 stroke-[2.5]" />
-                  </div>
-                  <div className="ml-3 min-w-0 flex-1">
-                    <h4 className="text-xs font-black text-[#321E12] truncate group-hover:text-[#C85A17] transition-colors">
-                      {sub.title}
-                    </h4>
-                    <p className="text-[9px] text-[#605248] font-bold mt-0.5 truncate">
-                      {sub.ready ? "Có lab" : "Chưa có lab"}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        {/* All Course Labs Directory: Compact row items on mobile, Full grids on desktop */}
-        <motion.div variants={itemVariants} className="space-y-4 border-t border-[#E2DFD8]/60 pt-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-            <h3 className="text-lg md:text-xl font-extrabold text-[#321E12] tracking-tight">
-              Tất cả bài thực hành
-            </h3>
-            
-            {/* Grade Switcher */}
-            <div className="flex items-center gap-1.5 bg-[#FFF2E6]/30 border border-[#E2DFD8] p-1.5 rounded-2xl w-full sm:w-auto overflow-hidden shadow-2xs">
-              {[10, 11, 12].map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setSelectedGrade(g as 10 | 11 | 12)}
-                  className={`flex-1 sm:flex-initial text-center py-2 px-5 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                    selectedGrade === g
-                      ? "bg-[#C85A17] text-white shadow-[0_4px_12px_rgba(200,90,23,0.18)]"
-                      : "text-[#605248] hover:text-[#C85A17] hover:bg-[#FFF2E6]"
-                  }`}
-                >
-                  Lớp {g}
+          {/* Sắp ra mắt */}
+          {soon.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-0.5">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-[#8C7B6B] flex-shrink-0">Sắp ra mắt</span>
+              {soon.map((s) => (
+                <button key={s.id} onClick={() => onSubjectClick?.(s.subject)} title={`${s.code} · ${s.name} (Lớp ${s.grade}) — đang chuẩn bị`}
+                  className="flex-shrink-0 flex items-center gap-1.5 h-8 px-2.5 rounded-xl border border-dashed border-[#D8CDB8] bg-white/60 text-[11.5px] font-black text-[#8C7B6B] hover:text-[#605248] hover:border-[#C9B79B] cursor-pointer">
+                  <Lock className="w-3 h-3" /> {s.code} · {s.name}
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Desktop Grid Layout (Hidden on Mobile) */}
-          <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredLabs.map((lab) => {
-              const pct = calcPct(lab.id);
-              return (
-              <div
-                key={lab.id}
-                className={`bg-[#FFFFFF] rounded-2xl border border-[#E2DFD8] hover:border-[#C85A17]/25 shadow-xs hover:shadow-sm transition-all duration-200 overflow-hidden flex flex-col justify-between group ${
-                  !lab.active && "opacity-80"
-                }`}
-              >
-                <div className="p-5 space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-black text-[#C85A17] bg-[#FFF2E6] px-2 py-0.5 rounded border border-[#C85A17]/10">{lab.sgk}</span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded border ${lab.subject === "Điện" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>{lab.subject}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                        lab.difficulty === "Dễ"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : lab.difficulty === "Trung bình"
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-rose-50 text-rose-700"
-                      }`}>
-                        {lab.difficulty}
-                      </span>
-                      <span className="text-[10px] font-semibold text-[#605248]/70 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-[#605248]/60" /> {lab.duration}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h4 className="text-base font-black text-[#321E12] group-hover:text-[#C85A17] transition-colors leading-snug">
-                      {lab.name}
-                    </h4>
-                    <p className="text-xs text-[#605248] font-bold leading-relaxed line-clamp-2">
-                      {lab.desc}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-[#FFF2E6]/10 border-t border-[#E2DFD8]/75 flex items-center justify-between gap-4 mt-auto">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between items-center text-[9px] text-[#605248]/70 font-bold uppercase">
-                      <span>Tiến trình</span>
-                      <span className="text-[#C85A17] font-black">{pct}%</span>
-                    </div>
-                    <div className="h-1.5 bg-[#E2DFD8]/30 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${pct > 0 ? "bg-[#C85A17]" : "bg-[#E2DFD8]/60"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {lab.active ? (
-                    <button
-                      onClick={() => onOpenLab(lab.id)}
-                      className="py-2 px-4 bg-[#C85A17] hover:bg-[#B24A0C] text-white text-xs font-black rounded-lg shadow-2xs flex items-center gap-0.5 transition-all cursor-pointer hover:translate-x-0.5"
-                    >
-                      {pct === 25 ? "Tiếp tục" : pct >= 50 ? "Làm lại" : "Bắt đầu"} <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-1 text-[9px] font-black text-[#605248]/60 bg-[#EAE8E3] px-2.5 py-1.5 rounded border border-[#E2DFD8]/50">
-                      <Lock className="w-3.5 h-3.5" /> Khóa
-                    </div>
-                  )}
-                </div>
-              </div>
-              );
-            })}
-          </div>
-
-          {/* Mobile Card List Layout (Creative redesign) */}
-          <div className="md:hidden flex flex-col gap-4">
-            {filteredLabs.map((lab) => {
-              const pct = calcPct(lab.id);
-              return (
-              <div
-                key={lab.id}
-                onClick={() => { if (lab.active) onOpenLab(lab.id); }}
-                className={`relative overflow-hidden bg-white border border-[#E2DFD8] rounded-3xl p-4.5 transition-all duration-200 active:scale-98 shadow-sm flex flex-col gap-3.5 ${
-                  !lab.active ? "bg-slate-50/50 border-[#E2DFD8]/60 cursor-not-allowed" : "cursor-pointer"
-                }`}
-              >
-                {/* Background glow decoration if active */}
-                {lab.active && pct > 0 && (
-                  <div className="absolute right-0 top-0 w-24 h-24 rounded-full bg-[#D56A17]/5 blur-[24px] pointer-events-none" />
-                )}
-
-                {/* Upper row: thumbnail and info */}
-                <div className="flex items-start gap-4">
-                  {/* Visual Thumbnail container */}
-                  <div className="w-16 h-16 rounded-2xl bg-[#FFF2E6] flex-shrink-0 overflow-hidden flex items-center justify-center border border-[#E2DFD8]/60 relative shadow-inner">
-                    {lab.image ? (
-                      <img src={lab.image} alt={lab.name} loading="lazy" decoding="async" draggable={false} className="w-full h-full object-cover" />
-                    ) : (
-                      <FlaskConical className="w-7 h-7 text-[#C85A17]" />
-                    )}
-                    {/* Semi-transparent blur overlay for locked labs */}
-                    {!lab.active && (
-                      <div className="absolute inset-0 bg-[#321E12]/50 backdrop-blur-xs flex items-center justify-center text-white">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Lab Details */}
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[8px] font-black text-[#C85A17] bg-[#FFF2E6] px-2 py-0.5 rounded border border-[#C85A17]/10 uppercase tracking-wider">
-                        {lab.sgk.split("SGK")[0].trim() || "Thực hành"}
-                      </span>
-                      <span className={`text-[8px] font-black px-2 py-0.5 rounded ${
-                        lab.difficulty === "Dễ"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                          : lab.difficulty === "Trung bình"
-                          ? "bg-amber-50 text-amber-700 border border-amber-100"
-                          : "bg-rose-50 text-rose-700 border border-rose-100"
-                      }`}>
-                        {lab.difficulty}
-                      </span>
-                      <span className={`text-[8px] font-black px-2 py-0.5 rounded border ${lab.subject === "Điện" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>{lab.subject}</span>
-                      <span className="text-[9px] font-bold text-[#605248]/70 flex items-center gap-0.5">
-                        <Clock className="w-2.5 h-2.5" /> {lab.duration}
-                      </span>
-                    </div>
-
-                    <h4 className="text-xs font-black text-[#321E12] leading-snug mt-1 break-words">
-                      {lab.name}
-                    </h4>
-                    <p className="text-[9px] text-[#605248] font-bold">
-                      {lab.sgk}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Lower row: progress track & Action button */}
-                <div className="pt-3 border-t border-[#E2DFD8]/60 flex items-center justify-between gap-4">
-                  {lab.active ? (
-                    <>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between items-center text-[9px] text-[#605248]/70 font-black uppercase">
-                          <span>Tiến trình</span>
-                          <span className="text-[#C85A17]">{pct}%</span>
-                        </div>
-                        <div className="h-2 bg-[#E2DFD8]/45 rounded-full overflow-hidden shadow-inner">
-                          <div
-                            className={`h-full transition-all duration-300 rounded-full bg-gradient-to-r from-[#DF742E] to-[#C85A17]`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="py-2 px-4.5 bg-[#C85A17] text-white text-[10px] font-black rounded-xl shadow-sm flex items-center gap-0.5 flex-shrink-0">
-                        {pct === 25 ? "Tiếp tục" : pct >= 50 ? "Làm lại" : "Bắt đầu"} 
-                        <ChevronRight className="w-3.5 h-3.5 stroke-[3] ml-0.5" />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-[9px] font-bold text-[#605248]/60 flex items-center gap-1">
-                        <Lock className="w-3.5 h-3.5 text-[#605248]/55" /> Phòng thí nghiệm ảo đang được đóng gói
-                      </span>
-                      <span className="text-[9px] font-black px-2.5 py-1 bg-[#EAE8E3] text-[#605248]/70 rounded-lg border border-[#E2DFD8]">
-                        Khóa
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-              );
-            })}
-          </div>
-
-        </motion.div>
-
+          )}
+        </motion.section>
       </div>
 
-      {/* ================= RIGHT SECTION: LEARNING SIDEBAR ================= */}
-      <div className="hidden lg:block lg:col-span-3 space-y-6">
-        
-        {/* Study Progress Card with Circular Gauge */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] p-5 shadow-[0_4px_15px_rgba(50,30,18,0.005)] space-y-5"
-        >
+      {/* ======================= CỘT PHẢI ======================= */}
+      <div className="min-w-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-5">
+        {/* Tiến độ — tổng + theo chủ đề (không phụ thuộc số bài) */}
+        <motion.section variants={fade} className="rounded-3xl bg-white border border-[#E2DFD8] p-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-[10px] font-black uppercase tracking-wider text-[#605248]/70 flex items-center gap-1.5">
-              Tiến độ học tập
-            </h4>
-            <button 
-              onClick={() => onNav("notes")}
-              className="text-[10px] font-extrabold text-[#C85A17] hover:underline flex items-center gap-0.5"
-            >
-              Xem chi tiết &rarr;
-            </button>
+            <h3 className="text-[11px] font-black uppercase tracking-wider text-[#8C7B6B] flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5 text-[#C85A17]" /> Tiến độ của em</h3>
+            <button onClick={() => onNav("notes")} className="text-[11px] font-black text-[#C85A17] hover:underline cursor-pointer">Sổ báo cáo →</button>
           </div>
-          
-          <div className="flex items-center gap-4.5 py-1">
-            {/* Circular Progress Gauge */}
-            <div className="relative w-18 h-18 flex items-center justify-center flex-shrink-0">
-              <svg width="72" height="72" viewBox="0 0 72 72">
-                <circle cx="36" cy="36" r="30" fill="none" stroke="#FAF9F6" strokeWidth="6" />
-                <circle
-                  cx="36"
-                  cy="36"
-                  r="30"
-                  fill="none"
-                  stroke="#C85A17"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 30}
-                  strokeDashoffset={2 * Math.PI * 30 * (1 - overallPct / 100)}
-                  transform="rotate(-90 36 36)"
-                  className="transition-all duration-500"
-                />
+          <div className="mt-3 flex items-center gap-4">
+            <div className="relative w-[74px] h-[74px] flex-shrink-0">
+              <svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true">
+                <circle cx="37" cy="37" r="30" fill="none" stroke="#F3EEE4" strokeWidth="8" />
+                <circle cx="37" cy="37" r="30" fill="none" stroke="#DF742E" strokeWidth="8" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 30} strokeDashoffset={2 * Math.PI * 30 * (1 - overallPct / 100)} transform="rotate(-90 37 37)" className="transition-all duration-700" />
               </svg>
-              <span className="absolute text-sm font-black text-[#321E12]">{overallPct}%</span>
+              <span className="absolute inset-0 grid place-items-center text-[17px] font-black">{overallPct}%</span>
             </div>
-
-            <div className="space-y-1">
-              <h5 className="text-xs font-black text-[#321E12] leading-snug">
-                Hoàn thành chuyên môn
-              </h5>
-              <p className="text-[11px] text-[#605248] font-bold leading-normal">
-                Bạn đã hoàn thành {completedLabCount}/{experiments.length} thí nghiệm
-              </p>
-            </div>
-          </div>
-
-          {/* Styled Orange Slider Accent */}
-          <div className="w-full bg-[#E2DFD8]/30 h-1.5 rounded-full overflow-hidden">
-            <div className="h-full bg-[#C85A17]" style={{ width: `${overallPct}%` }} />
-          </div>
-        </motion.div>
-
-        {/* Weekly Targets Checklist - chỉ hiện khi có dữ liệu thật */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] p-5 shadow-[0_4px_15px_rgba(50,30,18,0.005)] space-y-4"
-        >
-          <h4 className="text-[10px] font-black uppercase tracking-wider text-[#605248]/70">
-            Mục tiêu tuần này
-          </h4>
-
-          <div className="space-y-3.5">
-            {[
-              {
-                text: "Hoàn thành 1 thí nghiệm",
-                completed: completedLabCount >= 1,
-                progress: `${Math.min(completedLabCount, 1)}/1`,
-                badgeColor: completedLabCount >= 1
-                  ? "bg-[#E6F4EA] text-[#137333] border border-[#137333]/10"
-                  : "bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/10"
-              },
-              {
-                text: "Vào Prelab trước khi thực hành",
-                completed: completedLabCount >= 1,
-                progress: completedLabCount >= 1 ? "1/1" : "0/1",
-                badgeColor: completedLabCount >= 1
-                  ? "bg-[#E6F4EA] text-[#137333] border border-[#137333]/10"
-                  : "bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/10"
-              }
-            ].map((target, idx) => (
-              <div key={idx} className="flex items-center justify-between text-xs font-bold text-[#321E12] gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                    target.completed
-                      ? "bg-[#C85A17] text-white"
-                      : "border-2 border-[#E2DFD8] bg-white"
-                  }`}>
-                    {target.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                  <span className={`text-xs md:text-sm ${target.completed ? "text-[#605248]/70 font-semibold" : "text-[#321E12] font-black"}`}>
-                    {target.text}
-                  </span>
-                </div>
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg ${target.badgeColor}`}>
-                  {target.progress}
-                </span>
+            <div className="min-w-0">
+              <div className="text-[15px] font-black leading-tight">{doneCount}/{OPEN_LABS.length} bài đã có báo cáo</div>
+              <div className="text-[11.5px] font-bold text-[#605248] leading-snug mt-0.5">
+                {doneCount >= OPEN_LABS.length ? "Hoàn thành tất cả bài đang mở — tuyệt vời!" : nextLab ? `Tiếp theo: ${nextLab.code} — ${nextLab.name}` : ""}
               </div>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-col gap-2">
+            {OPEN_SUBJECTS.map((subject) => {
+              const labs = OPEN_LABS.filter((l) => l.subject === subject);
+              const done = labs.filter((l) => reported(l.id)).length;
+              const color = SUBJECT_COLOR[subject] || "#DF742E";
+              return (
+                <div key={subject}>
+                  <div className="flex items-center justify-between text-[11.5px] font-black">
+                    <span>{subject}</span><span className="text-[#8C7B6B]">{done}/{labs.length}</span>
+                  </div>
+                  <div className="mt-1 h-2 rounded-full bg-[#F3EEE4] overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${labs.length ? (done / labs.length) * 100 : 0}%`, background: color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+
+        {/* Lối tắt + nhật ký gần đây */}
+        <motion.section variants={fade} className="rounded-3xl bg-white border border-[#E2DFD8] p-4 flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Quét SGK", Icon: Camera, tab: "scan" as const, tone: "bg-[#FFF2E6] text-[#C85A17]" },
+              { label: "Sổ báo cáo", Icon: FileText, tab: "notes" as const, tone: "bg-[#EEF4FC] text-[#1D5FAF]" },
+              { label: "Lớp của tôi", Icon: GraduationCap, tab: "myclass" as const, tone: "bg-[#F1F8F0] text-[#2E7D32]" },
+            ].map(({ label, Icon, tab, tone }) => (
+              <button key={label} onClick={() => onNav(tab)}
+                className="rounded-2xl border border-[#EDE6D9] hover:border-[#DF742E]/45 hover:bg-[#FFFBF6] p-2 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-all">
+                <span className={`w-9 h-9 rounded-xl grid place-items-center ${tone}`}><Icon className="w-4.5 h-4.5" /></span>
+                <span className="text-[11.5px] font-black leading-none">{label}</span>
+              </button>
             ))}
           </div>
-        </motion.div>
-
-        {/* Nhật ký thí nghiệm - dùng reports thật */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-[#FFFFFF] rounded-3xl border border-[#E2DFD8] p-5 shadow-[0_4px_15px_rgba(50,30,18,0.005)] space-y-4"
-        >
-          <h4 className="text-[10px] font-black uppercase tracking-wider text-[#605248]/70 flex items-center gap-1.5">
-            <History className="w-4.5 h-4.5 text-[#C85A17]" /> Nhật ký thí nghiệm
-          </h4>
-
-          <div className="space-y-4">
+          <div>
+            <h3 className="text-[11px] font-black uppercase tracking-wider text-[#8C7B6B] flex items-center gap-1.5"><History className="w-3.5 h-3.5 text-[#C85A17]" /> Nhật ký gần đây</h3>
             {reports.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-xs font-bold text-[#605248]">Chưa có hoạt động nào.</p>
-                <p className="text-[9px] text-[#605248]/70 mt-1">Hãy vào thí nghiệm để bắt đầu ghi nhật ký.</p>
-              </div>
+              <div className="mt-2 text-[12px] font-bold text-[#8C7B6B]">Chưa có báo cáo nào — đo xong một bài rồi lưu vào Sổ báo cáo nhé.</div>
             ) : (
-              reports.slice(0, 5).map((log, idx) => (
-                <div key={idx} className="flex items-start justify-between text-xs font-bold gap-3 pb-2 border-b border-[#E2DFD8]/40 last:border-0 last:pb-0">
-                  <div className="space-y-0.5 min-w-0">
-                    <p className="text-sm text-[#321E12] font-black truncate">{log.title}</p>
-                    <p className="text-[9px] text-[#605248]/70 font-semibold">{log.date}</p>
-                  </div>
-                  {typeof log.score === "number" && (
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg flex-shrink-0 ${
-                      log.score >= 7
-                        ? "bg-[#E6F4EA] text-[#137333] border border-[#137333]/10"
-                        : "bg-[#FFF2E6] text-[#C85A17] border border-[#C85A17]/10"
-                    }`}>
-                      {log.score.toFixed(1)}đ
+              <div className="mt-1.5 flex flex-col">
+                {reports.slice(0, 3).map((r, i) => (
+                  <button key={`${r.date}-${i}`} onClick={() => onNav("notes")} className="flex items-center gap-2.5 py-1.5 border-b border-[#F1EBE0] last:border-0 text-left cursor-pointer group">
+                    <span className="w-7 h-7 rounded-lg bg-[#FFF2E6] grid place-items-center flex-shrink-0"><FileText className="w-3.5 h-3.5 text-[#C85A17]" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12.5px] font-black truncate group-hover:text-[#C85A17]">{r.shortTitle || r.title}</span>
+                      <span className="block text-[10.5px] font-bold text-[#8C7B6B]">{r.date}</span>
                     </span>
-                  )}
-                </div>
-              ))
+                    {typeof r.score === "number" && <span className="text-[10.5px] font-black text-[#2E7D32] bg-[#F1F8F0] rounded-md px-1.5 py-0.5">{r.score.toFixed(1)}đ</span>}
+                    <ChevronRight className="w-3.5 h-3.5 text-[#C9B79B]" />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-        </motion.div>
-
+        </motion.section>
       </div>
     </motion.div>
+  );
+}
+
+/** Hàng thẻ cuộn ngang: thẻ tối thiểu 180px, ít thẻ thì giãn đều; nhiều thẻ thì cuộn + nút ◀ ▶. */
+function CardRow({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setEdge({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    // ResizeObserver gọi update ngay khi bắt đầu quan sát (không setState đồng bộ trong effect).
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(el);
+    return () => { el.removeEventListener("scroll", update); ro?.disconnect(); };
+  }, []);
+  const page = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.85, behavior: "smooth" });
+  return (
+    <div className="relative min-w-0">
+      <div ref={ref} className="grid grid-flow-col auto-cols-[minmax(180px,1fr)] gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-1">
+        {children}
+      </div>
+      {edge.left && (
+        <button onClick={() => page(-1)} aria-label="Xem các bài trước" className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 w-9 h-9 rounded-full bg-white border border-[#E2DFD8] shadow-[0_6px_16px_rgba(50,30,18,.15)] grid place-items-center cursor-pointer">
+          <ChevronLeft className="w-4.5 h-4.5" />
+        </button>
+      )}
+      {edge.right && (
+        <button onClick={() => page(1)} aria-label="Xem thêm bài" className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 w-9 h-9 rounded-full bg-white border border-[#E2DFD8] shadow-[0_6px_16px_rgba(50,30,18,.15)] grid place-items-center cursor-pointer">
+          <ChevronRight className="w-4.5 h-4.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function LabCard({ lab, pct, onOpen }: { lab: LabEntry; pct: number; onOpen: () => void }) {
+  return (
+    <button onClick={onOpen}
+      className="snap-start group text-left rounded-2xl bg-white border border-[#E2DFD8] hover:border-[#DF742E]/55 shadow-[0_2px_10px_rgba(50,30,18,.03)] hover:shadow-[0_12px_26px_rgba(50,30,18,.08)] hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col cursor-pointer">
+      <div className="relative h-[86px] md:h-[100px] overflow-hidden bg-[#EAE8E3]">
+        {lab.image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={lab.image} alt="" loading="lazy" draggable={false} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
+        <span className="absolute left-2 top-2 text-[10px] font-black text-[#C85A17] bg-white/95 rounded-md px-1.5 py-0.5">{lab.code}</span>
+        <span className="absolute right-2 top-2 text-[10px] font-black text-white bg-black/45 backdrop-blur-sm rounded-md px-1.5 py-0.5">Lớp {lab.grade}</span>
+        <span className="absolute left-2 bottom-1.5 text-[11px] font-black text-white/95 font-mono tracking-tight">{lab.formula}</span>
+      </div>
+      <div className="p-2.5 md:p-3 flex flex-col gap-1.5 flex-1">
+        <div className="text-[13px] md:text-[14px] font-black leading-snug line-clamp-2 group-hover:text-[#C85A17] transition-colors">{lab.name}</div>
+        <div className="hidden md:block text-[11px] font-bold text-[#8C7B6B] leading-snug line-clamp-1">{lab.kit}</div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${DIFF_STYLE[lab.difficulty]}`}>{lab.difficulty}</span>
+          <span className="text-[10.5px] font-bold text-[#8C7B6B] flex items-center gap-0.5"><Clock className="w-3 h-3" /> {lab.duration}</span>
+        </div>
+        <div className="mt-auto pt-1 flex items-center gap-2">
+          <div className="flex-1 h-1.5 rounded-full bg-[#EDE7DB] overflow-hidden">
+            <div className={`h-full rounded-full ${pct >= 100 ? "bg-[#2E7D32]" : "bg-[#DF742E]"}`} style={{ width: `${pct}%` }} />
+          </div>
+          <span className={`text-[10.5px] font-black ${pct >= 100 ? "text-[#2E7D32]" : pct > 0 ? "text-[#C85A17]" : "text-[#8C7B6B]"}`}>{pct >= 100 ? "✓ Xong" : pct > 0 ? "Đang làm" : "Mới"}</span>
+        </div>
+      </div>
+    </button>
   );
 }
