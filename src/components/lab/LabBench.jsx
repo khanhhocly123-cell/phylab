@@ -6,8 +6,9 @@ import { C, FONT } from "../../engine/tokens.js";
 import { LAB6, computeTime, rollRun, zeroDisplay } from "../../engine/physics.js";
 import {
   LabTopBar, NextStepCard, ChecklistCard, FinishButton, MobileLabSheet, LabToast, LabDialog, ProgressPills, NudgeSlider,
-  panelCard, sectionHead, sectionTitle, countPill, btnSecondary, btnSoft,
+  panelCard, sectionHead, sectionTitle, countPill, btnSecondary, btnSoft, mobileLabColumns,
 } from "./LabChrome.jsx";
+import { fitViewBox, svgPoint, svgScale, useBoxSize } from "./stageFit.js";
 import LiveGraph, { niceRange } from "./LiveGraph.jsx";
 import { labSound } from "./labSound.js";
 import { useAnimStore, useAnim } from "./animStore.js";
@@ -351,11 +352,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
       const clientX = (ev.clientX !== undefined && ev.clientX !== 0) ? ev.clientX : lastX;
       const clientY = (ev.clientY !== undefined && ev.clientY !== 0) ? ev.clientY : lastY;
       const r = svg.getBoundingClientRect();
-      const scale = Math.min(r.width / VBW, r.height / VBH);
-      const offset_x = (r.width - VBW * scale) / 2;
-      const offset_y = (r.height - VBH * scale) / 2;
-      const vbx = (clientX - r.left - offset_x) / scale;
-      const vby = (clientY - r.top - offset_y) / scale;
+      const { x: vbx, y: vby } = svgPoint(svg, clientX, clientY);
 
       if (isMobile && clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
         flyToPlace(k, vbx, vby);
@@ -643,8 +640,8 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
     });
   }
 
-  // pointer -> toạ độ viewBox
-  const evVB = (e, el) => { const svg = el.closest("svg"); const r = svg.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * VBW, y: (e.clientY - r.top) / r.height * VBH, svg }; };
+  // pointer -> toạ độ viewBox (viewBox tự nới theo khung nên phải đổi qua ma trận màn hình của SVG)
+  const evVB = (e, el) => { const svg = el.closest("svg") || el; return { ...svgPoint(svg, e.clientX, e.clientY), svg }; };
 
   // kéo giá phải -> đổi θ (thu hẹp/nới khoảng cách 2 giá)
   const dragAngle = useCallback((e) => {
@@ -658,7 +655,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
   // kéo cổng F -> đổi sEF (dọc theo ruler)
   const dragGateF = useCallback((e) => {
     if (rolling) return; e.stopPropagation();
-    const { svg } = evVB(e, e.currentTarget); const kx = (svg.getBoundingClientRect().width / VBW) * K * PXM;
+    const { svg } = evVB(e, e.currentTarget); const kx = svgScale(svg) * K * PXM;
     const x0 = e.clientX, s0 = sEF;
     const move = (ev) => setSEF(clamp(+(s0 + (ev.clientX - x0) / kx * Math.cos(theta * Math.PI / 180)).toFixed(2), LAB6.sEF.min, LAB6.sEF.max));
     const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
@@ -1083,7 +1080,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
       />
 
       <div data-lab-layout data-orientation={isPortrait ? "portrait" : "landscape"} style={isMobile
-        ? { flex: 1, display: "grid", gridTemplateColumns: showTray ? (isPortrait ? "92px minmax(0, 1fr)" : "minmax(132px, 17vw) minmax(0, 1fr)") : "minmax(0, 1fr)", minHeight: 0, overflow: "hidden", position: "relative" }
+        ? { flex: 1, display: "grid", gridTemplateColumns: mobileLabColumns({ isPortrait, showTray, tray: isPortrait ? "92px" : "minmax(124px, 16vw)" }), minHeight: 0, overflow: "hidden", position: "relative" }
         : { flex: 1, display: "grid", gridTemplateColumns: showTray ? "clamp(190px, 12vw, 230px) minmax(0, 1fr) clamp(310px, 22vw, 390px)" : "minmax(0, 1fr) clamp(310px, 22vw, 390px)", minHeight: 0, overflow: "hidden" }
       }>
         {/* TRÁI: khay dụng cụ — tự ẩn khi đã lắp đủ để nhường chỗ cho bàn thí nghiệm */}
@@ -1333,6 +1330,7 @@ function Workbench(props) {
 
   const zoomClock = zoomMode === "clock";
   const setZoomClock = (val) => setZoomMode(val ? "clock" : "full");
+  const [svgRef, svgBox] = useBoxSize();
   // Khi bi đang lăn: đọc vị trí / số đồng hồ / tia cổng từ kho hoạt ảnh (vẽ lại riêng bàn này).
   const live = useAnim(anim);
   const ballT = rolling ? live.ballT : ballTState;
@@ -1371,18 +1369,17 @@ function Workbench(props) {
     }
   };
 
-  const viewBoxStr = props.isMobile
-    ? (zoomMode === "clock" ? "515 290 330 190" :
-       zoomMode === "rail" ? "50 60 700 440" :
-       "70 55 640 480")
-    : (zoomMode === "clock" ? "515 290 330 190" :
-       zoomMode === "rail" ? "50 60 700 440" :
-       `0 0 ${VBW} ${VBH}`);
+  // Vùng cần thấy theo chế độ zoom, rồi nới cho vừa đúng tỉ lệ khung → bàn lấp kín, không còn dải trống hai bên.
+  const roi = zoomMode === "clock" ? [515, 290, 330, 190]
+    : zoomMode === "rail" ? [50, 60, 700, 440]
+      : props.isMobile ? [70, 55, 640, 480] : [0, 0, VBW, VBH];
+  const viewBoxStr = fitViewBox(roi, svgBox, [0, 0, VBW, VBH]);
   const showHint = props.isMobile && dropTarget.length === 0;
 
   return (
     <div style={{ position: "relative", width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <svg
+        ref={svgRef}
         onPointerDown={onCanvasTap}
         viewBox={viewBoxStr} preserveAspectRatio={props.isPortrait ? "xMidYMin meet" : "xMidYMid meet"}
         style={props.isMobile

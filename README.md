@@ -28,11 +28,21 @@ giống dụng cụ thật. Đo lại nhiều lần thì kết quả ổn địn
 |---|---|---|---|---|
 | 10 | Bài 6 | Tốc độ tức thời và tốc độ trung bình | Máng nghiêng, 2 cổng quang, đồng hồ MC964, thước kẹp | v = d/t, v̄ = s/t |
 | 10 | Bài 11 | Gia tốc rơi tự do | Giá đỡ có dây dọi, nam châm điện, trụ thép, cổng quang, MC964 | g = 2s/t² |
+| 10 | Bài 15 | Định luật 2 Newton (thí nghiệm minh hoạ) | Máng đệm khí + bơm khí, xe trượt 200 g, 10 quả nặng 50 g, ròng rọc, 2 cổng quang cách 0,5 m, tấm chắn 10 cm, đồng hồ hiện số, cân điện tử | a = 2s/t², a = F/(M + m) |
 | 11 | Bài 23 | Điện trở — Định luật Ohm | Nguồn DC, 2 đồng hồ đa năng, vật dẫn X và Y | R = U/I |
 | 11 | Bài 26 | Suất điện động của pin điện hoá | Bảng mạch 216 nút, biến trở, R₀, khoá K, 2 đồng hồ đa năng | U = E − I·r |
 
 Đã có trong danh mục, đang làm bàn thí nghiệm: Bài 19 *Bảo toàn động lượng* (lớp 10), Bài 22 *Tiêu cự
 thấu kính hội tụ* (lớp 11), Bài 15 *Giao thoa ánh sáng* (lớp 12).
+
+**Bài 15 bám sát SGK:** đủ 9 dụng cụ đánh số như Hình 15.2 (cộng xe trượt), đo đúng 5 cột Bảng 15.1
+(F = 1, 1, 1, 2, 3 N; M + m = 0,3; 0,4; 0,5; 0,5; 0,5 kg), hai đồ thị trực tiếp như Hình 15.3a/b.
+"Vật" là hệ xe + quả nặng; lực kéo là trọng lượng quả treo (SGK lấy g ≈ 10 m/s²). Làm ẩu thì số liệu lệch
+và bench nói vì sao: quên bật máy nén khí hay để lưu lượng yếu (ma sát giữ xe lại), máng chưa ngang, tấm chắn
+không sát cổng 1 (v₀ ≠ 0 nên a = 2s/t² bị lớn), quên Reset, sai MODE, lấy thêm quả từ hộp thay vì chuyển quả từ
+xe sang móc. **Nghịch như đồ thật:** bấm vào xe là tay giữ, chạm lần nữa là buông (xe chạy theo lực thật, chụp
+lại được khi đang chạy); tự kéo từng quả nặng lên móc treo / lên xe; đồng hồ chạy theo tín hiệu cổng quang nên
+kéo xe bằng tay qua cổng cũng làm đồng hồ chạy — đặt xe xong mới Reset.
 
 ### Một buổi thực hành trên PhyLab
 
@@ -43,12 +53,16 @@ thấu kính hội tụ* (lớp 11), Bài 15 *Giao thoa ánh sáng* (lớp 12).
    là đồng hồ đa năng (núm xoay, cổng cắm que đo), nguồn DC hoặc bảng mạch, **tự vẽ sơ đồ mạch** (nối dây
    giữa các kí hiệu, máy giải mạch thật để chỉ ra ampe kế mắc sai, đảo cực, K không nằm trên mạch
    chính…) và **ba bài tính gốc** (bắt đúng lỗi quen: quên đổi mA, đảo công thức). Làm đủ thao tác bắt
-   buộc mới mở khoá Phòng Lab.
+   buộc mới mở khoá Phòng Lab. Bài 15: Hình 15.2 chạm-để-khám-phá, **máy nén khí** (bộ phận, núm lưu lượng,
+   lát cắt đệm khí dưới xe), thử đẩy xe ở từng nấc lưu lượng,
+   thanh trượt "xe lùi bao nhiêu cm khỏi cổng 1 thì a sai bao nhiêu", ba bài tính về hệ vật và a = 2s/t².
 3. **Phòng Lab.** Kéo dụng cụ lên bàn, nối dây, cân bằng, bật nguồn, chọn thang đo rồi đo. Sai
    thao tác thì số đo sai theo đúng vật lý: máng chưa cân bằng làm bi chậm hơn, để khoá K đóng lâu làm
    vật dẫn nóng lên và điện trở tăng, mắc ampe kế song song với pin thì không đóng được K vì dòng quá
    lớn sẽ cháy cầu chì. Đồng hồ đa năng đo được cả V, mA, µA và Ω. Trên **điện thoại**, bấm vào Lab là tự
    chuyển toàn màn hình và **khoá ngang** (Android); iPhone không cho khoá hướng nên hiện màn nhắc xoay ngang.
+   Khi xoay ngang, hướng dẫn nằm ở **cột bên phải** (thu gọn được) thay vì thanh kéo đè lên bàn, và khung
+   hình bàn thí nghiệm tự nới theo tỉ lệ màn nên không còn dải trống hai bên.
 4. **Sổ Báo Cáo.** Bảng số liệu gọn theo từng bài, học sinh tự điền kết quả tính. Đồ thị có hai chế
    độ: *Máy vẽ* (bình phương tối thiểu, R², phương trình đường thẳng) và *Em tự vẽ* (chấm điểm lên
    giấy kẻ ô, kéo đường thẳng rồi so với máy). Báo cáo in thẳng ra khổ A4.
@@ -74,7 +88,7 @@ thấu kính hội tụ* (lớp 11), Bài 15 *Giao thoa ánh sáng* (lớp 12).
 Đăng nhập bằng tài khoản giáo viên (cấu hình qua `TEACHER_EMAIL` / `TEACHER_PASSWORD`):
 
 - **Tạo lớp bằng mã 5 ký tự.** Học sinh nhập mã ở tab *Lớp của tôi* để vào lớp.
-- **Giao bài Lab với đề tự đặt** cho cả 4 bài: góc θ và quãng EF (Bài 6), quãng rơi s (Bài 11), 5 mức
+- **Giao bài Lab với đề tự đặt** cho các bài 6, 11, 23, 26: góc θ và quãng EF (Bài 6), quãng rơi s (Bài 11), 5 mức
   điện áp cho vật dẫn X, Y (Bài 23), 5 mức biến trở (Bài 26). Giáo viên thấy đáp án mong đợi tính từ
   engine vật lý. Học sinh bấm *Lưu & nộp* trong Sổ Báo Cáo là bài được gửi lên lớp; server tự chấm lại
   bằng `gradeLesson`, không tin điểm do trình duyệt gửi lên.
@@ -207,14 +221,21 @@ Mỗi bài có một `id` dạng slug (ví dụ `do-tieu-cu`) dùng xuyên suố
    `LabRoom.tsx`. Dụng cụ mới vẽ thành component SVG trong `lab/mech/` hoặc `lab/electric/` (xem
    *Quy ước giao diện* bên dưới).
 6. **Sổ Báo Cáo** — trong `src/components/notes/notebookData.ts`: cột bảng (`columnsFor`) và đồ thị
-   (`buildChart`: trục, có qua gốc toạ độ không, ý nghĩa hệ số góc); trong `NoteSection.tsx`: công thức
-   kết quả, thẻ kết quả, bộ số liệu mẫu.
+   (`buildChart`: trục, có qua gốc toạ độ không, ý nghĩa hệ số góc; bài cần nhiều đồ thị như Bài 15 thì
+   trả nhiều `ChartSpec` có `key`/`title` từ `buildCharts` — Sổ tự hiện nút chọn và in đủ); trong
+   `NoteSection.tsx`: công thức kết quả, thẻ kết quả, bộ số liệu mẫu. Thêm loại số liệu vào `LabKind`
+   (`lib/grading.ts`) và hai bảng tên trong `lib/antiCheatQuiz.ts`.
 7. **Kiểm thử** — thêm test vật lý cho bài vào `scripts/test.mjs`.
 
 **Nên có**
 
-- Prelab: `src/components/prelab/` và rẽ nhánh trong `src/components/Prelab.tsx`. Bài điện có thể
-  thêm sơ đồ vào `SCHEMATICS` (`lib/schematic.ts`) và bài tính vào `CALC_DRILLS` (`calcDrillData.ts`).
+- Prelab: `src/components/prelab/` và rẽ nhánh trong `src/components/Prelab.tsx` (mẫu gần nhất:
+  `NewtonPrelab.tsx` cho Bài 15). Bài điện có thể thêm sơ đồ vào `SCHEMATICS` (`lib/schematic.ts`); bài
+  tính của bài nào cũng thêm vào `CALC_DRILLS` (`calcDrillData.ts`) rồi dùng `CalcDrills`.
+- Bàn mới nên dùng `stageFit.js` (`fitViewBox` + `useBoxSize` cho khung hình tự nới, `svgPoint` để đổi toạ
+  độ kéo thả) và đặt `MobileLabSheet` làm ô lưới riêng với `mobileLabColumns` — xoay ngang là thành cột
+  hướng dẫn, không đè lên bàn.
+- Ảnh bìa thẻ bài: `public/images/` (ảnh Bài 15 dựng từ chính các linh kiện SVG, xuất WebP bằng sharp).
 - An toàn: nhóm dụng cụ tự suy từ chủ đề trong danh mục (Cơ học, Điện, Quang học, Nhiệt học — đã có sẵn
   quy tắc cho cả bốn trong `tour/SafetyDeck.tsx`); chủ đề mới thì thêm vào `LAB_GEAR_SAFETY`.
 - Quét SGK: tiêu đề và từ khoá trong `src/lib/lessonMatch.ts`.

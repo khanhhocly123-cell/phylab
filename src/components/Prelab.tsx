@@ -7,6 +7,7 @@ import PhotogatePrelab from "./prelab/PhotogatePrelab";
 import PlumbBasePrelab from "./prelab/PlumbBasePrelab";
 import { MC964Interactive, CaliperZoom } from "./prelab/MC964Prelab";
 import ElectricalPrelab from "./prelab/ElectricalPrelab";
+import NewtonPrelab from "./prelab/NewtonPrelab";
 import PrelabShell, { PrelabStep, PrelabStepHeading } from "./prelab/PrelabShell";
 import { MathText } from "./Latex";
 import { ballDiameterMm } from "@/engine/physics.js";
@@ -44,6 +45,9 @@ export default function Prelab({ spec, onStartExperiment, viewOnly = false, onEx
         onExit={onExit}
       />
     );
+  }
+  if (spec.id === "dinh-luat-2-newton") {
+    return <NewtonPrelab spec={spec} viewOnly={viewOnly} onFinish={() => onStartExperiment()} onExit={onExit} />;
   }
 
   const gateDone = isB11 ? plumbLocked : caliperVal !== null;

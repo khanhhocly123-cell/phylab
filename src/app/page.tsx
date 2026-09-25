@@ -200,6 +200,9 @@ export default function Page() {
   const activeSpec = activeLessonId ? getExperimentSpec(activeLessonId) : null;
   const isDoingExperiment = activeTab === "lab" && activeLessonId !== null && !!prelabPassed[activeLessonId];
   const isScanMode = activeTab === "scan";
+  // Đang làm Prelab (chặng 1): trên điện thoại ẩn thanh điều hướng dưới để chân trang "Bước x / n"
+  // của Prelab nằm sát đáy màn hình (có nút ← về danh sách bài ở đầu Prelab).
+  const isPrelabOpen = activeTab === "lab" && !!activeSpec && !prelabPassed[activeSpec.id];
 
   // ── Hướng dẫn: tự mở lần đầu học sinh vào app (không chen vào lúc đang làm thí nghiệm / đang quét) ──
   const [tour, setTour] = useState<null | "app" | "safety" | "notes">(null);
@@ -334,7 +337,7 @@ export default function Page() {
         ? Number((tr as { voltage?: number }).voltage) || 0
         : lab === "emf"
           ? Number((tr as { emf?: number; s?: number }).emf ?? (tr as { s?: number }).s) || 0
-        : lab === "freefall"
+        : lab === "freefall" || lab === "newton2"
         ? Number((tr as { s?: number }).s) || 0
         : lab === "average"
           ? Number(sEF) || 0
@@ -430,7 +433,7 @@ export default function Page() {
 
   return (
     <div className={`flex flex-col lg:flex-row h-[100dvh] w-screen bg-[#FAF9F6] text-[#321E12] font-nunito overflow-hidden select-none ${
-      isDoingExperiment || isScanMode ? "pb-0" : "pb-16"
+      isDoingExperiment || isScanMode || isPrelabOpen ? "pb-0" : "pb-16"
     } lg:pb-0`}>
       
       {/* ================= 1. GLOBAL LEFT SIDEBAR (Desktop only) ================= */}
@@ -702,6 +705,8 @@ export default function Page() {
             ? "overflow-hidden p-0"
             : isDoingExperiment
             ? "overflow-hidden p-0"
+            : isPrelabOpen
+            ? "overflow-y-auto p-2 sm:p-4 md:p-6 lg:p-8 pb-0 sm:pb-0 md:pb-0 lg:pb-8"
             : "overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8"
         }`} style={{ backgroundImage: isScanMode ? "none" : "url('/images/background.webp')" }}>
           <div className={`${activeTab === "lab" || isScanMode ? "max-w-none" : "max-w-[1280px] justify-between"} mx-auto w-full flex flex-col ${isDoingExperiment || isScanMode ? "h-full" : "min-h-full"}`}>
@@ -817,7 +822,7 @@ export default function Page() {
       </div>
 
       {/* ================= MOBILE BOTTOM FLOATING DOCK (Fixed at bottom) ================= */}
-      {activeTab !== "scan" && !isDoingExperiment && (
+      {activeTab !== "scan" && !isDoingExperiment && !isPrelabOpen && (
         <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden print:hidden">
         <nav data-tour="dock" className="h-16 bg-white/85 backdrop-blur-md border border-[#E2DFD8]/80 rounded-2xl flex items-center justify-around px-2.5 shadow-[0_8px_32px_rgba(50,30,18,0.12)]">
           {/* Tab: Home */}

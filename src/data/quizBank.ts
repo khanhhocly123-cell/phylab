@@ -242,7 +242,26 @@ const LAB26: LessonReview = {
   ],
 };
 
+// Bài 15 (Vật lí 10 KNTT) — câu hỏi lấy từ SGK (mục "?" và "Em đã học") + tư duy thí nghiệm Hình 15.2.
+const LAB15: LessonReview = {
+  quizzes: [
+    { q: "Trong các cách viết hệ thức của định luật 2 Newton sau đây, cách viết nào đúng?", options: ["$\\vec{F} = m.a$", "$\\vec{F} = -m\\vec{a}$", "$\\vec{F} = m\\vec{a}$", "$-\\vec{F} = m\\vec{a}$"], answer: 2, explain: "Gia tốc cùng hướng với lực nên $\\vec{F} = m\\vec{a}$. Cách A sai vì vế trái là vectơ mà vế phải không phải vectơ.", category: "theory" },
+    { q: "Một quả bóng khối lượng 0,50 kg đang nằm yên. Cầu thủ đá với lực 250 N, chân tác dụng vào bóng trong 0,02 s. Quả bóng bay đi với tốc độ:", options: ["0,01 m/s", "0,10 m/s", "2,50 m/s", "10,00 m/s"], answer: 3, explain: "$a = F/m = 250/0{,}5 = 500\\ \\text{m/s}^2$; $v = a t = 500 \\times 0{,}02 = 10\\ \\text{m/s}$.", category: "theory" },
+    { q: "Vì sao phải đặt tấm chắn sáng sát cổng quang điện 1 trước khi thả xe?", options: ["Để khi đồng hồ bắt đầu đếm xe có $v_0 = 0$, dùng được $a = 2s/t^2$", "Để cổng quang không bị hỏng", "Để lực kéo lớn hơn", "Để giảm ma sát giữa xe và máng"], answer: 0, explain: "Xe xuất phát lùi xa cổng 1 thì tới cổng 1 đã có vận tốc → t nhỏ → a tính theo $2s/t^2$ lớn hơn thật.", category: "experiment" },
+    { q: "Theo SGK, \"vật\" trong thí nghiệm minh hoạ định luật 2 Newton là:", options: ["Chỉ xe trượt", "Xe trượt và các quả nặng đặt trên xe", "Hệ gồm xe trượt và các quả nặng (trên xe và treo ở đầu dây)", "Chỉ các quả nặng treo"], answer: 2, explain: "Khối lượng của vật là $M + m$ (xe + mọi quả nặng); lực kéo $F$ là trọng lượng các quả treo.", category: "experiment" },
+    { q: "Đang treo 2 quả, trên xe 4 quả ($F = 1$ N, $M + m = 0{,}5$ kg). Muốn $F = 2$ N mà vẫn giữ $M + m = 0{,}5$ kg thì:", options: ["Lấy thêm 2 quả từ hộp treo vào móc", "Chuyển 2 quả từ xe sang móc treo", "Bớt 2 quả trên xe", "Đặt thêm 2 quả lên xe"], answer: 1, explain: "Chuyển quả từ xe sang móc: lực kéo tăng mà tổng khối lượng hệ không đổi.", category: "experiment" },
+  ],
+  flashcards: [
+    { front: "Định luật 2 Newton", back: "Gia tốc cùng hướng với lực; độ lớn tỉ lệ thuận với $F$, tỉ lệ nghịch với $m$: $\\vec{a} = \\vec{F}/m$ hay $\\vec{F} = m\\vec{a}$.", category: "theory" },
+    { front: "Khối lượng và quán tính", back: "Khối lượng là đại lượng đặc trưng cho mức quán tính của vật: $m$ càng lớn thì càng khó thay đổi vận tốc.", category: "theory" },
+    { front: "Tính $a$ trong Bài 15", back: "Tấm chắn sát cổng 1 ($v_0 = 0$), $s = 0{,}5$ m: $a = 2s/t^2 = 1/t^2$.", category: "experiment" },
+    { front: "Lực kéo $F$", back: "Trọng lượng các quả TREO: $F = n\\,m\\,g \\approx n \\times 0{,}5$ N (mỗi quả 50 g, $g \\approx 10$).", category: "experiment" },
+    { front: "Hai đồ thị Hình 15.3", back: "$a$ theo $F$ (khi $M + m = 0{,}5$ kg) và $a$ theo $1/(M + m)$ (khi $F = 1$ N) đều là đường thẳng qua gốc toạ độ.", category: "experiment" },
+  ],
+};
+
 export const QUIZ_BANK: Record<string, LessonReview> = {
+  "dinh-luat-2-newton": LAB15,
   "do-toc-do-vat-chuyen-dong": LAB6,
   "do-gia-toc-roi-tu-do": LAB11,
   "do-dien-tro-dinh-luat-ohm": LAB23,

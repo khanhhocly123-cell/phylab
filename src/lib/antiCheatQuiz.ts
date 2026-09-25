@@ -21,6 +21,7 @@ const LAB_NAME: Record<RichTrial["lab"], string> = {
   "ohm-x": "điện trở vật dẫn X $R_X$",
   "ohm-y": "điện trở vật dẫn Y $R_Y$",
   emf: "suất điện động pin $\\mathcal{E}_x$",
+  newton2: "gia tốc của hệ vật $a$",
 };
 
 const UNIT: Record<RichTrial["lab"], string> = {
@@ -30,6 +31,7 @@ const UNIT: Record<RichTrial["lab"], string> = {
   "ohm-x": "Ω",
   "ohm-y": "Ω",
   emf: "V",
+  newton2: "m/s²",
 };
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -44,6 +46,7 @@ function trialDesc(tr: RichTrial): string {
     return `R = ${round2(tr.resistance ?? tr.config ?? 0)} Ω, U = ${round2(tr.voltage ?? 0)} V, I = ${round2((tr.current ?? 0) * 1000)} mA`;
   }
   const parts = [`s = ${round3(tr.s)} m`, `t = ${round3(tr.t)} s`];
+  if (tr.lab === "newton2") parts.unshift(`F = ${round2(tr.force ?? 0)} N, M + m = ${round2(tr.mass ?? 0)} kg`);
   if (tr.theta != null) parts.push(`θ = ${tr.theta}°`);
   return parts.join(", ");
 }

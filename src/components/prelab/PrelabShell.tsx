@@ -118,7 +118,7 @@ export default function PrelabShell({ spec, steps, current, onStep, mode, canFin
       <div className="p-2.5 sm:p-6 bg-[#FEFBF5] min-h-[420px]">{children}</div>
 
       <footer
-        className={`sticky ${review ? "bottom-0" : "bottom-6 lg:bottom-0"} z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-white/95 backdrop-blur border-t border-[#E2DFD8] rounded-b-3xl`}
+        className="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-3 sm:px-6 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:py-3 bg-white/95 backdrop-blur border-t border-[#E2DFD8] rounded-b-3xl"
       >
         <button
           type="button"

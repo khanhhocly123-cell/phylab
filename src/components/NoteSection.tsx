@@ -11,7 +11,7 @@ import { MathText } from "./Latex";
 import { getReview } from "@/data/quizBank";
 import { correctResultOf, LabKind } from "@/lib/grading";
 import NotebookGraph from "./notes/NotebookGraph";
-import { buildChart, columnsFor, fmt, G_REF, stats, type ChartSpec } from "./notes/notebookData";
+import { buildCharts, columnsFor, fmt, G_REF, stats, type ChartSpec } from "./notes/notebookData";
 import { OPEN_LABS, groupLabs, type LabEntry } from "@/data/labCatalog";
 
 /*
@@ -39,19 +39,22 @@ interface NoteSectionProps {
 
 type View = "book" | "report" | "review";
 
-const LAB_META: Record<LabKind, { title: string; formula: string; unit: string; resultLabel: string; perRow: boolean }> = {
+/** noMean: các dòng là những cấu hình khác nhau (Bài 15) → không lấy trung bình cả bảng. */
+const LAB_META: Record<LabKind, { title: string; formula: string; unit: string; resultLabel: string; perRow: boolean; noMean?: boolean }> = {
   average: { title: "Tốc độ trung bình trên đoạn EF", formula: "v_{tb} = \\dfrac{s_{EF}}{t}", unit: "m/s", resultLabel: "v", perRow: true },
   instant: { title: "Tốc độ tức thời tại cổng E", formula: "v = \\dfrac{d}{t}", unit: "m/s", resultLabel: "v", perRow: true },
   freefall: { title: "Gia tốc rơi tự do", formula: "g = \\dfrac{2s}{t^2}", unit: "m/s²", resultLabel: "g", perRow: true },
   "ohm-x": { title: "Vật dẫn X", formula: "R_X = \\dfrac{U}{I}", unit: "Ω", resultLabel: "R", perRow: true },
   "ohm-y": { title: "Vật dẫn Y", formula: "R_Y = \\dfrac{U}{I}", unit: "Ω", resultLabel: "R", perRow: true },
   emf: { title: "Pin điện hóa — U theo I", formula: "U = \\mathcal{E} - I\\,r", unit: "V", resultLabel: "E", perRow: false },
+  newton2: { title: "Bảng 15.1 — gia tốc của hệ vật", formula: "a = \\dfrac{2s}{t^2},\\ s = 0{,}5\\ \\text{m}", unit: "m/s²", resultLabel: "a", perRow: true, noMean: true },
 };
 
 
 /* Số liệu mẫu (khớp vật lý của từng bàn Lab) để em xem cách trình bày khi chưa đo. */
 const ohm = (lab: "ohm-x" | "ohm-y", u: number, i: number): RichTrial => ({ lab, s: u, t: i, voltage: u, current: i, material: lab === "ohm-x" ? "X" : "Y", balanced: true });
 const cell = (c: "new" | "old", r: number, i: number, u: number): RichTrial => ({ lab: "emf", s: c === "new" ? 1.58 : 1.47, t: 1, voltage: u, current: i, resistance: r, cell: c, balanced: true });
+const n2 = (force: number, mass: number, t: number): RichTrial => ({ lab: "newton2", s: 0.5, t, force, mass, balanced: true, steady: true });
 const DEMO_TRIALS: Record<string, RichTrial[]> = {
   "do-toc-do-vat-chuyen-dong": [
     { lab: "average", s: 0.10, t: 0.0776, theta: 20, balanced: true },
@@ -79,6 +82,8 @@ const DEMO_TRIALS: Record<string, RichTrial[]> = {
     cell("new", 10, 0.06752, 1.4855), cell("new", 25, 0.04115, 1.5224), cell("new", 40, 0.02959, 1.5386), cell("new", 60, 0.02153, 1.5499), cell("new", 80, 0.01692, 1.5563),
     cell("old", 10, 0.05742, 1.2633), cell("old", 25, 0.03621, 1.3397), cell("old", 40, 0.02644, 1.3748), cell("old", 60, 0.01944, 1.4000), cell("old", 80, 0.01538, 1.4146),
   ],
+  // Đúng số liệu Bảng 15.1 của SGK.
+  "dinh-luat-2-newton": [n2(1, 0.3, 0.55), n2(1, 0.4, 0.64), n2(1, 0.5, 0.71), n2(2, 0.5, 0.5), n2(3, 0.5, 0.42)],
 };
 
 function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> {
@@ -90,7 +95,7 @@ function groupByLab(trials: RichTrial[]): Partial<Record<LabKind, RichTrial[]>> 
   return out;
 }
 
-const decimalsOf = (lab: LabKind) => (lab === "freefall" ? 2 : lab === "ohm-x" || lab === "ohm-y" ? 1 : 3);
+const decimalsOf = (lab: LabKind) => (lab === "freefall" || lab === "newton2" ? 2 : lab === "ohm-x" || lab === "ohm-y" ? 1 : 3);
 const parseResult = (raw: string | undefined) => {
   if (raw == null || raw.trim() === "") return null;
   const v = parseFloat(raw.replace(",", "."));
@@ -124,7 +129,10 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
   }, [labData, activeLesson, activeReport]);
   const isDemo = !isFreshData && !activeReport?.trials?.length && trials.length > 0;
   const samples = useMemo(() => groupByLab(trials), [trials]);
-  const chart = useMemo(() => buildChart(activeLesson, trials), [activeLesson, trials]);
+  // Bài có nhiều đồ thị (Bài 15: Hình 15.3a/b + a theo F/m) → em chọn đồ thị đang xem.
+  const charts = useMemo(() => buildCharts(activeLesson, trials), [activeLesson, trials]);
+  const [chartKey, setChartKey] = useState<string | null>(null);
+  const chart = charts.find((c) => c.key === chartKey) ?? charts[0] ?? null;
   const spec = EXPERIMENT_SPECS[activeLesson];
 
   // Kết quả em tự tính, keyed "lab-index" (điền sẵn theo công thức, em sửa theo cách tính của mình).
@@ -161,6 +169,7 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
   };
   const changeLesson = (id: string) => {
     setActiveLesson(id);
+    setChartKey(null);
     setResults({});
     setSavedAt(null);
     setConfirmBlank(0);
@@ -268,7 +277,7 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
         trials.length === 0 ? <EmptyState /> : (
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-3">
             <div className="min-h-0 flex flex-col gap-3 order-2 lg:order-1">
-              <ResultHero lessonId={activeLesson} chart={chart} samples={samples} results={results} />
+              <ResultHero lessonId={activeLesson} chart={chart} charts={charts} samples={samples} results={results} />
               <section data-tour="notes-table" className="flex-1 min-h-[220px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] flex flex-col overflow-hidden">
                 <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-[#F1EBE0]">
                   <Table className="w-4 h-4 text-[#C85A17]" />
@@ -283,13 +292,23 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
               </section>
             </div>
             <section data-tour="notes-graph" className="order-1 lg:order-2 min-h-[380px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] p-3 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <LineChartIcon className="w-4 h-4 text-[#C85A17]" />
                 <h3 className="text-[13px] font-black">Đồ thị</h3>
                 {chart && <span className="text-[11.5px] font-bold text-[#8C7B6B]">quan hệ <MathText text={`$${chart.relation}$`} /></span>}
               </div>
+              {charts.length > 1 && (
+                <div role="tablist" aria-label="Chọn đồ thị" className="flex gap-1 overflow-x-auto scrollbar-none -mt-0.5">
+                  {charts.map((c) => (
+                    <button key={c.key} type="button" role="tab" aria-selected={c === chart} onClick={() => setChartKey(c.key ?? null)}
+                      className={`whitespace-nowrap px-2.5 py-1 rounded-lg text-[11.5px] font-black border cursor-pointer ${c === chart ? "bg-[#321E12] text-white border-[#321E12]" : "bg-white text-[#605248] border-[#E2DFD8] hover:border-[#C85A17]/40"}`}>
+                      {c.title}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex-1 min-h-0">
-                {chart && chart.series.some((s) => s.points.length) ? <NotebookGraph key={activeLesson + trials.length} spec={chart} /> : <div className="h-full grid place-items-center text-[12px] font-bold text-[#8C7B6B]">Cần ít nhất 2 lần đo để vẽ đồ thị.</div>}
+                {chart && chart.series.some((s) => s.points.length) ? <NotebookGraph key={activeLesson + trials.length + (chart.key ?? "")} spec={chart} /> : <div className="h-full grid place-items-center text-[12px] font-bold text-[#8C7B6B]">Cần ít nhất 2 lần đo để vẽ đồ thị.</div>}
               </div>
               {chart && <FitReadout chart={chart} />}
             </section>
@@ -300,7 +319,7 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
       {/* ===== BÁO CÁO (in được) ===== */}
       {view === "report" && (
         <ReportView spec={spec} studentName={studentName} samples={samples} results={results} report={activeReport} savedAt={savedAt}
-          chart={chart} notes={notes} onNotes={setNotes} />
+          charts={charts} notes={notes} onNotes={setNotes} />
       )}
 
       {/* ===== ÔN TẬP ===== */}
@@ -426,8 +445,30 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 /** Kết quả nổi bật của bài (to, rõ) + độ chụm các lần đo. */
-function ResultHero({ lessonId, chart, samples, results }: { lessonId: string; chart: ChartSpec | null; samples: Partial<Record<LabKind, RichTrial[]>>; results: Record<string, string> }) {
+function ResultHero({ lessonId, chart, charts, samples, results }: { lessonId: string; chart: ChartSpec | null; charts: ChartSpec[]; samples: Partial<Record<LabKind, RichTrial[]>>; results: Record<string, string> }) {
   const valuesOf = (lab: LabKind) => (samples[lab] || []).map((_, i) => parseResult(results[`${lab}-${i}`])).filter((v): v is number => v != null);
+
+  if (lessonId === "dinh-luat-2-newton") {
+    // Hình 15.3a: độ dốc a–F = 1/(M + m); Hình 15.3b: độ dốc a–1/(M + m) = F.
+    const fitF = charts.find((c) => c.key === "aF")?.series[0]?.fit;
+    const fitM = charts.find((c) => c.key === "aM")?.series[0]?.fit;
+    if (!fitF && !fitM) return null;
+    return (
+      <HeroCard>
+        <div className="grid grid-cols-2 gap-3">
+          <Metric label="a–F: 1/độ dốc" value={fmt(fitF ? 1 / fitF.slope : null, 2)} unit="kg" color="#2563EB"
+            sub={fitF ? `≈ M + m = 0,5 kg · lệch ${fmt((Math.abs(1 / fitF.slope - 0.5) / 0.5) * 100, 1)}%` : "cần cột ③ ④ ⑤"} />
+          <Metric label="a–1/(M+m): độ dốc" value={fmt(fitM?.slope ?? null, 2)} unit="N" color="#DF742E"
+            sub={fitM ? `≈ F = 1 N · lệch ${fmt(Math.abs(fitM.slope - 1) * 100, 1)}%` : "cần cột ① ② ③"} />
+        </div>
+        {fitF && fitM && (
+          <p className="text-[12px] font-bold text-[#605248] leading-snug">
+            a <b className="text-[#321E12]">tỉ lệ thuận</b> với F và <b className="text-[#321E12]">tỉ lệ nghịch</b> với M + m → <MathText text="$a = \dfrac{F}{M + m}$" /> — định luật 2 Newton.
+          </p>
+        )}
+      </HeroCard>
+    );
+  }
 
   if (lessonId === "do-gia-toc-roi-tu-do") {
     const st = stats(valuesOf("freefall"));
@@ -569,7 +610,7 @@ function SampleTable({ lab, rows, results, onChange }: { lab: LabKind; rows: Ric
           })}
         </tbody>
       </table>
-      {meta.perRow && st && (
+      {meta.perRow && st && !meta.noMean && (
         <div className="mt-1 text-[11px] font-bold text-[#605248]">
           Trung bình <b className="text-[#321E12]">{meta.resultLabel}<sub>tb</sub> = {fmt(st.mean, decimalsOf(lab) + 1)} {meta.unit}</b>
           {st.n > 1 && lab !== "average" && <> · sai số ±{fmt(Math.max(st.sd, st.halfRange), decimalsOf(lab) + 1)}</>}
@@ -580,17 +621,18 @@ function SampleTable({ lab, rows, results, onChange }: { lab: LabKind; rows: Ric
   );
 }
 
-function ReportView({ spec, studentName, samples, results, report, savedAt, chart, notes, onNotes }: {
+function ReportView({ spec, studentName, samples, results, report, savedAt, charts, notes, onNotes }: {
   spec: (typeof EXPERIMENT_SPECS)[string] | undefined;
   studentName?: string;
   samples: Partial<Record<LabKind, RichTrial[]>>;
   results: Record<string, string>;
   report: ExperimentReport | null;
   savedAt: string | null;
-  chart: ChartSpec | null;
+  charts: ChartSpec[];
   notes: string;
   onNotes: (v: string) => void;
 }) {
+  const printable = charts.filter((c) => c.series.some((s) => s.points.length >= 2));
   const labs = Object.keys(samples) as LabKind[];
   if (!labs.length) {
     return (
@@ -665,7 +707,7 @@ function ReportView({ spec, studentName, samples, results, report, savedAt, char
                     ))}
                   </tbody>
                 </table>
-                {meta.perRow && st && (
+                {meta.perRow && st && !meta.noMean && (
                   <p className="text-[10px] font-bold text-[#605248]">
                     Giá trị trung bình: <b className="text-[#321E12]">{meta.resultLabel}<sub>tb</sub> = {fmt(st.mean, decimalsOf(lab) + 1)} {meta.unit}</b>
                     {rows.some((r) => r.balanced === false) && <span className="text-amber-700"> · có lần đo khi chưa cân bằng</span>}
@@ -677,20 +719,25 @@ function ReportView({ spec, studentName, samples, results, report, savedAt, char
           })}
         </section>
 
-        {chart && chart.series.some((s) => s.points.length >= 2) && (
-          <section className="space-y-2 break-inside-avoid">
+        {printable.length > 0 && (
+          <section className="space-y-2">
             <SectionTitle>III. Đồ thị &amp; xử lý số liệu</SectionTitle>
-            <div className="max-w-[560px] mx-auto aspect-[16/10]"><NotebookGraph spec={chart} printable /></div>
-            <div className="flex flex-col gap-1 text-[11px] font-bold text-[#605248]">
-              {chart.series.filter((s) => s.fit).map((s) => (
-                <p key={s.id}>{chart.series.length > 1 && <b style={{ color: s.color }}>{s.name}: </b>}{chart.explain(s).map((r) => `${r.label} = ${r.value}`).join(" · ")}</p>
-              ))}
-            </div>
+            {printable.map((chart) => (
+              <div key={chart.key ?? chart.relation} className="space-y-2 break-inside-avoid">
+                {printable.length > 1 && <h3 className="text-[11px] font-black text-[#C85A17] uppercase">{chart.title}</h3>}
+                <div className="max-w-[560px] mx-auto aspect-[16/10]"><NotebookGraph spec={chart} printable /></div>
+                <div className="flex flex-col gap-1 text-[11px] font-bold text-[#605248]">
+                  {chart.series.filter((s) => s.fit).map((s) => (
+                    <p key={s.id}>{chart.series.length > 1 && <b style={{ color: s.color }}>{s.name}: </b>}{chart.explain(s).map((r) => `${r.label} = ${r.value}`).join(" · ")}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
         )}
 
         <section className="space-y-1.5 break-inside-avoid">
-          <SectionTitle>{chart ? "IV" : "III"}. Nhận xét &amp; kết luận</SectionTitle>
+          <SectionTitle>{printable.length ? "IV" : "III"}. Nhận xét &amp; kết luận</SectionTitle>
           <textarea value={notes} onChange={(e) => onNotes(e.target.value)} rows={4}
             placeholder="Em nhận xét kết quả: so với lý thuyết thế nào, nguyên nhân sai số, cách khắc phục…"
             className="w-full border border-dashed border-[#C9C2B6] rounded-xl p-3 text-[11.5px] font-semibold text-[#321E12] outline-none focus:border-[#C85A17] resize-y print:hidden" />

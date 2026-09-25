@@ -47,6 +47,11 @@ export const LAB_CATALOG: LabEntry[] = [
     difficulty: "Trung bình", duration: "15 phút", image: "/images/free_fall.webp", prelab: "Cổng quang · MC964 · dây dọi", status: "open",
   },
   {
+    id: "dinh-luat-2-newton", code: "Bài 15", grade: 10, subject: "Cơ học",
+    name: "Định luật 2 Newton", kit: "Đệm khí · xe trượt · ròng rọc · cổng quang", formula: "a = F / m",
+    difficulty: "Trung bình", duration: "20 phút", image: "/images/newton2_airtrack.webp", prelab: "Đệm khí · hệ vật · a = 2s/t²", status: "open",
+  },
+  {
     id: "do-dien-tro-dinh-luat-ohm", code: "Bài 23", grade: 11, subject: "Điện",
     name: "Điện trở — Định luật Ohm", kit: "Nguồn DC · 2 đồng hồ VOM · vật dẫn X, Y", formula: "R = U / I",
     difficulty: "Trung bình", duration: "20 phút", image: "/images/do-dien-tro-ohm.png", prelab: "Đồng hồ đa năng · nguồn DC", status: "open",

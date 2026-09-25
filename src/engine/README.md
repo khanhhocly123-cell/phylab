@@ -1,6 +1,6 @@
 # `src/engine/` + `src/components/lab/` — Engine phòng thí nghiệm φLab
 
-Tài liệu cho dev sau: engine vật lý và 4 bàn thí nghiệm tương tác. Engine ban đầu port từ bản
+Tài liệu cho dev sau: engine vật lý và 5 bàn thí nghiệm tương tác. Engine ban đầu port từ bản
 Vite/JSX của φLab sang app Next.js này (RealPhyLab), thay cho `Bench.tsx` cũ. Hướng dẫn thêm bài mới
 đầy đủ ở `README.md` gốc (mục *Thêm bài thí nghiệm mới*).
 
@@ -20,6 +20,8 @@ src/engine/                     ← lõi thuần JS/TS, KHÔNG phụ thuộc UI
   noise.js                      gauss (cắt ±2,5σ), jitter, quantize — nhiễu đo dùng chung
   physics.js                    Bài 6: a = (5/7)·g·sinθ, rollRun(), computeTime(), ballDiameterMm()
   physicsFreeFall.js            Bài 11: s = ½gt², computeFallTime(), fitFreeFall()
+  physicsNewton2.js             Bài 15: hệ vật + lực kéo, trueAccel() (máy nén khí 4 nấc), planMotion() buông tay
+                                tại x₀ bất kì (dây căng → dây chùng → đệm cuối máng), newtonRun(), fitOrigin()
   physicsElectric.ts            Bài 23: vật dẫn X/Y, sụt áp ampe kế, heatedResistance(), stepHeat()
   circuit.js                    solveDC() (điện thế nút) + makeUnionFind() — Bài 26
   smartbot.js                   guide() thoại hướng dẫn rule-based + ask() → /api/vnpt/chat
@@ -29,6 +31,7 @@ src/components/lab/
   LabRoom.tsx                   Chọn bàn theo spec.id, cấp TTS, gom số liệu xuất Sổ Báo Cáo
   LabBench.jsx                  Bài 6 — máng nghiêng, 2 cổng quang, MC964, thả bi
   FreeFallBench.jsx             Bài 11 — máng đứng, nam châm điện, cổng quang trượt, trụ thép rơi
+  NewtonBench.jsx               Bài 15 — máng đệm khí, tay giữ/buông xe, kéo quả nặng, đồng hồ theo tín hiệu cổng quang
   ElectricalBench.jsx           Bài 23 — nguồn DC, 2 đồng hồ đa năng, vật dẫn X/Y, nhiệt
   EmfBench.jsx                  Bài 26 — bảng mạch 216 nút, dây nối tự do, đồ thị U–I
   LabChrome.jsx                 Khung chung: LabTopBar, NextStepCard, ChecklistCard, LabDialog,
@@ -37,6 +40,9 @@ src/components/lab/
   animStore.js                  Store animation ngoài React (useSyncExternalStore) — tránh render lại cả bàn
   labSound.js                   Âm thanh thao tác
   useTTS.ts                     /api/vnpt/tts (VNPT SmartVoice) + fallback Web Speech
+  mech/AirTrackParts.jsx        Dụng cụ Bài 15 (Hình 15.2): AirTrackRoom, AirTrack15, AirPump15 (núm lưu lượng),
+                                Glider15 (tay giữ), Photogate15, Pulley15, Hanger15, WeightBox15, WeightDisc15, Scale15
+  stageFit.js                   fitViewBox + useBoxSize (khung hình tự nới), svgPoint/svgScale (đổi toạ độ kéo thả)
   mech/MechParts.jsx            Dụng cụ cơ học SVG: Rail6, Stand*6, Photogate6/11, Magnet6/11,
                                 SteelBall, SteelCylinder, Plumb6/11, FallRail11, SwitchBox11,
                                 MC964Face (dùng chung với Prelab), MechIcon (khay + bóng kéo)

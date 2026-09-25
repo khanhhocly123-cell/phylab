@@ -6,8 +6,9 @@ import { C, FONT } from "../../engine/tokens.js";
 import { seededCellEmf, flickerCount } from "../../engine/physicsElectric";
 import {
   LabTopBar, NextStepCard, ChecklistCard, FinishButton, MobileLabSheet, LabToast, LabDialog, ProgressPills, NudgeSlider,
-  panelCard, sectionHead, sectionTitle, countPill, btnSecondary,
+  panelCard, sectionHead, sectionTitle, countPill, btnSecondary, mobileLabColumns,
 } from "./LabChrome.jsx";
+import { fitViewBox, svgPoint, useBoxSize } from "./stageFit.js";
 import { METER_MODES, terminalAt, partCenter, Multimeter, CircuitBoard, ohmDisplay } from "./electric/ElectricParts.jsx";
 import { BoardBattery, BoardSwitch, BoardResistor, BoardRheostat, localPoint } from "./electric/BoardParts.jsx";
 import { GRID, BOARD_SIZE, nodePos, moduleOf, moduleRC, moduleAtPoint, nearestNode, boardModuleRect } from "./electric/boardGeometry.js";
@@ -61,12 +62,9 @@ const EMF_MIN_GAP = 5;
 const EMF_START_R = 60;
 const JACK_LABEL = { A: "10A", mA: "mA", COM: "COM", V: "VΩ" };
 
+/** Toạ độ màn hình → viewBox (viewBox tự nới theo khung — xem stageFit — nên đổi qua ma trận của SVG). */
 function clientToViewBox(svg, clientX, clientY) {
-  const rect = svg.getBoundingClientRect();
-  const scale = Math.min(rect.width / VBW, rect.height / VBH);
-  const offsetX = (rect.width - VBW * scale) / 2;
-  const offsetY = (rect.height - VBH * scale) / 2;
-  return { x: (clientX - rect.left - offsetX) / scale, y: (clientY - rect.top - offsetY) / scale };
+  return svgPoint(svg, clientX, clientY);
 }
 
 /** Đường dây + điểm giữa: dây đồng hồ võng xuống; dây nối tắt giữa hai mạng cong nhẹ lên (như dây jumper). */
@@ -966,7 +964,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
         onToggleMute={speak ? onToggleMute : null}
         onHelp={onTour}
       />
-      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: isMobile ? (showTray ? "86px minmax(0,1fr)" : "minmax(0,1fr)") : (showTray ? "clamp(185px,13vw,225px) minmax(0,1fr) clamp(320px,23vw,390px)" : "minmax(0,1fr) clamp(320px,23vw,390px)"), overflow: "hidden", position: "relative" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: isMobile ? mobileLabColumns({ isPortrait, showTray, tray: "86px" }) : (showTray ? "clamp(185px,13vw,225px) minmax(0,1fr) clamp(320px,23vw,390px)" : "minmax(0,1fr) clamp(320px,23vw,390px)"), overflow: "hidden", position: "relative" }}>
         {showTray && (
           <aside data-lab-tooltray data-lab-scroll style={{ borderRight: `1px solid ${C.line}`, padding: isMobile ? 4 : 9, overflowY: "auto", background: "#fff" }}>
             {isMobile ? (
@@ -1015,7 +1013,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
           )}
           <LabToast toast={toast} />
           <LabDialog dialog={dialog} onClose={() => setDialog(null)} />
-          {isMobile && (
+          {isMobile && isPortrait && (
             <MobileLabSheet
               open={sheetOpen}
               onToggle={() => setSheetOpen((value) => !value)}
@@ -1030,6 +1028,12 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
             </MobileLabSheet>
           )}
         </main>
+        {isMobile && !isPortrait && (
+          <MobileLabSheet phase={phase} next={next} onPrimary={handlePrimary} isPortrait={false}>
+            {panelContent}
+            {finishButton}
+          </MobileLabSheet>
+        )}
         {!isMobile && (
           <aside data-lab-guide style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
             <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 10 }}>{panelContent}</div>
@@ -1062,16 +1066,18 @@ function EmfScene({
     protect: { heat: heatR0 },
     rheostat: { value: rheostat, glow: glowFlow, activeSpan: rheostatSpan, heat: heatRh },
   }[kind]);
+  const [svgRef, svgBox] = useBoxSize();
 
   return (
     <svg
       data-emf-scene="1"
-      viewBox={`0 0 ${VBW} ${VBH}`}
+      ref={svgRef}
+      viewBox={fitViewBox([0, 0, VBW, VBH], svgBox, [0, 0, VBW, VBH])}
       preserveAspectRatio="xMidYMid meet"
       onPointerDown={(event) => { if (pending && (event.target === event.currentTarget || event.target.closest?.("[data-bg]"))) handlers.onCancelPending(); }}
       style={{ width: "100%", height: "100%", minHeight: 0, display: "block", border: `1px solid ${C.line}`, borderRadius: 15, background: "linear-gradient(#fff,#FBF6EC)", touchAction: "none", fontFamily: FONT }}
     >
-      <rect data-bg="1" x="0" y={VBH - 44} width={VBW} height="44" fill="#F3EBDD" />
+      <rect data-bg="1" x={-700} y={VBH - 44} width={VBW + 1400} height={44 + 700} fill="#F3EBDD" />
       {!placed.size && <text x={VBW / 2} y="40" textAnchor="middle" fontSize="15" fontWeight="800" fill={C.sub}>Kéo bảng lắp mạch vào vòng sáng để bắt đầu…</text>}
 
       {has("board") && (

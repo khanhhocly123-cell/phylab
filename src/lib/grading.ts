@@ -20,7 +20,7 @@
 import { LAB6, accel, velAt } from "@/engine/physics.js";
 import { FREEFALL } from "@/engine/physicsFreeFall.js";
 
-export type LabKind = "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf";
+export type LabKind = "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf" | "newton2";
 
 export interface ExpectedAvgTarget { theta: number; sEF: number }
 export interface ExpectedInstTarget { theta: number }
@@ -32,6 +32,8 @@ export interface ExpectedLabTargets {
   "ohm-x"?: Array<{ voltage: number }>;
   "ohm-y"?: Array<{ voltage: number }>;
   emf?: Array<{ resistance: number; voltage?: number }>;
+  /** Bài 15: các cột Bảng 15.1 (lực kéo F theo SGK, khối lượng hệ M + m). */
+  newton2?: Array<{ force: number; mass: number }>;
 }
 
 /** Một lần đo do engine lab xuất ra. */
@@ -49,6 +51,8 @@ export interface Trial {
   cell?: "new" | "old";
   length?: number;
   emf?: number;
+  force?: number;         // Bài 15: lực kéo F (N)
+  mass?: number;          // Bài 15: khối lượng hệ M + m (kg)
   studentResult?: number | null; // kết quả HS tự tính (điền ở Notes)
 }
 
@@ -137,7 +141,7 @@ export function bandScore(closenessPercent: number): number {
 /** Kết quả đúng theo công thức từ (s, t) mà HS đo. */
 export function correctResultOf(labKind: LabKind, s: number, t: number): number {
   if (t <= 0) return 0;
-  if (labKind === "freefall") return (2 * s) / (t * t); // g = 2s/t²
+  if (labKind === "freefall" || labKind === "newton2") return (2 * s) / (t * t); // g = 2s/t² · Bài 15: a = 2s/t²
   return s / t;                                          // v = s/t
 }
 
@@ -147,6 +151,7 @@ export function theoreticalOf(labKind: LabKind, s: number, theta?: number, expec
     return expected ?? (labKind === "ohm-x" ? 120 : labKind === "ohm-y" ? 220 : 1.5);
   }
   if (labKind === "freefall") return FREEFALL.g; // g thật engine dùng (9.8)
+  if (labKind === "newton2") return expected ?? 0; // a = F/(M + m) của cột đó (truyền qua expected)
   const th = theta ?? LAB6.angle.default;
   if (labKind === "instant") return velAt(th, LAB6.sE); // vận tốc tức thời tại cổng E
   // average: vận tốc trung bình lý thuyết trên đoạn EF = (vE + vF)/2
@@ -162,6 +167,7 @@ const LABELS: Record<LabKind, { label: string; unit: string }> = {
   "ohm-x": { label: "Điện trở vật dẫn X", unit: "Ω" },
   "ohm-y": { label: "Điện trở vật dẫn Y", unit: "Ω" },
   emf: { label: "Suất điện động pin", unit: "V" },
+  newton2: { label: "Gia tốc của hệ vật", unit: "m/s²" },
 };
 
 /**
@@ -173,8 +179,9 @@ const LABELS: Record<LabKind, { label: string; unit: string }> = {
  */
 function configurationKey(
   labKind: LabKind,
-  value: { s?: number; sEF?: number; theta?: number; config?: number; voltage?: number; resistance?: number; cell?: "new" | "old" }
+  value: { s?: number; sEF?: number; theta?: number; config?: number; voltage?: number; resistance?: number; cell?: "new" | "old"; force?: number; mass?: number }
 ): string {
+  if (labKind === "newton2") return `F:${Math.round((value.force ?? 0) * 100)}|m:${Math.round((value.mass ?? 0) * 1000)}`;
   if (labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf") {
     const config = labKind === "emf"
       ? value.config ?? value.resistance ?? value.voltage ?? value.s ?? 0
@@ -211,7 +218,8 @@ export function gradeSample(
   const assignmentConstrained = targetKeys.size > 0;
   const rows: RowEval[] = trials.map((tr, i) => {
     const correct = correctResultOf(labKind, tr.s, tr.t);
-    const theo = theoreticalOf(labKind, tr.s, tr.theta, tr.expected);
+    const theo = theoreticalOf(labKind, tr.s, tr.theta,
+      tr.expected ?? (labKind === "newton2" && tr.force && tr.mass ? tr.force / tr.mass : undefined));
     const hasStudent = tr.studentResult != null && !Number.isNaN(tr.studentResult);
     const calcAccuracy = hasStudent && correct > 0
       ? clamp(100 - (Math.abs((tr.studentResult as number) - correct) / correct) * 100, 0, 100)
@@ -252,7 +260,7 @@ export function gradeSample(
   const matchedConfigurationCount = assignmentConstrained ? scoringGroups.length : uniqueConfigurationCount;
   const requiredTrials = labKind === "emf" && hasTwoCellEmf
     ? 10
-    : labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf" ? 5 : MIN_TRIALS;
+    : labKind === "ohm-x" || labKind === "ohm-y" || labKind === "emf" || labKind === "newton2" ? 5 : MIN_TRIALS;
   const expectedConfigurationCount = assignmentConstrained ? targetKeys.size : requiredTrials;
   const unexpectedConfigurationCount = assignmentConstrained
     ? groupedEntries.filter(([key]) => !targetKeys.has(key)).length

@@ -9,6 +9,7 @@ import LabBench from "./LabBench.jsx";
 import FreeFallBench from "./FreeFallBench.jsx";
 import ElectricalBench from "./ElectricalBench";
 import EmfBench from "./EmfBench";
+import NewtonBench from "./NewtonBench.jsx";
 import { ballDiameterMm } from "../../engine/physics.js";
 import GuidedTour, { type TourStep } from "../tour/GuidedTour";
 import { labTour } from "../tour/tours";
@@ -42,6 +43,7 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
   const isFreeFall = spec.id === "do-gia-toc-roi-tu-do";
   const isOhm = spec.id === "do-dien-tro-dinh-luat-ohm";
   const isEmf = spec.id === "do-suat-dien-dong-pin-dien-hoa";
+  const isNewton = spec.id === "dinh-luat-2-newton";
 
   // Điện thoại cầm dọc: nhắc xoay ngang (Android có nút tự khoá ngang; iPhone hướng dẫn tự xoay).
   const phone = useSyncExternalStore(subscribeOrientation, isPhoneDevice, () => false);
@@ -109,7 +111,18 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
 
   return (
     <div className="lab-session relative w-full flex flex-col overflow-hidden bg-white h-full min-h-0">
-      {isEmf ? (
+      {isNewton ? (
+        <NewtonBench
+          assignedSets={assignedSets}
+          speak={speak}
+          muted={muted}
+          onToggleMute={toggleMute}
+          onExportNote={onExportNote}
+          onReplayPrelab={onReplayPrelab}
+          onBack={onExitLab}
+          onTour={openTour}
+        />
+      ) : isEmf ? (
         <EmfBench
           studentName={studentName}
           assignedSets={assignedSets}

@@ -1,5 +1,6 @@
 "use client";
 
+import { createContext, useContext, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -8,6 +9,8 @@ import {
   BookOpen,
   Check,
   ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
   CircleHelp,
   ChevronUp,
   Flag,
@@ -21,8 +24,11 @@ import {
 } from "lucide-react";
 import { C, FONT } from "../../engine/tokens.js";
 
+/** Có mặt khi thẻ đang nằm trong cột hướng dẫn (điện thoại xoay ngang): { onCollapse }. */
+const DockContext = createContext(null);
+
 /* ============================================================================
-   LabChrome — khung giao diện DÙNG CHUNG cho mọi bàn thí nghiệm (Bài 6, 11, 23, 26).
+   LabChrome — khung giao diện DÙNG CHUNG cho mọi bàn thí nghiệm (Bài 6, 11, 15, 23, 26).
    Mỗi bench chỉ lo mô phỏng + logic đo; phần "đi đường" cho học sinh (thanh trên,
    4 chặng, bước tiếp theo, checklist, nhiệm vụ đo, nút hoàn thành, sheet mobile)
    dùng chung ở đây để mọi bài có cùng một nhịp thao tác.
@@ -128,33 +134,49 @@ export function PhaseTrack({ phase }) {
    bench truyền vào qua onPrimary / onAssist(payload). */
 export function NextStepCard({ phase, next, onSpeak, onPrimary, onAssist, showTrack = true }) {
   const done = next.key === "done";
+  // Trong cột hướng dẫn (điện thoại ngang): gọn lại — chặng hiện thành một dòng chữ, có nút thu cột.
+  const dock = useContext(DockContext);
+  const compact = Boolean(dock);
   return (
-    <section aria-live="polite" data-tour="lab-next" style={{ ...panelCard, border: `1.5px solid ${done ? `${C.good}66` : `${C.orange}55`}`, background: done ? "#F5FAF4" : "#FFFBF6" }}>
-      {showTrack && <div style={{ marginBottom: 12 }}><PhaseTrack phase={phase} /></div>}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, display: "grid", placeItems: "center", background: done ? C.good : C.orange, color: "#fff" }}>
-          {done ? <Check size={16} strokeWidth={3} /> : <ArrowRight size={16} strokeWidth={3} />}
-        </span>
+    <section aria-live="polite" data-tour="lab-next" style={{ ...panelCard, padding: compact ? 9 : 12, border: `1.5px solid ${done ? `${C.good}66` : `${C.orange}55`}`, background: done ? "#F5FAF4" : "#FFFBF6" }}>
+      {showTrack && !compact && <div style={{ marginBottom: 12 }}><PhaseTrack phase={phase} /></div>}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: compact ? 7 : 10 }}>
+        {!compact && (
+          <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, display: "grid", placeItems: "center", background: done ? C.good : C.orange, color: "#fff" }}>
+            {done ? <Check size={16} strokeWidth={3} /> : <ArrowRight size={16} strokeWidth={3} />}
+          </span>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={eyebrow}>{done ? "Đã xong" : "Bước tiếp theo"}</div>
-          <div style={{ fontSize: 15, fontWeight: 900, color: C.ink, lineHeight: 1.3 }}>{next.title}</div>
-          {next.hint && <div style={{ fontSize: 12.5, color: "#6b6258", lineHeight: 1.45, marginTop: 4, fontWeight: 600 }}>{next.hint}</div>}
+          <div style={eyebrow}>
+            {compact ? `${Math.min(phase + 1, LAB_PHASES.length)}/${LAB_PHASES.length} · ${LAB_PHASES[phase] ?? ""}` : done ? "Đã xong" : "Bước tiếp theo"}
+          </div>
+          <div style={{ fontSize: compact ? 13.5 : 15, fontWeight: 900, color: C.ink, lineHeight: 1.3 }}>{next.title}</div>
+          {next.hint && <div style={{ fontSize: compact ? 11.5 : 12.5, color: "#6b6258", lineHeight: 1.42, marginTop: compact ? 3 : 4, fontWeight: 600 }}>{next.hint}</div>}
         </div>
-        {onSpeak && (
-          <button type="button" onClick={onSpeak} aria-label="Nghe hướng dẫn" title="Nghe hướng dẫn" style={iconBtn}>
-            <Play size={13} strokeWidth={2.6} />
-          </button>
+        {(onSpeak || dock?.onCollapse) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
+            {dock?.onCollapse && (
+              <button type="button" onClick={dock.onCollapse} aria-label="Thu gọn cột hướng dẫn" title="Thu gọn cột hướng dẫn" style={{ ...iconBtn, width: 28, height: 28 }}>
+                <ChevronsRight size={15} strokeWidth={2.6} />
+              </button>
+            )}
+            {onSpeak && (
+              <button type="button" onClick={onSpeak} aria-label="Nghe hướng dẫn" title="Nghe hướng dẫn" style={compact ? { ...iconBtn, width: 28, height: 28 } : iconBtn}>
+                <Play size={13} strokeWidth={2.6} />
+              </button>
+            )}
+          </div>
         )}
       </div>
       {((next.primaryLabel && onPrimary) || (next.assist && onAssist)) && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: compact ? 6 : 8, marginTop: compact ? 8 : 12 }}>
           {next.primaryLabel && onPrimary && (
-            <button type="button" onClick={onPrimary} style={{ ...btnPrimary, flex: 1, background: done ? C.good : C.orange }}>
+            <button type="button" onClick={onPrimary} style={{ ...btnPrimary, flex: 1, background: done ? C.good : C.orange, ...(compact ? { padding: "8px 10px", fontSize: 12.5 } : {}) }}>
               {next.primaryLabel}
             </button>
           )}
           {next.assist && onAssist && (
-            <button type="button" onClick={() => onAssist(next.assist)} style={btnSoft} title="Dùng khi em bị kẹt ở bước này">
+            <button type="button" onClick={() => onAssist(next.assist)} style={compact ? { ...btnSoft, flex: 1, padding: "7px 9px", fontSize: 11.5 } : btnSoft} title="Dùng khi em bị kẹt ở bước này">
               <Wand2 size={13} strokeWidth={2.4} /> Làm giúp bước này
             </button>
           )}
@@ -238,6 +260,8 @@ export function TaskCard({ title, badge, items, onSelect, note }) {
 /* ---------- Nút kết thúc: lưu số liệu sang Sổ Báo Cáo ----------
    blockedText: bài yêu cầu đủ mẫu mới được lưu (vd. điện 5 + 5) → khóa nút và nói rõ còn thiếu gì. */
 export function FinishButton({ count, allDone, onFinish, blockedText }) {
+  const dock = useContext(DockContext);
+  if (dock && count === 0) return null;   // cột hướng dẫn chật: chưa có số liệu thì chưa cần nút lưu
   const disabled = count === 0 || Boolean(blockedText);
   return (
     <button
@@ -259,8 +283,12 @@ export function FinishButton({ count, allDone, onFinish, blockedText }) {
   );
 }
 
-/* ---------- Sheet mobile: thanh gọn luôn hiện "bước tiếp theo" + nút chính ---------- */
+/* ---------- Sheet mobile: thanh gọn luôn hiện "bước tiếp theo" + nút chính ----------
+   Điện thoại xoay ngang: KHÔNG nổi đè lên bàn nữa mà thành cột hướng dẫn gắn cạnh phải (xem
+   LabGuideDock) — bàn chỉ cao chừng 320 px nên hai bên luôn dư chỗ, cột dùng đúng phần dư đó.
+   Bench đặt nó làm một ô lưới riêng (cột `auto` cuối cùng — xem mobileLabColumns). */
 export function MobileLabSheet({ open, onToggle, phase, next, onPrimary, isPortrait, openHeight, children }) {
+  if (!isPortrait) return <LabGuideDock phase={phase} next={next} onPrimary={onPrimary}>{children}</LabGuideDock>;
   const actionLabel = onPrimary ? next.primaryShort || next.primaryLabel : null;
   return (
     <motion.div
@@ -314,6 +342,57 @@ export function MobileLabSheet({ open, onToggle, phase, next, onPrimary, isPortr
         </div>
       )}
     </motion.div>
+  );
+}
+
+/** Cột lưới trên điện thoại: [khay dụng cụ?] [bàn] [cột hướng dẫn — chỉ khi xoay ngang]. */
+export function mobileLabColumns({ isPortrait, showTray, tray }) {
+  return [showTray ? tray : null, "minmax(0, 1fr)", isPortrait ? null : "auto"].filter(Boolean).join(" ");
+}
+
+/* ---------- Cột hướng dẫn (điện thoại xoay ngang) ----------
+   Mở: thẻ bước tiếp theo (gọn) + số liệu, cuộn trong cột. Thu gọn: dải 46 px chỉ còn chặng
+   và nút chính — nhường gần hết bề ngang cho bàn thí nghiệm. */
+const DOCK_KEY = "phylab.labDock.v1";
+function LabGuideDock({ phase, next, onPrimary, children }) {
+  // Nhớ lựa chọn thu/mở trên máy này (bàn điện bè ngang: nhiều em thích thu cột cho bàn to hơn).
+  const [collapsed, setCollapsedState] = useState(() => {
+    try { return localStorage.getItem(DOCK_KEY) === "collapsed"; } catch { return false; }
+  });
+  const setCollapsed = (value) => {
+    setCollapsedState(value);
+    try { localStorage.setItem(DOCK_KEY, value ? "collapsed" : "open"); } catch { /* không lưu được thì thôi */ }
+  };
+  const done = next.key === "done";
+  if (collapsed) {
+    const canAct = Boolean(onPrimary && next.primaryLabel);
+    return (
+      <aside data-lab-guide-dock data-collapsed="true" aria-label="Hướng dẫn (đã thu gọn)"
+        style={{ width: 46, minHeight: 0, borderLeft: `1px solid ${C.line}`, background: "#FFFBF7", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "8px 0 calc(8px + env(safe-area-inset-bottom, 0px))", fontFamily: FONT }}>
+        <button type="button" onClick={() => setCollapsed(false)} aria-label="Mở cột hướng dẫn" title="Mở cột hướng dẫn" style={{ ...iconBtn, width: 32, height: 32 }}>
+          <ChevronsLeft size={16} strokeWidth={2.6} />
+        </button>
+        <span title={`${LAB_PHASES[phase]} — ${next.title}`} style={{ minWidth: 32, height: 26, borderRadius: 8, display: "grid", placeItems: "center", background: done ? C.good : C.orange, color: "#fff", fontSize: 11, fontWeight: 900 }}>
+          {Math.min(phase + 1, LAB_PHASES.length)}/{LAB_PHASES.length}
+        </span>
+        {canAct && (
+          <button type="button" onClick={onPrimary} aria-label={next.primaryLabel} title={next.primaryLabel}
+            style={{ ...btnPrimary, width: 34, height: 34, padding: 0, borderRadius: 10, background: done ? C.good : C.orange }}>
+            {done ? <Flag size={15} strokeWidth={2.6} /> : <Check size={16} strokeWidth={3} />}
+          </button>
+        )}
+      </aside>
+    );
+  }
+  return (
+    <aside data-lab-guide-dock aria-label="Hướng dẫn và số liệu"
+      style={{ width: "clamp(212px, 31vw, 300px)", minWidth: 0, minHeight: 0, borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", fontFamily: FONT }}>
+      <DockContext.Provider value={{ onCollapse: () => setCollapsed(true) }}>
+        <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", padding: "6px 6px calc(8px + env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", gap: 6 }}>
+          {children}
+        </div>
+      </DockContext.Provider>
+    </aside>
   );
 }
 

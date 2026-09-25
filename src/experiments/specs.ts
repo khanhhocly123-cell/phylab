@@ -189,6 +189,58 @@ export const EXPERIMENT_SPECS: Record<string, ExperimentSpec> = {
       "Từ đồ thị U-I, nêu cách xác định suất điện động và điện trở trong của pin.",
       "Vì sao cần điện trở bảo vệ và phải mở khóa K khi thay đổi cách mắc?"
     ]
+  },
+  "dinh-luat-2-newton": {
+    id: "dinh-luat-2-newton",
+    shortTitle: "Định luật 2 Newton",
+    title: "Thí nghiệm minh hoạ định luật 2 Newton",
+    book: "Vật lí 10 KNTT, Bài 15",
+    icon: "Gauge",
+    keywords: ["định luật 2 newton", "định luật ii newton", "máng trượt đệm khí", "xe trượt", "ròng rọc", "quả nặng", "lực kéo", "gia tốc"],
+    theory: {
+      objective: "Minh hoạ định luật 2 Newton: đo gia tốc $a$ của hệ vật (xe trượt và các quả nặng) khi thay đổi lực kéo $F$ và khối lượng $M + m$, từ đó thấy $a$ tỉ lệ thuận với $F$ và tỉ lệ nghịch với khối lượng.",
+      formula: "\\vec{a} = \\frac{\\vec{F}}{m}",
+      bullets: [
+        "Định luật 2 Newton: gia tốc của một vật cùng hướng với lực tác dụng lên vật; độ lớn của gia tốc tỉ lệ thuận với độ lớn của lực và tỉ lệ nghịch với khối lượng của vật: $\\vec{a} = \\dfrac{\\vec{F}}{m}$, hay $\\vec{F} = m\\vec{a}$.",
+        "Vật trong thí nghiệm là hệ gồm xe trượt và các quả nặng, khối lượng $M + m$; lực kéo $F$ là trọng lượng các quả nặng treo ở đầu dây ($F_1 = mg$, $F_2 = 2mg$, …, lấy $g \\approx 10\\ \\text{m/s}^2$).",
+        "Đặt tấm chắn sáng sát cổng quang điện 1 để $v_0 = 0$; với $s = 0{,}5\\ \\text{m}$ thì $s = \\tfrac{1}{2}at^2 \\Rightarrow a = \\dfrac{2s}{t^2} = \\dfrac{1}{t^2}$.",
+        "Khối lượng là đại lượng đặc trưng cho mức quán tính của vật."
+      ]
+    },
+    instruments: [
+      { id: "flag", name: "Tấm chắn sáng (1)", role: "Dài 10 cm, gắn trên xe — che tia hồng ngoại của cổng quang" },
+      { id: "air-track", name: "Máng trượt đệm khí (2)", role: "Có các lỗ nhỏ thổi khí, giảm tối đa ma sát khi xe chuyển động" },
+      { id: "gate-1", name: "Cổng quang điện 1 (3)", role: "Tấm chắn đi qua → đồng hồ bắt đầu đếm", uncertainty: "±0,0003 s" },
+      { id: "gate-2", name: "Cổng quang điện 2 (4)", role: "Cách cổng 1 đúng 0,5 m — đồng hồ dừng đếm", uncertainty: "±0,0003 s" },
+      { id: "pulley", name: "Ròng rọc (5)", role: "Dây không dãn, khối lượng không đáng kể vắt qua rãnh" },
+      { id: "weights", name: "Các quả nặng (6)", role: "Hộp 10 quả giống nhau, mỗi quả m = 50 g" },
+      { id: "timer", name: "Đồng hồ đo thời gian hiện số (7)", role: "MODE A↔B đo t giữa hai cổng quang", uncertainty: "±0,001 s" },
+      { id: "scale", name: "Cân điện tử (8)", role: "Cân xe trượt và quả nặng", uncertainty: "±0,1 g" },
+      { id: "pump", name: "Bơm khí (9)", role: "Thổi khí vào máng tạo đệm khí" },
+      { id: "glider", name: "Xe trượt M = 200 g", role: "Buộc vào sợi dây vắt qua ròng rọc" }
+    ],
+    steps: [
+      { id: "step-1", title: "Bước 1 — Tạo lực kéo F", assistant: "Lực kéo F có độ lớn tăng dần 1 N, 2 N và 3 N bằng cách móc thêm các quả nặng vào đầu dây vắt qua ròng rọc." },
+      { id: "step-2", title: "Bước 2 — Ghi F và M + m", assistant: "Ghi vào Bảng 15.1 độ lớn lực kéo F và tổng khối lượng của hệ (xe trượt và các quả nặng) ứng với mỗi lần thí nghiệm." },
+      { id: "step-3", title: "Bước 3 — Đo thời gian t", assistant: "Đồng hồ bắt đầu đếm từ lúc tấm chắn sáng đi qua cổng quang điện 1 và kết thúc khi tấm chắn tới cổng quang điện 2." },
+      { id: "step-4", title: "Bước 4 — Tính gia tốc a", assistant: "Tấm chắn đặt sát cổng 1 nên v0 = 0; s = 0,5 m nên a = 2s/t² = 1/t². Ghi a vào Bảng 15.1." }
+    ],
+    dataBook: {
+      columns: [
+        { key: "force", label: "Lực kéo F", unit: "N", editable: false },
+        { key: "mass", label: "Khối lượng M + m", unit: "kg", editable: false },
+        { key: "time", label: "Thời gian t", unit: "s", editable: false },
+        { key: "result", label: "Gia tốc a = 2s/t²", unit: "m/s²", editable: true }
+      ],
+      resultLabel: "Gia tốc của hệ vật",
+      resultUnit: "m/s²",
+      formulaHint: "a = \\frac{2s}{t^2}"
+    },
+    homework: [
+      "Từ Bảng 15.1, vẽ đồ thị a theo F (M + m = 0,5 kg) và a theo 1/(M + m) (F = 1 N). Các đồ thị có phải là đường thẳng không? Tại sao?",
+      "Nêu kết luận về sự phụ thuộc của gia tốc vào độ lớn của lực tác dụng và khối lượng của vật.",
+      "Tại sao máy bay khối lượng càng lớn thì đường băng phải càng dài?"
+    ]
   }
 };
 

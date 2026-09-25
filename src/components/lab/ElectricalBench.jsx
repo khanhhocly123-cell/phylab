@@ -6,8 +6,9 @@ import { C, FONT } from "../../engine/tokens.js";
 import { OHM_CONDUCTORS, OHM_SETUP, ohmCircuit, heatedResistance, stepHeat, flickerCount } from "../../engine/physicsElectric";
 import {
   LabTopBar, NextStepCard, ChecklistCard, FinishButton, MobileLabSheet, LabToast, LabDialog, ProgressPills, NudgeSlider,
-  panelCard, sectionHead, sectionTitle, countPill, btnSecondary,
+  panelCard, sectionHead, sectionTitle, countPill, btnSecondary, mobileLabColumns,
 } from "./LabChrome.jsx";
+import { fitViewBox, svgPoint, useBoxSize } from "./stageFit.js";
 import { METER_MODES, partCenter, terminalAt, DcSource, SwitchK, Multimeter, Resistor, ohmDisplay } from "./electric/ElectricParts.jsx";
 import LiveGraph, { niceRange } from "./LiveGraph.jsx";
 import { labSound } from "./labSound.js";
@@ -83,12 +84,9 @@ const CONDUCTOR_BANDS = {
   Y: ["#DC2626", "#DC2626", "#8B572A", "#C9A227"],
 };
 
+/** Toạ độ màn hình → viewBox (viewBox tự nới theo khung — xem stageFit — nên đổi qua ma trận của SVG). */
 function clientToViewBox(svg, clientX, clientY) {
-  const rect = svg.getBoundingClientRect();
-  const scale = Math.min(rect.width / VBW, rect.height / VBH);
-  const offsetX = (rect.width - VBW * scale) / 2;
-  const offsetY = (rect.height - VBH * scale) / 2;
-  return { x: (clientX - rect.left - offsetX) / scale, y: (clientY - rect.top - offsetY) / scale };
+  return svgPoint(svg, clientX, clientY);
 }
 
 /** Dây mềm võng xuống giữa hai chốt (giống dây thật trên bàn thí nghiệm). */
@@ -800,7 +798,7 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
         onHelp={onTour}
         meta={fits.X || fits.Y ? <>R của em: <b style={{ color: C.ink }}>{fits.X ? `X ≈ ${fits.X.toFixed(0)}` : ""}{fits.X && fits.Y ? " · " : ""}{fits.Y ? `Y ≈ ${fits.Y.toFixed(0)}` : ""} Ω</b></> : null}
       />
-      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: isMobile ? (showTray ? "86px minmax(0,1fr)" : "minmax(0,1fr)") : (showTray ? "clamp(185px,13vw,225px) minmax(0,1fr) clamp(320px,23vw,390px)" : "minmax(0,1fr) clamp(320px,23vw,390px)"), overflow: "hidden", position: "relative" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: isMobile ? mobileLabColumns({ isPortrait, showTray, tray: "86px" }) : (showTray ? "clamp(185px,13vw,225px) minmax(0,1fr) clamp(320px,23vw,390px)" : "minmax(0,1fr) clamp(320px,23vw,390px)"), overflow: "hidden", position: "relative" }}>
         {showTray && (
           <aside data-lab-tooltray data-lab-scroll style={{ borderRight: `1px solid ${C.line}`, padding: isMobile ? 4 : 9, overflowY: "auto", background: "#fff" }}>
             {isMobile ? (
@@ -849,7 +847,7 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
           )}
           <LabToast toast={toast} />
           <LabDialog dialog={dialog} onClose={() => setDialog(null)} />
-          {isMobile && (
+          {isMobile && isPortrait && (
             <MobileLabSheet
               open={sheetOpen}
               onToggle={() => setSheetOpen((value) => !value)}
@@ -864,6 +862,12 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
             </MobileLabSheet>
           )}
         </main>
+        {isMobile && !isPortrait && (
+          <MobileLabSheet phase={phase} next={next} onPrimary={handlePrimary} isPortrait={false}>
+            {panelContent}
+            {finishButton}
+          </MobileLabSheet>
+        )}
         {!isMobile && (
           <aside data-lab-guide style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
             <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 10 }}>{panelContent}</div>
@@ -889,15 +893,17 @@ function OhmScene({
   const portDone = (id) => EDGES.every(([a, b]) => (a !== id && b !== id) || wires.has(edgeKey(a, b)));
   const allWired = EDGES.every(([a, b]) => wires.has(edgeKey(a, b)));
   const hitR = isMobile ? 28 : 18;
+  const [svgRef, svgBox] = useBoxSize();
 
   return (
     <svg
-      viewBox={`0 0 ${VBW} ${VBH}`}
+      ref={svgRef}
+      viewBox={fitViewBox([0, 0, VBW, VBH], svgBox, [0, 0, VBW, VBH])}
       preserveAspectRatio="xMidYMid meet"
       onPointerDown={(event) => { if (pendingPort && (event.target === event.currentTarget || event.target.closest?.("[data-bg]"))) onCancelPending(); }}
       style={{ width: "100%", height: "100%", minHeight: 0, display: "block", border: `1px solid ${C.line}`, borderRadius: 15, background: "linear-gradient(#fff,#FBF6EC)", touchAction: "none", fontFamily: FONT }}
     >
-      <rect data-bg="1" x="0" y={VBH - 44} width={VBW} height="44" fill="#F3EBDD" />
+      <rect data-bg="1" x={-700} y={VBH - 44} width={VBW + 1400} height={44 + 700} fill="#F3EBDD" />
       {!placed.size && (
         <text x={VBW / 2} y="46" textAnchor="middle" fontSize="15" fontWeight="800" fill={C.sub}>Kéo dụng cụ từ khay bên trái vào vòng sáng để bắt đầu…</text>
       )}

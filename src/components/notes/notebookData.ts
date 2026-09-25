@@ -19,6 +19,9 @@ export type Series = {
   extend?: boolean;
 };
 export type ChartSpec = {
+  /** Bài có nhiều đồ thị (Bài 15: Hình 15.3a/b): khoá + tên ngắn để chọn. */
+  key?: string;
+  title?: string;
   x: { label: string; unit: string; fromZero: boolean; dp: number };
   y: { label: string; unit: string; fromZero: boolean; dp: number };
   relation: string;               // LaTeX quan hệ lý thuyết
@@ -70,8 +73,66 @@ export function stats(values: number[]) {
 export const fmt = (v: number | null | undefined, dp: number) => (v == null || !Number.isFinite(v) ? "—" : v.toFixed(dp));
 const flagged = (t: RichTrial) => t.balanced === false || t.steady === false;
 
-/** Đồ thị + cách đọc kết quả cho từng bài. */
+/** Gia tốc a = 2s/t² của một lần đo Bài 15. */
+const accelOf = (t: RichTrial) => (t.t > 0 ? (2 * t.s) / (t.t * t.t) : 0);
+const near = (a: number | undefined, b: number, tol = 1e-6) => a != null && Math.abs(a - b) < tol;
+
+/** Mọi đồ thị của một bài (phần lớn bài có một; Bài 15 có ba: Hình 15.3a, 15.3b và a theo F/(M + m)). */
+export function buildCharts(lessonId: string, trials: RichTrial[]): ChartSpec[] {
+  if (lessonId === "dinh-luat-2-newton") {
+    const rows = trials.filter((t) => t.lab === "newton2" && t.t > 0 && (t.force ?? 0) > 0 && (t.mass ?? 0) > 0);
+    const ptsF = rows.filter((t) => near(t.mass, 0.5)).map((t, i) => ({ x: t.force!, y: accelOf(t), key: `aF-${i}`, warn: flagged(t) }));
+    const ptsM = rows.filter((t) => near(t.force, 1)).map((t, i) => ({ x: 1 / t.mass!, y: accelOf(t), key: `aM-${i}`, warn: flagged(t) }));
+    const ptsAll = rows.map((t, i) => ({ x: t.force! / t.mass!, y: accelOf(t), key: `all-${i}`, warn: flagged(t) }));
+    return [
+      {
+        key: "aF", title: "a theo F (M + m = 0,5 kg)",
+        x: { label: "F", unit: "N", fromZero: true, dp: 2 },
+        y: { label: "a", unit: "m/s²", fromZero: true, dp: 2 },
+        relation: "a = \\dfrac{1}{M + m}\\,F",
+        fitKind: "origin",
+        series: [{ id: "n2-aF", name: "M + m = 0,5 kg", color: SERIES_COLORS[1], points: ptsF, fit: fitLine(ptsF, true) }],
+        explain: (s) => s.fit ? [
+          { label: "Độ dốc k", value: `${fmt(s.fit.slope, 2)} kg⁻¹` },
+          { label: "1/k", value: `${fmt(1 / s.fit.slope, 3)} kg`, strong: true },
+          { label: "So với M + m = 0,5 kg", value: `lệch ${fmt((Math.abs(1 / s.fit.slope - 0.5) / 0.5) * 100, 1)} %` },
+        ] : [],
+      },
+      {
+        key: "aM", title: "a theo 1/(M + m) (F = 1 N)",
+        x: { label: "1/(M+m)", unit: "kg⁻¹", fromZero: true, dp: 2 },
+        y: { label: "a", unit: "m/s²", fromZero: true, dp: 2 },
+        relation: "a = F\\cdot\\dfrac{1}{M + m}",
+        fitKind: "origin",
+        series: [{ id: "n2-aM", name: "F = 1 N", color: SERIES_COLORS[0], points: ptsM, fit: fitLine(ptsM, true) }],
+        explain: (s) => s.fit ? [
+          { label: "Độ dốc k", value: `${fmt(s.fit.slope, 3)} N`, strong: true },
+          { label: "So với F = 1 N", value: `lệch ${fmt(Math.abs(s.fit.slope - 1) * 100, 1)} %` },
+          { label: "R²", value: fmt(s.fit.r2, 4) },
+        ] : [],
+      },
+      {
+        key: "aAll", title: "a theo F/(M + m) (mọi lần đo)",
+        x: { label: "F/(M+m)", unit: "m/s²", fromZero: true, dp: 2 },
+        y: { label: "a", unit: "m/s²", fromZero: true, dp: 2 },
+        relation: "a = \\dfrac{F}{M + m}",
+        fitKind: "origin",
+        series: [{ id: "n2-all", name: "Mọi lần đo", color: SERIES_COLORS[2], points: ptsAll, fit: fitLine(ptsAll, true) }],
+        explain: (s) => s.fit ? [
+          { label: "Độ dốc", value: fmt(s.fit.slope, 3), strong: true },
+          { label: "Lí thuyết", value: "1 (a = F/m)" },
+          { label: "R²", value: fmt(s.fit.r2, 4) },
+        ] : [],
+      },
+    ];
+  }
+  const one = buildChart(lessonId, trials);
+  return one ? [one] : [];
+}
+
+/** Đồ thị + cách đọc kết quả cho từng bài (bài có nhiều đồ thị: đồ thị đầu tiên). */
 export function buildChart(lessonId: string, trials: RichTrial[]): ChartSpec | null {
+  if (lessonId === "dinh-luat-2-newton") return buildCharts(lessonId, trials)[0] ?? null;
   if (lessonId === "do-gia-toc-roi-tu-do") {
     const pts = trials.filter((t) => t.lab === "freefall" && t.t > 0)
       .map((t, i) => ({ x: t.t * t.t, y: t.s, key: `ff-${i}`, warn: flagged(t) }));
@@ -184,6 +245,11 @@ export function columnsFor(lab: RichTrial["lab"]): Column[] {
       { key: "r", label: "R", unit: "Ω", get: (t) => t.resistance ?? t.config ?? null, dp: 0 },
       { key: "i", label: "I", unit: "mA", get: (t) => (t.current ?? 0) * 1000, dp: 1 },
       { key: "u", label: "U", unit: "V", get: (t) => t.voltage ?? 0, dp: 3 },
+    ];
+    case "newton2": return [
+      { key: "f", label: "F", unit: "N", get: (t) => t.force ?? null, dp: 1 },
+      { key: "m", label: "M + m", unit: "kg", get: (t) => t.mass ?? null, dp: 2 },
+      { key: "t", label: "t", unit: "s", get: (t) => t.t, dp: 3 },
     ];
     default: return [];
   }

@@ -3,6 +3,7 @@ export type LessonId =
   | "do-gia-toc-roi-tu-do"
   | "do-dien-tro-dinh-luat-ohm"
   | "do-suat-dien-dong-pin-dien-hoa"
+  | "dinh-luat-2-newton"
   | string;
 
 export interface InstrumentSpec {
@@ -67,7 +68,7 @@ export interface Note {
 
 /** Một lần đo giàu thông tin do engine lab xuất ra (đủ để chấm điểm). */
 export interface RichTrial {
-  lab: "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf";
+  lab: "average" | "instant" | "freefall" | "ohm-x" | "ohm-y" | "emf" | "newton2";
   s: number;            // đại lượng tử số của công thức chấm (quãng đường, U hoặc E đo được)
   t: number;            // đại lượng mẫu số (thời gian, I hoặc 1 với phép đo trực tiếp)
   theta?: number;       // góc nghiêng (Bài 6)
@@ -84,6 +85,13 @@ export interface RichTrial {
   cell?: "new" | "old"; // Bài 26: phân biệt pin mới và pin đã sử dụng
   length?: number;      // vị trí con chạy trên dây điện trở (cm)
   emf?: number;
+  /** Bài 15: lực kéo F (N, SGK lấy g ≈ 10), khối lượng hệ M + m (kg), số quả treo / trên xe,
+   *  quãng mép tấm chắn cách cổng 1 lúc thả (m, 0 = sát cổng 1). */
+  force?: number;
+  mass?: number;
+  hang?: number;
+  cart?: number;
+  start?: number;
   studentResult?: number | null; // kết quả HS tự tính (điền ở Notes)
 }
 

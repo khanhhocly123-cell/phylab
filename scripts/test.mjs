@@ -7,6 +7,7 @@ import { moduleOf } from "../src/components/lab/electric/boardGeometry.js";
 import { normalizeVi, retrieveAnswer, buildRagContext } from "../src/lib/labKnowledge.ts";
 import { SCHEMATICS, checkSchematic } from "../src/lib/schematic.ts";
 import { CALC_DRILLS, parseNumber, isCorrect, diagnose } from "../src/components/prelab/calcDrillData.ts";
+import { NEWTON2, forceOf, massOf, trueAccel, newtonRun, computeNewtonTime, accelFromTime, fitOrigin, planMotion } from "../src/engine/physicsNewton2.js";
 
 let passed = 0;
 let failed = 0;
@@ -136,6 +137,43 @@ const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 42949672
   assert("Bài tính Prelab: mọi đáp số đều được nhận khi gõ dấu phẩy", allAccepted);
   const q = CALC_DRILLS.ohm[0];
   assert("Bài tính Prelab: quên đổi A → mA được nhắc đúng lỗi", !isCorrect(q.fields[0], 0.025) && diagnose(q, q.fields[0], 0.025).includes("mA"));
+}
+
+// 2c. Bài 15 — định luật 2 Newton (máng đệm khí, Bảng 15.1)
+{
+  const SGK = NEWTON2.sgkConfigs;
+  assert("Bài 15: lực kéo theo SGK — 2, 4, 6 quả treo cho F = 1, 2, 3 N", [2, 4, 6].map(forceOf).join() === "1,2,3");
+  assert("Bài 15: hệ vật gồm xe + quả trên xe + quả treo (treo 2, trên xe 2 → 0,4 kg)", massOf(2, 2) === 0.4);
+  const tSGK = SGK.map((c) => Number(computeNewtonTime({ run: newtonRun({ ...c, withNoise: false }) }).display));
+  assert("Bài 15: năm cột Bảng 15.1 cho t lệch SGK dưới 0,015 s", tSGK.every((t, i) => Math.abs(t - NEWTON2.sgkTable[i].t) < 0.015));
+  const aSGK = tSGK.map((t) => accelFromTime(t));
+  const fitA = fitOrigin([2, 3, 4].map((i) => ({ x: forceOf(SGK[i].hang), y: aSGK[i] })));
+  assert("Bài 15: đồ thị a–F (M + m = 0,5 kg) qua gốc, 1/độ dốc ≈ 0,5 kg (±5%)", fitA && Math.abs(1 / fitA.k - 0.5) < 0.025);
+  const fitB = fitOrigin([0, 1, 2].map((i) => ({ x: 1 / massOf(SGK[i].hang, SGK[i].cart), y: aSGK[i] })));
+  assert("Bài 15: đồ thị a–1/(M + m) (F = 1 N) có độ dốc ≈ 1 N (±5%)", fitB && Math.abs(fitB.k - 1) < 0.05);
+  const c3 = SGK[2];
+  assert("Bài 15: quên bật bơm khí ở cột 3 → ma sát nghỉ giữ xe, xe không chạy", !newtonRun({ ...c3, pump: false, withNoise: false }).moves);
+  assert("Bài 15: quên bật bơm khí ở cột 1 → a nhỏ hẳn (dưới 70%)", trueAccel({ ...SGK[0], pump: false }) < 0.7 * trueAccel(SGK[0]));
+  const far = Number(computeNewtonTime({ run: newtonRun({ ...c3, d: 0.02, withNoise: false }) }).display);
+  assert("Bài 15: xe lùi 2 cm khỏi cổng 1 → t ngắn, a = 2s/t² lớn hơn thật trên 20%", accelFromTime(far) > 1.2 * trueAccel(c3));
+  const modeA = computeNewtonTime({ mode: "A", run: newtonRun({ ...c3, withNoise: false }) });
+  assert("Bài 15: MODE A chỉ đo thời gian tấm chắn che cổng 1 (không phải t đi hết s)", modeA.valid && Number(modeA.display) < tSGK[2] * 0.6);
+  const early = newtonRun({ hang: 2, cart: 0, d: 0, drop: 0.3, withNoise: false });
+  const late = newtonRun({ hang: 2, cart: 0, d: 0, drop: 1, withNoise: false });
+  assert("Bài 15: quả nặng chạm sàn trước cổng 2 → hết lực kéo, t dài hơn", early.landsEarly && early.t2 > late.t2);
+
+  // Buông tay tự do (planMotion): t giữa hai cổng = thời gian mép tấm chắn đi từ x = 0 tới x = 0,5 m
+  const between = (plan) => plan.timeAtX(0.5) - plan.timeAtX(0);
+  const fromSat = planMotion({ ...c3, pump: 2, x0: -0.0001, xLand: 0.62, xEnd: 1.4, withNoise: false });
+  assert("Bài 15 (buông tay): buông sát cổng 1 → t giữa hai cổng khớp cột 3 Bảng 15.1", fromSat.moves && Math.abs(between(fromSat) - 0.71) < 0.015);
+  const fromBack = planMotion({ ...c3, pump: 2, x0: -0.05, xLand: 0.62, xEnd: 1.4, withNoise: false });
+  assert("Bài 15 (buông tay): buông lùi 5 cm → qua cổng 1 đã có vận tốc, t ngắn hẳn", between(fromBack) < 0.8 * between(fromSat));
+  assert("Bài 15 (buông tay): quả treo đã nằm trên đệm (dây chùng) → xe đứng yên", !planMotion({ ...c3, pump: 2, x0: 0.7, xLand: 0.62, xEnd: 1.4 }).moves);
+  const weak = planMotion({ ...SGK[0], pump: 1, x0: -0.0001, xLand: 0.62, xEnd: 1.4, withNoise: false });
+  const good = planMotion({ ...SGK[0], pump: 2, x0: -0.0001, xLand: 0.62, xEnd: 1.4, withNoise: false });
+  assert("Bài 15 (máy nén khí): lưu lượng yếu (nấc 1) → xe còn cọ máng, a nhỏ hơn nấc 2", weak.moves && weak.a < 0.95 * good.a);
+  const coast = planMotion({ ...SGK[0], pump: 2, x0: -0.0001, xLand: 0.3, xEnd: 1.4, withNoise: false });
+  assert("Bài 15 (dây chùng): sau khi quả chạm đệm xe trôi gần như đều tới cuối máng", Math.abs(coast.vAt(coast.tLand + 0.2) - coast.vAt(coast.tLand)) < 0.01 && coast.xStop > 1.39);
 }
 
 // 3. RAG tests

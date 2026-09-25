@@ -2,9 +2,10 @@
 
 > **PhyLab** (Phylab) — Phòng thí nghiệm Vật lí ảo tương tác cho học sinh THPT Việt Nam.
 > Web app Next.js 16 dự thi **Vietnamese Student HackAIthon**, tích hợp trọn bộ AI của **VNPT**
-> (SmartBot, SmartReader OCR, eKYC, SmartVoice TTS). Hiện có **4 bài thực hành** (SGK Kết nối tri
-> thức): Vật lí 10 — **Bài 6** Đo tốc độ, **Bài 11** Đo gia tốc rơi tự do; Vật lí 11 — **Bài 23**
-> Điện trở, định luật Ohm, **Bài 26** Đo suất điện động pin điện hoá. Danh sách bài nằm ở một chỗ:
+> (SmartBot, SmartReader OCR, eKYC, SmartVoice TTS). Hiện có **5 bài thực hành** (SGK Kết nối tri
+> thức): Vật lí 10 — **Bài 6** Đo tốc độ, **Bài 11** Đo gia tốc rơi tự do, **Bài 15** Thí nghiệm minh hoạ
+> định luật 2 Newton; Vật lí 11 — **Bài 23** Điện trở, định luật Ohm, **Bài 26** Đo suất điện động pin
+> điện hoá. Danh sách bài nằm ở một chỗ:
 > `src/data/labCatalog.ts`.
 >
 > Tài liệu này mô tả CHI TIẾT mọi tính năng, kiến trúc và ràng buộc của dự án. Cập nhật 2026-09-25.
@@ -231,19 +232,40 @@ Phải xem hết các nấc, các cổng, vẽ đúng sơ đồ, làm đúng 3 b
   thì xem được lời giải. Số liệu cố ý khác sơ đồ và khác Lab để không lộ kết quả đo. Nấc Ω giải thích đúng cách đo điện trở: tự đổi thang, hở
 mạch hiện OL, chỉ đo khi đoạn mạch không có nguồn, không đo được điện trở trong của pin.
 
+**Bài 15** (`prelab/NewtonPrelab.tsx`) — 6 mục, bám SGK:
+
+1. **Hình 15.2 chạm để khám phá** — vẽ lại đúng bố trí SGK bằng các linh kiện của Phòng Lab, 10 điểm đánh
+   số (1)–(9) + "xe"; chạm vào số nào thì dụng cụ đó sáng lên kèm tên và vai trò; đếm đã khám phá x/10.
+2. **Máy nén khí** (bơm khí) — bật công tắc và vặn núm lưu lượng ngay trên hình; 6 nhãn a–f (công tắc, núm
+   lưu lượng, quạt thổi, ống dẫn khí, lỗ khí trên máng, đệm khí) chạm để xem vai trò; lát cắt phóng to dưới xe
+   cho thấy khí phụt qua lỗ nâng đáy xe (tắt: xe cọ máng · nấc 1: đệm mỏng · nấc 2: ≈ 0,1 mm · nấc 3: dày hơn);
+   3 lưu ý dùng máy (bật máy trước khi đặt xe, không bịt lỗ khí, tắt máy khi không đo).
+3. **Thử đệm khí** — "Đẩy nhẹ xe" ở từng nấc: máy tắt xe dừng sau ~12 cm (μ = 0,2), nấc 1 vẫn bị hãm (μ = 0,05),
+   nấc 2 xe trượt hết máng. Dẫn tới lí do phải đủ đệm khí: F phải gần như là hợp lực.
+4. **Đồng hồ MODE A↔B** — dùng lại `MC964Interactive`.
+5. **Vì sao sát cổng 1** (mục *Lưu ý* của SGK) — thanh trượt cho xe xuất phát lùi 0–5 cm khỏi cổng 1, chạy
+   mô hình thật (`newtonRun`) để thấy a = 2s/t² lệch bao nhiêu (lùi 2 cm → sai ~+35 %); kèm cách đo khác
+   của SGK: tấm chắn 1 cm, a = (v₂² − v₁²)/(2s).
+6. **Tính toán** (bắt buộc, `CALC_DRILLS.newton2`) — F và M + m của hệ (bắt lỗi quên nhân g, quên quả
+   treo), a = 2s/t² với t = 0,64 s (lỗi s/t, 2s/t, s/t²), tăng F mà giữ M + m (lỗi lấy thêm quả từ hộp).
+
 Nút "Vào phòng Lab" chỉ mở khi xong thao tác bắt buộc; Prelab đã qua được nhớ theo bài.
+
+**Thanh "Bước x / n"** của Prelab dính sát đáy màn hình: khi đang làm Prelab, trên điện thoại thanh
+điều hướng dưới được ẩn (đã có nút ← về danh sách bài) và vùng cuộn không còn chừa chỗ hai lần.
 
 ---
 
 ## 8. Phòng Lab — bàn thí nghiệm tương tác
 
 `lab/LabHub.tsx` liệt kê bài đang mở (theo `labCatalog.ts`, sắp theo lớp rồi số bài). `lab/LabRoom.tsx`
-định tuyến theo `spec.id` tới 4 bàn:
+định tuyến theo `spec.id` tới 5 bàn:
 
 | Bài | Bàn | Nội dung chính |
 |---|---|---|
 | 6 | `LabBench.jsx` | Giá đỡ trái/phải, máng nghiêng có thước, dây dọi đo góc, nam châm, 2 cổng quang E/F, MC964. Cân bằng máng bằng vít chân giá, nối dây cổng quang vào ổ A/B, bật nguồn, chọn MODE, thả bi; đổi θ và quãng EF theo đề. |
 | 11 | `FreeFallBench.jsx` | Giá đứng có thước và vít cân bằng, nam châm điện, cổng quang trượt dọc thước, hộp công tắc, trụ thép. Cân bằng bằng dây dọi, nối hộp công tắc và cổng quang vào MC964, nhả nam châm cho trụ rơi. |
+| 15 | `NewtonBench.jsx` | Đúng Hình 15.2: máng đệm khí có thước + ống thuỷ, máy nén khí (công tắc + núm lưu lượng 1–3), ròng rọc ở mép bàn, xe trượt 200 g + tấm chắn 10 cm, 2 cổng quang (kéo cổng 2 tới đúng 50 cm), đồng hồ hiện số, cân điện tử, hộp 10 quả nặng 50 g. **Nghịch như thật**: bấm vào xe là tay giữ (kéo đi đâu cũng được), chạm lần nữa / "Thả tay" là buông — xe chạy ngay theo lực thật; xe đang chạy chụp lại được; **tự kéo từng quả nặng** từ hộp lên móc treo hoặc lên xe (và kéo về); tay không giữ xe mà treo thêm quả thì xe chạy luôn. Đồng hồ chạy theo **tín hiệu cổng quang**: kéo xe bằng tay qua cổng cũng làm đồng hồ chạy/dừng, giữ xe giữa hai cổng đồng hồ vẫn đếm → phải đặt xe xong mới Reset. Đo 5 cột Bảng 15.1 (chip ①–⑤ và nút "Xe → móc" là đường tắt), xe chiếu chậm ×3, quả treo rơi xuống đệm hứng dưới sàn (dây chùng thì hết lực kéo). Hai đồ thị sống như Hình 15.3a/b. |
 | 23 | `ElectricalBench.jsx` | Nguồn DC 0–10 V, 2 đồng hồ đa năng (ampe kế nấc mA/µA, vôn kế), khoá K, vật dẫn X và Y. Để K đóng lâu ở điện áp cao thì vật dẫn nóng lên (nhiệt kế hiện trên bàn), R tăng; mở K thì nguội. |
 | 26 | `EmfBench.jsx` | Bảng mạch 216 nút (9 nút một mạng), pin, khoá K, R₀ = 10 Ω, biến trở A–C–B, 2 đồng hồ đa năng nối bằng dây. Lắp mạch tự do, mạch được giải thật: vôn kế mắc ngược chỉ số âm; ampe kế mắc song song với pin thì không đóng được K (sẽ cháy cầu chì). Đo đủ pin mới và pin cũ; đồ thị U–I cập nhật ngay khi ghi điểm (`electric/EmfGraph.jsx`). |
 
@@ -263,7 +285,20 @@ Nút "Vào phòng Lab" chỉ mở khi xong thao tác bắt buộc; Prelab đã q
   (Android có nút "Xoay ngang tự động"; iPhone hướng dẫn tắt khoá xoay). Có nút "Vẫn dùng màn hình dọc".
 - Tour Phòng Lab đợi xoay xong mới hiện. Rời Lab → mở khoá hướng và thoát toàn màn hình.
 
-**Chung cho 4 bàn**
+**Điện thoại xoay ngang: cột hướng dẫn + khung hình tự nới** (`LabChrome.jsx`, `lab/stageFit.js`)
+
+- `MobileLabSheet` khi máy nằm ngang không còn là thanh kéo nổi đè lên bàn nữa mà thành **cột hướng dẫn**
+  gắn cạnh phải (ô lưới `auto`, xem `mobileLabColumns`): thẻ bước tiếp theo bản gọn (chặng hiện thành một
+  dòng chữ), số liệu, đồ thị. Nút » thu cột còn dải 46 px (chặng + nút chính); lựa chọn nhớ theo máy
+  (`phylab.labDock.v1`) — bàn điện bè ngang nên nhiều em thích thu cột cho bàn to hơn. Cầm dọc vẫn là thanh
+  kéo ở đáy như cũ.
+- `fitViewBox(roi, khung, cảnh)` nới vùng cần thấy theo đúng tỉ lệ khung (`useBoxSize` đo bằng
+  ResizeObserver) → không còn dải trống hai bên; nền bàn vẽ tràn (`BenchBackdrop bleed`, sàn điện kéo dài)
+  nên phần nới ra vẫn liền mặt bàn.
+- Kéo thả trên bàn đổi toạ độ qua ma trận màn hình của SVG (`svgPoint`, `svgScale`) — đúng cả khi viewBox
+  bị nới/cắt hay có viền (trước đây Bài 6, 11 tính tay theo khung nên lệch khi phóng to trên điện thoại).
+
+**Chung cho 5 bàn**
 
 - Kéo–thả dụng cụ từ khay, gợi ý chỗ đặt; thông báo `LabToast` (`LabChrome.jsx`) có icon theo loại:
   đạt mốc, cảnh báo, thông tin.
@@ -308,6 +343,22 @@ tròn theo độ chia dụng cụ).
   trên lớp. Thả khi trụ còn đung đưa hoặc giá chưa cân bằng: t lớn hơn và tản mạnh.
 - `fitFreeFall`: hồi quy s theo t² qua gốc toạ độ, g = 2·hệ số góc kèm sai số chuẩn.
 
+**Bài 15** (`engine/physicsNewton2.js`):
+- Hệ vật = xe M = 200 g + quả trên xe + quả treo (mỗi quả 50 g); lực kéo SGK F = n_treo × 0,5 N (g ≈ 10).
+  Chuyển động dùng g = 9,8, ròng rọc có khối lượng tương đương 3 g và lực cản đệm khí 0,004 N → a đo được
+  thấp hơn F/(M + m) ~3 %, t của 5 cột khớp Bảng 15.1 trong 0,015 s (0,557 · 0,643 · 0,718 · 0,507 · 0,414 s).
+- `planMotion` (bàn Lab): buông tay tại x₀ bất kì → các pha gia tốc không đổi: dây căng (trueAccel + nhiễu),
+  dây chùng khi quả chạm đệm hứng (chỉ còn ma sát/lực cản), dừng ở đệm cao su cuối máng; trả `xAt`, `vAt`,
+  `timeAtX` để tính đúng thời điểm tấm chắn tới từng tia (đồng hồ MC964 xử lí theo sự kiện). Buông khi dây
+  chùng hay lực kéo không thắng ma sát nghỉ → xe đứng yên. Máy nén khí 4 nấc (`frictionOf`): tắt μ = 0,2/0,26,
+  yếu μ = 0,05/0,07, vừa/mạnh chỉ còn lực cản đệm khí.
+- `newtonRun`: xe xuất phát cách cổng 1 quãng d (0 = sát cổng); quả treo chạm đệm hứng sau quãng `drop`
+  thì hết lực kéo, xe chạy đều. `countWindows` theo MODE (A↔B = từ cổng 1 tới cổng 2; A/B = thời gian tấm
+  chắn che một cổng). Nhiễu: σ gia tốc 0,4 %, tay thả lệch vài chục µm, trễ cổng quang 0,2 ms.
+- Làm ẩu: tắt bơm → ma sát trượt μ = 0,2 (nghỉ 0,26 — cột 3 xe không nhúc nhích); máng chưa ngang → dốc
+  ngược 0,45°; d = 2 cm → a = 2s/t² lớn hơn thật ~35 %.
+- `fitOrigin`: đường qua gốc cho a–F (1/k ≈ M + m) và a–1/(M + m) (k ≈ F).
+
 **Bài 23** (`engine/physicsElectric.ts`):
 - Vật dẫn X = 120 Ω, Y = 220 Ω. Nguồn có sai lệch hiệu chuẩn 0,4% và điện trở trong 0,3 Ω; ampe kế nấc
   mA có shunt 2 Ω nên U đọc trên vôn kế luôn hơi khác số trên núm nguồn.
@@ -343,7 +394,7 @@ Các hằng số hình học và bộ số liệu gợi ý (`SUGGESTED`) đặt 
 - **Báo cáo** — trang A4 in được: I. Mục đích, II. Số liệu đo & kết quả tính, III. Đồ thị & xử lý số
   liệu, IV. Nhận xét & kết luận (ô ghi chú HS gõ, cũng được in). Nút **Xuất PDF / In** = `window.print()`
   với print-CSS riêng (ẩn khung app, khổ A4).
-- **Ôn tập** — Flashcard và trắc nghiệm theo bài từ `data/quizBank.ts` (đủ 4 bài).
+- **Ôn tập** — Flashcard và trắc nghiệm theo bài từ `data/quizBank.ts` (đủ 5 bài; Bài 15 lấy câu hỏi SGK).
 
 **Đồ thị theo bài** (`notes/notebookData.ts` → `buildChart`, cột bảng ở `columnsFor`):
 
@@ -353,6 +404,7 @@ Các hằng số hình học và bộ số liệu gợi ý (`SUGGESTED`) đặt 
 | 11 | s theo t² | qua gốc toạ độ | g = 2·hệ số góc |
 | 23 | I (mA) theo U, chuỗi X và Y | qua gốc toạ độ | R = 1000 / hệ số góc |
 | 26 | U theo I (mA), pin mới và pin cũ | kéo dài tới I = 0 | E = tung độ gốc, r = −hệ số góc × 1000 |
+| 15 | 3 đồ thị (nút chọn): a theo F khi M + m = 0,5 kg · a theo 1/(M + m) khi F = 1 N · a theo F/(M + m) mọi lần đo | qua gốc toạ độ | 1/k ≈ M + m; k ≈ F; độ dốc ≈ 1 (a = F/m). Bảng không lấy trung bình vì mỗi dòng là một cấu hình; số liệu mẫu là đúng Bảng 15.1 |
 
 **Hai chế độ đồ thị** (`NotebookGraph`):
 - *Máy vẽ* — bình phương tối thiểu (có tuỳ chọn qua gốc), R², trục chia "đẹp" (`niceRange`), giấy kẻ ô
@@ -669,7 +721,7 @@ Triển khai 2026-07-20. Toàn bộ endpoint gộp trong **một route** `/api/c
 
 ### 21.1. Bài lab mới
 
-- Đã xong 2 bài lớp 11 (Bài 23, Bài 26), tổng cộng **4 bài đang mở**.
+- Đã xong Bài 15 *Định luật 2 Newton* (lớp 10) cùng 2 bài lớp 11 (Bài 23, Bài 26), tổng cộng **5 bài đang mở**.
 - Đang chờ bàn thí nghiệm — đã có trong `labCatalog.ts` với `status: "soon"` và hiện ở dải "Sắp ra
   mắt": Bài 19 *Bảo toàn động lượng* (lớp 10), Bài 22 *Tiêu cự thấu kính hội tụ* (lớp 11), Bài 15
   *Giao thoa ánh sáng* (lớp 12).
@@ -680,8 +732,8 @@ Triển khai 2026-07-20. Toàn bộ endpoint gộp trong **một route** `/api/c
   4. `engine/` — mô hình vật lý; nhiễu lấy từ `noise.js`, mạch điện dùng `solveDC`.
   5. `components/lab/<Tên>Bench.jsx` + định tuyến trong `LabRoom.tsx`; dụng cụ mới là component SVG
      trong `lab/mech/` hoặc `lab/electric/` (không `filter`, id từ `useId()`).
-  6. `notes/notebookData.ts` (`columnsFor`, `buildChart`) và `NoteSection.tsx` (công thức, thẻ kết quả,
-     số liệu mẫu).
+  6. `notes/notebookData.ts` (`columnsFor`, `buildChart` hoặc `buildCharts` khi bài có nhiều đồ thị) và
+     `NoteSection.tsx` (công thức, thẻ kết quả, số liệu mẫu); `LabKind` trong `grading.ts`.
   7. `scripts/test.mjs` — test vật lý cho bài.
 - **Nên có**: Prelab (`components/prelab/` + nhánh trong `Prelab.tsx`), từ khoá quét SGK
   (`lib/lessonMatch.ts`), ôn tập (`data/quizBank.ts`), tri thức trợ lý (`lib/labKnowledge.ts`), phần giáo

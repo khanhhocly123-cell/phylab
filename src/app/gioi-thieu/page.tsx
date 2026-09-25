@@ -8,7 +8,7 @@ import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
   title: "PhyLab — Tự tay đo. Tự mình hiểu.",
-  description: "Khám phá 4 bài thực hành Vật lí 10–11 trên trình duyệt. Làm quen dụng cụ, tự tay đo số liệu, vẽ đồ thị và hoàn thành báo cáo cùng PhyLab.",
+  description: "Khám phá 5 bài thực hành Vật lí 10–11 trên trình duyệt. Làm quen dụng cụ, tự tay đo số liệu, vẽ đồ thị và hoàn thành báo cáo cùng PhyLab.",
   openGraph: {
     title: "PhyLab — Tự tay đo. Tự mình hiểu.",
     description: "Một phòng thí nghiệm, vô vàn điều để khám phá. Thực hành Vật lí ngay trên trình duyệt.",
@@ -22,8 +22,9 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, maxi
 const labs = [
   { id: "do-toc-do-vat-chuyen-dong", image: "/images/marble_ramp.webp", number: "01", grade: "VẬT LÍ 10", lesson: "BÀI 6", category: "Cơ học", description: "Thả bi trên máng nghiêng, đo thời gian và khám phá tốc độ chuyển động.", formula: "v = d / Δt", color: "peach" },
   { id: "do-gia-toc-roi-tu-do", image: "/images/free_fall.webp", number: "02", grade: "VẬT LÍ 10", lesson: "BÀI 11", category: "Cơ học", description: "Từ một lần thả rơi, tự tìm ra gia tốc trọng trường qua những con số.", formula: "g = 2s / t²", color: "sage" },
-  { id: "do-dien-tro-dinh-luat-ohm", image: "/images/do-dien-tro-ohm.png", number: "03", grade: "VẬT LÍ 11", lesson: "BÀI 23", category: "Điện học", description: "Nối mạch, đọc đồng hồ và tìm mối liên hệ giữa hiệu điện thế và dòng điện.", formula: "R = U / I", color: "blue" },
-  { id: "do-suat-dien-dong-pin-dien-hoa", image: "/images/do-suat-dien-dong.png", number: "04", grade: "VẬT LÍ 11", lesson: "BÀI 26", category: "Điện học", description: "Đo các cặp số liệu U–I để khám phá suất điện động của một viên pin.", formula: "U = ℰ − Ir", color: "yellow" },
+  { id: "dinh-luat-2-newton", image: "/images/newton2_airtrack.webp", number: "03", grade: "VẬT LÍ 10", lesson: "BÀI 15", category: "Cơ học", description: "Treo quả nặng, thả xe trên đệm khí và tự thấy gia tốc tỉ lệ thuận với lực, tỉ lệ nghịch với khối lượng.", formula: "a = F / m", color: "peach" },
+  { id: "do-dien-tro-dinh-luat-ohm", image: "/images/do-dien-tro-ohm.png", number: "04", grade: "VẬT LÍ 11", lesson: "BÀI 23", category: "Điện học", description: "Nối mạch, đọc đồng hồ và tìm mối liên hệ giữa hiệu điện thế và dòng điện.", formula: "R = U / I", color: "blue" },
+  { id: "do-suat-dien-dong-pin-dien-hoa", image: "/images/do-suat-dien-dong.png", number: "05", grade: "VẬT LÍ 11", lesson: "BÀI 26", category: "Điện học", description: "Đo các cặp số liệu U–I để khám phá suất điện động của một viên pin.", formula: "U = ℰ − Ir", color: "yellow" },
 ];
 
 function SectionLabel({ number, children }: { number: string; children: React.ReactNode }) {

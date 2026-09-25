@@ -27,26 +27,30 @@ const COPPER = [[0, "#FBBF77"], [0.45, "#C2410C"], [1, "#7C2D12"]];
 
 /* =========================== Nền bàn thí nghiệm =========================== */
 /** Tường ô lưới nhạt + mặt bàn gỗ ở dưới `floor`. */
-export const BenchBackdrop = memo(function BenchBackdrop({ width, height, floor }) {
+/** Tường kẻ ô + mặt bàn gỗ. Vẽ TRÀN ra ngoài cảnh (`bleed`) vì viewBox tự nới theo khung màn hình
+ *  (stageFit) — phần nới ra vẫn là tường và mặt bàn liền mạch, không lộ dải trống. */
+export const BenchBackdrop = memo(function BenchBackdrop({ width, height, floor, bleed = 700 }) {
   const uid = useUid();
+  const x0 = -bleed, w = width + 2 * bleed;
+  const tableH = height - floor + bleed;
   return (
     <g style={{ pointerEvents: "none" }}>
       <defs>
         <pattern id={`${uid}-grid`} width="36" height="36" patternUnits="userSpaceOnUse">
           <path d="M36 0H0V36" fill="none" stroke="#EFE5D3" strokeWidth="1" />
         </pattern>
-        <linearGradient id={`${uid}-top`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}-top`} gradientUnits="userSpaceOnUse" x1="0" y1={floor} x2="0" y2={height}>
           <stop offset="0" stopColor="#E9CFA6" />
           <stop offset="0.18" stopColor="#DDB888" />
           <stop offset="1" stopColor="#C8965E" />
         </linearGradient>
       </defs>
-      <rect x="0" y="0" width={width} height={floor} fill={`url(#${uid}-grid)`} opacity="0.75" />
-      <rect x="0" y={floor} width={width} height={height - floor} fill={`url(#${uid}-top)`} />
-      <rect x="0" y={floor} width={width} height="3" fill="#F6E7CD" />
-      <rect x="0" y={floor + 3} width={width} height="1.5" fill="#9A6B37" opacity=".35" />
-      <path d={`M0 ${floor + 24} C${width * 0.22} ${floor + 16} ${width * 0.52} ${floor + 32} ${width} ${floor + 21}`} fill="none" stroke="#9A6B37" strokeOpacity=".18" strokeWidth="1.4" />
-      <path d={`M0 ${floor + 46} C${width * 0.3} ${floor + 54} ${width * 0.62} ${floor + 39} ${width} ${floor + 49}`} fill="none" stroke="#9A6B37" strokeOpacity=".14" strokeWidth="1.2" />
+      <rect x={x0} y={-bleed} width={w} height={floor + bleed} fill={`url(#${uid}-grid)`} opacity="0.75" />
+      <rect x={x0} y={floor} width={w} height={tableH} fill={`url(#${uid}-top)`} />
+      <rect x={x0} y={floor} width={w} height="3" fill="#F6E7CD" />
+      <rect x={x0} y={floor + 3} width={w} height="1.5" fill="#9A6B37" opacity=".35" />
+      <path d={`M${x0} ${floor + 22} C${width * 0.22} ${floor + 16} ${width * 0.52} ${floor + 32} ${x0 + w} ${floor + 21}`} fill="none" stroke="#9A6B37" strokeOpacity=".18" strokeWidth="1.4" />
+      <path d={`M${x0} ${floor + 48} C${width * 0.3} ${floor + 54} ${width * 0.62} ${floor + 39} ${x0 + w} ${floor + 49}`} fill="none" stroke="#9A6B37" strokeOpacity=".14" strokeWidth="1.2" />
     </g>
   );
 });

@@ -10,7 +10,8 @@ export type MatchLessonId =
   | "do-toc-do-vat-chuyen-dong"
   | "do-gia-toc-roi-tu-do"
   | "do-dien-tro-dinh-luat-ohm"
-  | "do-suat-dien-dong-pin-dien-hoa";
+  | "do-suat-dien-dong-pin-dien-hoa"
+  | "dinh-luat-2-newton";
 
 export interface MatchResult {
   recognized: boolean;
@@ -25,6 +26,7 @@ const TITLES: Record<MatchLessonId, string> = {
   "do-toc-do-vat-chuyen-dong": "Bài 6: Đo tốc độ tức thời của vật chuyển động (SGK Vật lí 10 KNTT)",
   "do-dien-tro-dinh-luat-ohm": "Bài 23: Điện trở — Định luật Ohm (SGK Vật lí 11 KNTT)",
   "do-suat-dien-dong-pin-dien-hoa": "Bài 26: Thực hành đo suất điện động pin điện hóa (SGK Vật lí 11 KNTT)",
+  "dinh-luat-2-newton": "Bài 15: Định luật 2 Newton — thí nghiệm minh hoạ (SGK Vật lí 10 KNTT)",
 };
 
 // Từ khoá có trọng số: cụm đặc trưng (3) > cụm chung (2) > tín hiệu yếu (1).
@@ -51,6 +53,13 @@ const KEYWORDS: Record<MatchLessonId, Array<[string, number]>> = {
     ["suất điện động", 3], ["suat dien dong", 3], ["pin điện hóa", 3], ["pin dien hoa", 3],
     ["galvanometer", 2], ["dây điện trở", 2], ["day dien tro", 2], ["con chạy", 2], ["con chay", 2],
     ["phương pháp bù", 3], ["phuong phap bu", 3], ["bài 26", 2], ["bai 26", 2],
+  ],
+  "dinh-luat-2-newton": [
+    ["định luật 2 newton", 3], ["dinh luat 2 newton", 3], ["định luật ii newton", 3], ["dinh luat ii newton", 3],
+    ["máng trượt đệm khí", 3], ["mang truot dem khi", 3], ["bảng 15.1", 3], ["bang 15.1", 3],
+    ["đệm khí", 2], ["dem khi", 2], ["xe trượt", 2], ["xe truot", 2], ["ròng rọc", 2], ["rong roc", 2],
+    ["hình 15.2", 2], ["hinh 15.2", 2], ["bài 15", 2], ["bai 15", 2],
+    ["quả nặng", 1], ["qua nang", 1], ["tấm chắn sáng", 1], ["tam chan sang", 1], ["bơm khí", 1], ["bom khi", 1],
   ],
 };
 
