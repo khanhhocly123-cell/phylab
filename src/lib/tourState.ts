@@ -43,6 +43,23 @@ export function markTourSeen(user: string | null | undefined, ...ids: TourId[]):
   }
 }
 
+/** Các mốc đã xem của một người, dạng chuỗi JSON (ổn định cho useSyncExternalStore) — để đồng bộ tài khoản. */
+export function tourEntryJson(user: string | null | undefined): string {
+  return JSON.stringify(read()[userKey(user)] ?? {});
+}
+
+/** Ghi đè các mốc của một người bằng bản đã gộp với tài khoản (lib/cloudSync.ts). */
+export function setTourEntry(user: string | null | undefined, entry: Partial<Record<TourId, number>>): void {
+  try {
+    const store = read();
+    store[userKey(user)] = { ...entry };
+    localStorage.setItem(KEY, JSON.stringify(store));
+    window.dispatchEvent(new Event(EVENT));
+  } catch {
+    // Không lưu được thì thôi — tài khoản vẫn giữ bản đồng bộ.
+  }
+}
+
 /** Đang có hướng dẫn nào mở không — mỗi lúc chỉ một tour (tour trang và tour bàn thí nghiệm không chồng nhau). */
 export function isTourOpen(): boolean {
   return typeof document !== "undefined" && document.querySelector("[data-guided-tour]") !== null;

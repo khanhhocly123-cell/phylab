@@ -8,7 +8,8 @@
 > điện hoá. Danh sách bài nằm ở một chỗ:
 > `src/data/labCatalog.ts`.
 >
-> Tài liệu này mô tả CHI TIẾT mọi tính năng, kiến trúc và ràng buộc của dự án. Cập nhật 2026-09-25.
+> Tài liệu này mô tả CHI TIẾT mọi tính năng, kiến trúc và ràng buộc của dự án. Cập nhật 2026-09-26
+> (bản **Beta Phi01**).
 > Hướng dẫn cài đặt, quy ước giao diện và các bước **thêm bài thí nghiệm mới** ở `README.md`.
 >
 > **Mới (2026-09-24):** thêm 2 bài lớp 11 (mục 8, 9); đồng hồ đa năng đo được Ω; bộ dụng cụ cơ học vẽ
@@ -21,6 +22,10 @@
 > toán gốc** (mục 7); **hướng dẫn cho người mới** với linh vật Photon, tour Phòng Lab, tour Sổ Báo Cáo và
 > bộ **An toàn phòng thí nghiệm** theo SGK Vật lí 10 — Bài 2 (mục 4.1). Chức năng **Lớp học tạm khoá**
 > bằng cờ `FEATURES.classroom` (mục 20).
+>
+> **Mới (2026-09-26 · Beta Phi01):** **tài khoản thật** trên Cloudflare D1 — trang chào, đăng ký /
+> đăng nhập, **đồng bộ tiến độ** giữa các máy, admin chuyên để test với bảng Quản trị (mục 3); **chuông
+> thông báo "Có gì mới"** đọc từ `src/data/changelog.ts` (mục 4).
 
 ---
 
@@ -28,7 +33,7 @@
 
 1. [Tổng quan & triết lý thiết kế](#1-tổng-quan--triết-lý-thiết-kế)
 2. [Công nghệ & kiến trúc](#2-công-nghệ--kiến-trúc)
-3. [Xác thực & đăng nhập (3 phương thức)](#3-xác-thực--đăng-nhập)
+3. [Tài khoản, đăng nhập & đồng bộ](#3-tài-khoản-đăng-nhập--đồng-bộ)
 4. [Điều hướng & bố cục ứng dụng](#4-điều-hướng--bố-cục-ứng-dụng)
 5. [Trang chủ (Home)](#5-trang-chủ-home)
 6. [Quét tài liệu SGK (OCR)](#6-quét-tài-liệu-sgk-ocr)
@@ -80,9 +85,9 @@ làm quen dụng cụ (Prelab) → lắp ráp & đo đạc trên bàn thí nghi�
 | Đồ hoạ/animation | SVG tự vẽ (không dùng `filter`), SMIL, Framer Motion |
 | Icon | lucide-react (không dùng emoji trang trí) |
 | Lint | ESLint + luật React Compiler (`set-state-in-effect`, `static-components`) |
-| Deploy | Cloudflare qua OpenNext (`npm run deploy`), D1 cho dữ liệu lớp học |
+| Deploy | Cloudflare qua OpenNext (`npm run deploy`), D1 cho tài khoản, tiến độ đồng bộ và lớp học |
 | AI/Dịch vụ | VNPT SmartBot, SmartReader, eKYC, SmartVoice (gọi phía server) |
-| Lưu trạng thái | React state + `localStorage` (tên HS) |
+| Lưu trạng thái | `localStorage` (local-first) + đồng bộ D1 theo tài khoản (`lib/cloudSync.ts`) |
 
 - **API routes** (`src/app/api/vnpt/*`) là proxy phía server — mọi token VNPT chỉ nằm ở server,
   KHÔNG lộ ra client.
@@ -90,20 +95,49 @@ làm quen dụng cụ (Prelab) → lắp ráp & đo đạc trên bàn thí nghi�
 
 ---
 
-## 3. Xác thực & đăng nhập
+## 3. Tài khoản, đăng nhập & đồng bộ
 
-Màn hình `LoginScreen.tsx` có **3 phương thức** (segmented tabs), responsive desktop (split
-2 cột) và mobile (carousel 2 slide onboarding + form):
+Từ bản **Beta Phi01** (2026-09-26) PhyLab có tài khoản thật trên Cloudflare D1
+(`migrations/0002_accounts.sql`: `users`, `sessions`, `user_state`, `auth_throttle`).
 
-1. **Mật khẩu** — tài khoản demo `phylabhackaithon@gmail.com` / `khanhdeptrai`; có toggle hiện/ẩn
-   mật khẩu, "ghi nhớ đăng nhập", hiệu ứng gõ chữ typewriter cho lời chào.
-2. **Thẻ học sinh (eKYC OCR)** — quét thẻ HS → gọi `/api/vnpt/ekyc` (action `ocr`) → VNPT OCR
-   trích xuất họ tên, mã, ngày sinh… điền sẵn.
-3. **Face ID (eKYC liveness/compare)** — so khớp khuôn mặt qua `/api/vnpt/ekyc` (action `compare`).
+**Luồng:** chưa đăng nhập → trang chào `/` (`landing/LandingPage.tsx`: PhyLab là gì, các bài đang mở, có gì
+mới) → `/dang-ky` hoặc `/dang-nhap` (`auth/AuthScreen.tsx`) → về `/` là vào app ngay.
 
-- Có hiệu ứng "beam" quét, trạng thái thành công, thông báo lỗi rõ ràng.
-- Tên HS lưu `localStorage` để giữ đăng nhập giữa các phiên; **Đăng xuất** xoá sạch.
-- Nếu VNPT eKYC chưa cấu hình → route trả **mock** (Khánh, CCCD mẫu) để demo mượt.
+- **Đăng ký**: họ tên, email, mật khẩu (≥ 8 ký tự, có chữ và số — hai chip báo ngay khi gõ), nhập lại,
+  lớp/trường (tuỳ chọn), đồng ý **Quy định dữ liệu** (`/quyen-rieng-tu`; dưới 16 tuổi bố mẹ đã đồng ý).
+  Đặt biến `SIGNUP_CODE` thì form hiện ô **mã mời** — cách mở bản trial dần.
+- **Mật khẩu** băm PBKDF2-SHA256 100 000 vòng (`lib/password.ts`, WebCrypto — chạy cả Workers lẫn Node).
+  Email chưa có vẫn chạy đủ PBKDF2 (không đo thời gian để dò email đã đăng ký); sai 8 lần / 15 phút thì
+  khoá tạm; một IP tạo tối đa 8 tài khoản / giờ.
+- **Phiên** (`lib/session.ts`): cookie `phylab_session` HttpOnly + SameSite=Lax (+ Secure trên https), hạn
+  30 ngày; DB chỉ giữ SHA-256 của token; mọi yêu cầu ghi kiểm `Origin`. Đổi mật khẩu → các máy khác bị
+  đăng xuất.
+- **Tài khoản cấu hình bằng biến môi trường** (mật khẩu không nằm trong DB lẫn mã nguồn):
+  - `ADMIN_EMAIL` / `ADMIN_PASSWORD` → **admin chuyên để test**: dùng app như học sinh (tour, Prelab…) và
+    có mục **Quản trị PhyLab** (`admin/AdminPanel.tsx`): số tài khoản (tổng / mới 7 ngày / vào học 7
+    ngày), danh sách kèm tiến độ (số bài đã qua Prelab, số báo cáo), **cấp mật khẩu tạm** cho học sinh quên
+    mật khẩu (hiện một lần, em đó bị đăng xuất mọi máy); **công cụ test**: mở khoá mọi Prelab, xem lại
+    hướng dẫn lần đầu, xoá sạch tiến độ. Đổi mật khẩu admin: `npx wrangler secret put ADMIN_PASSWORD`.
+  - `TEACHER_EMAIL` / `TEACHER_PASSWORD` → giáo viên demo (kèm token HMAC cho `/api/class`, mục 20).
+  - Không ai đăng ký được bằng hai email này.
+- **Hồ sơ → Tài khoản** (`account/AccountPanel.tsx`, 3 thẻ): sửa tên / lớp / trường + trạng thái đồng
+  bộ; đổi mật khẩu; **xoá tài khoản** (nhập lại mật khẩu, xoá hẳn khỏi máy chủ).
+- **Đồng bộ tiến độ** (`lib/cloudSync.ts` + `lib/syncMerge.ts` + `/api/sync`) — *local-first*: mở app là
+  dùng ngay bản nhớ trên máy; có mạng thì kéo bản trên máy chủ, **gộp** rồi đẩy phần còn thiếu; mỗi thay
+  đổi đẩy lên sau ~1 giây, ẩn tab / đóng app đẩy ngay, quay lại tab thì kéo lại (học trên máy khác sẽ
+  thấy). Các khoá: `prelabPassed` (hợp), `reports` (hợp theo id, giữ 60 bản mới nhất), `tours` (mốc lớn
+  nhất), `updatesSeen` (hợp), `labData` (bản mới hơn thắng). Gộp thứ tự nào cũng ra như nhau và gộp lại
+  không đổi, nên hai máy lệch nhau (một máy mất mạng) không mất gì; máy chủ cũng gộp chứ không ghi đè.
+  Muốn *bớt* (cho hướng dẫn hiện lại, xoá tiến độ) thì `DELETE /api/sync[?keys=…]`.
+- Mất mạng vẫn học bình thường (menu Hồ sơ báo "mất mạng — có mạng sẽ tự đồng bộ"). Phiên hết hạn thì về
+  trang chào nhưng giữ tiến độ trên máy (đăng nhập lại là gộp vào); **Đăng xuất** chủ động thì xoá tiến độ
+  trên máy (máy chủ vẫn giữ). Tiến độ của bản demo cũ trên máy được gộp vào tài khoản ở lần đăng nhập đầu.
+- Tour lần đầu chỉ tự mở sau lần đồng bộ đầu — đã xem ở máy khác thì máy mới không hỏi lại.
+- **eKYC / Face ID** (`LoginScreen.tsx`, `/api/vnpt/ekyc`) không còn ở màn đăng nhập của bản Beta (dữ liệu
+  sinh trắc học của học sinh vị thành niên); code giữ nguyên để bật lại khi cần.
+- Kiểm thử: `scripts/test.mjs` (băm mật khẩu, luật gộp). Kiểm thử đầu-cuối trên `next dev` + D1 local
+  (đăng ký, trùng email, sai Origin, gộp khi đẩy, xoá theo khoá, đăng xuất, đổi mật khẩu đăng xuất máy
+  khác, khoá tạm, xoá tài khoản, API admin + `json_each`) cần áp migration local trước (`npm run db:migrate`).
 
 ---
 
@@ -114,7 +148,11 @@ Màn hình `LoginScreen.tsx` có **3 phương thức** (segmented tabs), respons
 - **Sidebar trái (desktop)** — thu gọn/mở rộng kiểu Notion; nút "Quét tài liệu" nổi bật; menu:
   Trang chủ · Phòng Lab của tôi · Lớp của tôi · Quét tài liệu · Sổ Báo Cáo. Sidebar ẩn khi đang làm
   thí nghiệm hoặc đang quét để bàn Lab và camera dùng trọn màn hình.
-- **Header** — breadcrumb (tên bài khi đang ở Lab), chuông thông báo, hồ sơ HS, đăng xuất.
+- **Header** — breadcrumb (tên bài khi đang ở Lab); **chuông "Có gì mới"** (`account/UpdatesMenu.tsx`):
+  các cập nhật trong `src/data/changelog.ts`, số đỏ = chưa đọc (nhớ theo tài khoản, đồng bộ), mục cập
+  nhật một bài có nút "Mở Bài …"; **Hồ sơ**: tên, email, lớp/trường, trạng thái đồng bộ, *Tài khoản*,
+  *Quản trị PhyLab* (chỉ admin), *Đăng xuất*. Thanh bên có thẻ "PhyLab Beta Phi01 · Xem có gì mới".
+  Trên điện thoại, menu chuông và dấu hỏi trải ngang màn (lề 12 px) thay vì neo theo nút.
 - **Dock dưới (mobile)** — Trang chủ · Phòng Lab · nút camera nổi giữa · Lớp học · Sổ Báo Cáo.
 - **Prelab không còn là tab riêng**: là chặng 1 của Phòng Lab (mục 7). Tab `prelab` cũ còn lưu trong
   `localStorage` tự chuyển sang `lab`.
@@ -509,7 +547,13 @@ Phòng thủ theo chiều sâu, phù hợp app học sinh:
 - **Kiểm tra file upload** (`checkImageFile`): OCR/eKYC chỉ nhận ảnh hợp lệ (png/jpg/webp/heic) và
   ≤ 8MB → chống DoS & file độc.
 - **Render an toàn XSS**: `MathText` dựng bằng React element, tự escape mọi text.
-- **Xoá dữ liệu khi đăng xuất**: `localStorage` tên HS bị xoá.
+- **Tài khoản** (mục 3): mật khẩu băm PBKDF2, cookie phiên HttpOnly + SameSite=Lax, DB chỉ giữ băm của
+  token, kiểm `Origin` khi ghi, khoá tạm sau 8 lần sai, giới hạn đăng ký theo IP, không mật khẩu nào
+  nằm trong mã (admin/giáo viên đọc từ biến môi trường).
+- **Thống kê không lấy dữ liệu form**: VNPT SmartUX không bật `track_forms` / `collect_from_forms` (form
+  đăng ký có tên, email học sinh). Chuột phải / nhấn giữ trong ô nhập vẫn mở menu Dán của trình duyệt.
+- **Xoá dữ liệu khi đăng xuất**: tài khoản và tiến độ trên máy bị xoá (máy chủ vẫn giữ); xoá hẳn thì
+  vào Tài khoản → Xoá tài khoản.
 
 ---
 
@@ -520,12 +564,17 @@ src/
 ├─ app/
 │  ├─ layout.tsx, page.tsx, globals.css      # shell + điều hướng + style (print CSS, keyframes)
 │  ├─ gioi-thieu/page.tsx                    # trang giới thiệu (danh sách bài viết tay)
+│  ├─ dang-nhap/, dang-ky/                   # đăng nhập / đăng ký (components/auth/AuthScreen)
+│  ├─ quyen-rieng-tu/page.tsx                # Quy định dữ liệu
 │  └─ api/
 │     ├─ vnpt/{chat,ocr,ekyc,tts,status}/    # proxy AI VNPT (server-side)
 │     ├─ class/[action]/route.ts             # toàn bộ API lớp học (Node runtime)
-│     └─ auth/login/                         # đăng nhập HS/GV
+│     ├─ auth/[action]/route.ts              # me, config, register, login, logout, profile, password, delete
+│     ├─ sync/route.ts                       # đồng bộ tiến độ (GET kéo, PUT gộp, DELETE xoá)
+│     └─ admin/[action]/route.ts             # overview, reset-password (chỉ admin)
 ├─ data/
 │  ├─ labCatalog.ts  # DANH MỤC BÀI — nguồn duy nhất cho Home, LabHub, Quét, Sổ Báo Cáo
+│  ├─ changelog.ts   # APP_RELEASE (Beta Phi01) + các cập nhật hiện ở chuông thông báo
 │  └─ quizBank.ts    # flashcard + trắc nghiệm ôn tập (4 bài)
 ├─ experiments/specs.ts   # đặc tả 4 bài (lý thuyết, dụng cụ, bước, sổ số liệu, homework)
 ├─ engine/
@@ -536,7 +585,11 @@ src/
 │  ├─ noise.js       # gauss / jitter / quantize dùng chung
 │  └─ smartbot.js (thoại hướng dẫn rule-based), tokens.js (màu, font của bàn Lab)
 ├─ components/
-│  ├─ HomeScreen, ScanScreen, Prelab, NoteSection, LoginScreen, Logo
+│  ├─ HomeScreen, ScanScreen, Prelab, NoteSection, Logo
+│  ├─ landing/LandingPage.tsx  # trang chào khi chưa đăng nhập
+│  ├─ auth/AuthScreen.tsx      # form đăng nhập / đăng ký
+│  ├─ account/                 # UpdatesMenu (chuông), AccountPanel (hồ sơ, mật khẩu, xoá tài khoản)
+│  ├─ admin/AdminPanel.tsx     # Quản trị PhyLab (admin)
 │  ├─ lab/
 │  │  ├─ LabHub.tsx, LabRoom.tsx, LabChrome.jsx (toast, khung), LiveGraph.jsx (niceRange)
 │  │  ├─ LabBench.jsx (6), FreeFallBench.jsx (11), ElectricalBench.jsx (23), EmfBench.jsx (26)
@@ -555,6 +608,10 @@ src/
 │  ├─ problemGen.ts, seededRandom.ts       # ra đề theo HS / đề GV giao
 │  ├─ moeQuiz.ts, antiCheatQuiz.ts         # quiz form Bộ GD, quiz chống gian lận
 │  ├─ db.ts (+ db-d1, db-file, db-memory), auth.ts, activity.ts, useMyClass.ts
+│  ├─ accountDb.ts (+ -d1, -file, -memory)  # tài khoản, phiên, tiến độ, bộ đếm chống dò (3 tầng như db.ts)
+│  ├─ session.ts, password.ts              # cookie phiên, tài khoản env; băm PBKDF2
+│  ├─ accountClient.ts, accountTypes.ts    # gọi API + nhớ tài khoản trên máy; kiểu dùng chung
+│  ├─ cloudSync.ts, syncMerge.ts           # SyncEngine + luật gộp (dùng chung client/server)
 │  ├─ schematic.ts   # sơ đồ mạch Prelab: dụng cụ, định tuyến dây, chấm bằng giải mạch
 │  ├─ tourState.ts   # đã xem tour nào, huy hiệu (theo người dùng, localStorage)
 │  ├─ features.ts    # cờ tính năng (classroom: tạm khoá)
@@ -565,7 +622,8 @@ scripts/             # test.mjs, test-class.mjs, test-all.mjs, test-smartbot.mjs
 ```
 
 **Mã cũ không còn dùng** (giữ lại, chưa xoá): `components/Bench.tsx`, `DataBook.tsx`,
-`HomeworkSection.tsx`, `notes/GraphPlotter.tsx`, `notes/AiChat.tsx` (chờ làm lại chat),
+`HomeworkSection.tsx`, `notes/GraphPlotter.tsx`, `notes/AiChat.tsx` (chờ làm lại chat), `LoginScreen.tsx`
+(đăng nhập cũ kèm eKYC — thay bằng `auth/AuthScreen.tsx` từ Beta Phi01),
 `engine/physics/{inclinedPlane,freeFall}.ts`, các thư mục `components/dungcuthinghiem/` và
 `src/instruments/` (bộ dụng cụ đời đầu, đã thay bằng `lab/mech/`).
 
@@ -577,7 +635,9 @@ scripts/             # test.mjs, test-class.mjs, test-all.mjs, test-smartbot.mjs
   quả hiện tại (2026-09-25): `21 PASS · 0 FAIL · 3 cảnh báo` (3 cảnh báo là các phần API bị bỏ qua).
   - Grading (19 kiểm tra) — băng điểm, dung sai 1%, tối thiểu 3 lần đo, phạt chưa cân bằng, đo sai
     cấu hình GV giao, tỉ lệ 70/30.
-  - `scripts/test.mjs` (39 kiểm tra) — cơ học (máng nghiêng, MC964, rơi tự do, nhiễu không trùng nhưng
+  - `scripts/test.mjs` (80 kiểm tra) — **tài khoản** (băm/kiểm mật khẩu, băm giả, chặn mật khẩu yếu, mật
+    khẩu tạm) và **luật gộp đồng bộ** (gộp thứ tự nào cũng như nhau, gộp lại không đổi, giới hạn 60 báo
+    cáo, cắt cho vừa giới hạn lưu), Bài 15 (hệ vật, buông tay, máy nén khí), cơ học (máng nghiêng, MC964, rơi tự do, nhiễu không trùng nhưng
     σ ≤ 3 ms, trụ đung đưa, máng chưa cân bằng, đường kính bi theo tên), điện (sụt áp ampe kế, vật dẫn
     nóng, `solveDC`, bảng mạch Bài 26, ôm kế: qua pin, R₀ khi K mở/đóng, chưa nối dây), Prelab điện
     (sơ đồ mẫu Bài 23/26, đổi chỗ đồng hồ, ampe kế đảo cực, K song song; bài tính nhận dấu phẩy, nhắc
@@ -605,7 +665,14 @@ VNPT_READER_ACCESS_TOKEN=  VNPT_READER_TOKEN_ID=  VNPT_READER_TOKEN_KEY=
 VNPT_EKYC_ACCESS_TOKEN=  VNPT_EKYC_TOKEN_ID=  VNPT_EKYC_TOKEN_KEY=
 # SmartVoice (TTS)
 VNPT_VOICE_ACCESS_TOKEN=  VNPT_VOICE_TOKEN_ID=  VNPT_VOICE_TOKEN_KEY=  VNPT_VOICE_BASE_URL=
+# Tài khoản (mục 3)
+ADMIN_EMAIL=  ADMIN_PASSWORD=        # admin chuyên để test (Quản trị PhyLab)
+TEACHER_EMAIL=  TEACHER_PASSWORD=    # giáo viên demo
+AUTH_SECRET=                         # ký token giáo viên (HMAC) cho /api/class
+SIGNUP_CODE=                         # (tuỳ chọn) đặt thì đăng ký phải nhập mã mời
 ```
+
+Trên Cloudflare đặt bằng `npx wrangler secret put <TÊN>` (worker `phylab-v2`).
 
 Thiếu cấu hình nào thì tính năng đó **fallback an toàn** (mock/RAG/Web Speech), app vẫn chạy trọn vẹn.
 

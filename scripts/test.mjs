@@ -8,6 +8,8 @@ import { normalizeVi, retrieveAnswer, buildRagContext } from "../src/lib/labKnow
 import { SCHEMATICS, checkSchematic } from "../src/lib/schematic.ts";
 import { CALC_DRILLS, parseNumber, isCorrect, diagnose } from "../src/components/prelab/calcDrillData.ts";
 import { NEWTON2, forceOf, massOf, trueAccel, newtonRun, computeNewtonTime, accelFromTime, fitOrigin, planMotion } from "../src/engine/physicsNewton2.js";
+import { hashPassword, verifyPassword, passwordProblem, temporaryPassword, secretEquals, DUMMY_PASSWORD_HASH } from "../src/lib/password.ts";
+import { SYNC_KEYS, MAX_REPORTS, SYNC_MAX_BYTES, mergeSyncValue, normalizeSyncValue, fitSyncValue, syncBytes } from "../src/lib/syncMerge.ts";
 
 let passed = 0;
 let failed = 0;
@@ -174,6 +176,47 @@ const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 42949672
   assert("Bài 15 (máy nén khí): lưu lượng yếu (nấc 1) → xe còn cọ máng, a nhỏ hơn nấc 2", weak.moves && weak.a < 0.95 * good.a);
   const coast = planMotion({ ...SGK[0], pump: 2, x0: -0.0001, xLand: 0.3, xEnd: 1.4, withNoise: false });
   assert("Bài 15 (dây chùng): sau khi quả chạm đệm xe trôi gần như đều tới cuối máng", Math.abs(coast.vAt(coast.tLand + 0.2) - coast.vAt(coast.tLand)) < 0.01 && coast.xStop > 1.39);
+}
+
+// 2c. Tài khoản (Beta Phi01): băm mật khẩu + luật gộp đồng bộ
+{
+  const hash = await hashPassword("matkhau123");
+  assert("Mật khẩu: chuỗi băm dạng pbkdf2-sha256$100000$salt$hash", /^pbkdf2-sha256\$100000\$[^$]+\$[^$]+$/.test(hash));
+  assert("Mật khẩu: đúng thì khớp, sai một ký tự thì không", (await verifyPassword("matkhau123", hash)) && !(await verifyPassword("matkhau124", hash)));
+  assert("Mật khẩu: băm hai lần ra hai chuỗi khác nhau (salt ngẫu nhiên)", hash !== (await hashPassword("matkhau123")));
+  assert("Mật khẩu: băm giả (email chưa có) không khớp mật khẩu nào", !(await verifyPassword("", DUMMY_PASSWORD_HASH)) && !(await verifyPassword("matkhau123", DUMMY_PASSWORD_HASH)));
+  assert("Mật khẩu: chuỗi băm hỏng, 'env' hay số vòng quá lớn → không khớp", !(await verifyPassword("x", "env")) && !(await verifyPassword("x", "pbkdf2-sha256$999999$AAAA$AAAA")));
+  assert("Mật khẩu: chặn mật khẩu yếu (ngắn / thiếu số / thiếu chữ), nhận chữ có dấu", Boolean(passwordProblem("abc12")) && Boolean(passwordProblem("abcdefgh")) && Boolean(passwordProblem("12345678")) && passwordProblem("mậtkhẩu1") === null);
+  const temp = temporaryPassword();
+  assert("Mật khẩu tạm: 10 ký tự, đủ chữ và số, không có ký tự dễ nhầm", temp.length === 10 && passwordProblem(temp) === null && !/[01lIoO]/.test(temp));
+  assert("So bí mật (biến môi trường): bằng / khác", (await secretEquals("abc", "abc")) && !(await secretEquals("abc", "abd")));
+
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const samples = {
+    prelabPassed: [{ "bai-6": true, rac: "x" }, { "bai-15": true }],
+    tours: [{ app: 100, lab: 300 }, { app: 200, notes: 50 }],
+    updatesSeen: [["b", "a"], ["c", "a"]],
+    reports: [[{ id: "rep-1700000000000", lessonId: "x" }], [{ id: "rep-1800000000000", lessonId: "y" }, { id: "rep-1700000000000", lessonId: "x" }]],
+    labData: [{ at: 1, lessonId: "x", trials: [] }, { at: 2, lessonId: "y", trials: [1] }],
+  };
+  for (const key of SYNC_KEYS) {
+    const [a, b] = samples[key];
+    const ab = mergeSyncValue(key, a, b);
+    assert(`Đồng bộ (${key}): gộp theo thứ tự nào cũng như nhau`, same(ab, mergeSyncValue(key, b, a)));
+    assert(`Đồng bộ (${key}): gộp lại lần nữa không đổi`, same(mergeSyncValue(key, ab, ab), ab) && same(mergeSyncValue(key, ab, a), ab));
+  }
+  assert("Đồng bộ: Prelab đã qua ở máy nào cũng giữ, giá trị rác bị bỏ", same(mergeSyncValue("prelabPassed", ...samples.prelabPassed), { "bai-15": true, "bai-6": true }));
+  assert("Đồng bộ: hướng dẫn lấy mốc thời gian lớn nhất từng mục", same(mergeSyncValue("tours", ...samples.tours), { app: 200, lab: 300, notes: 50 }));
+  const reports = mergeSyncValue("reports", ...samples.reports);
+  assert("Đồng bộ: báo cáo hợp theo id, mới nhất trước", reports.length === 2 && reports[0].id === "rep-1800000000000");
+  assert("Đồng bộ: số đo chờ báo cáo — bản mới hơn thắng, có còn hơn không", mergeSyncValue("labData", ...samples.labData).at === 2 && mergeSyncValue("labData", null, samples.labData[0]).at === 1);
+  const many = Array.from({ length: MAX_REPORTS + 15 }, (_, i) => ({ id: `rep-${1700000000000 + i}`, lessonId: "x" }));
+  assert(`Đồng bộ: giữ tối đa ${MAX_REPORTS} báo cáo mới nhất`, normalizeSyncValue("reports", many).length === MAX_REPORTS && normalizeSyncValue("reports", many)[0].id === `rep-${1700000000000 + MAX_REPORTS + 14}`);
+  assert("Đồng bộ: dữ liệu hỏng thành rỗng, không lỗi", same(normalizeSyncValue("reports", "rác"), []) && same(normalizeSyncValue("prelabPassed", null), {}) && normalizeSyncValue("labData", { at: "x" }) === null);
+  const heavy = Array.from({ length: 40 }, (_, i) => ({ id: `rep-${1700000000000 + i}`, lessonId: "x", note: "đ".repeat(15000) }));
+  const fitted = fitSyncValue("reports", normalizeSyncValue("reports", heavy));
+  assert("Đồng bộ: báo cáo quá nặng thì bỏ bớt bản cũ cho vừa giới hạn lưu", fitted.length < heavy.length && fitted.length > 0 && syncBytes(fitted) <= SYNC_MAX_BYTES);
+  assert("Đồng bộ: khoá khác quá nặng thì từ chối", fitSyncValue("updatesSeen", ["x".repeat(SYNC_MAX_BYTES)]) === null);
 }
 
 // 3. RAG tests

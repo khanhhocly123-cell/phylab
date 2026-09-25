@@ -68,6 +68,19 @@ kéo xe bằng tay qua cổng cũng làm đồng hồ chạy — đặt xe xong 
    giấy kẻ ô, kéo đường thẳng rồi so với máy). Báo cáo in thẳng ra khổ A4.
 5. **Ôn tập.** Flashcard và câu hỏi trắc nghiệm theo từng bài.
 
+### Tài khoản và đồng bộ (bản Beta Phi01)
+
+- **Trang chào** ở `/` khi chưa đăng nhập; **đăng ký** (`/dang-ky`) bằng email + mật khẩu, lớp/trường tuỳ
+  chọn, đồng ý [Quy định dữ liệu](src/app/quyen-rieng-tu/page.tsx); **đăng nhập** ở `/dang-nhap`. Đặt
+  `SIGNUP_CODE` thì đăng ký cần mã mời (mở trial dần).
+- **Tiến độ đồng bộ theo tài khoản**: Prelab đã qua, báo cáo và số đo trong Sổ Báo Cáo, hướng dẫn và thông
+  báo đã xem. Học trên máy nào cũng tiếp được; mất mạng vẫn học, có mạng tự đồng bộ (gộp, không ghi đè).
+- **Admin chuyên để test**: đăng nhập bằng `ADMIN_EMAIL` / `ADMIN_PASSWORD` (biến môi trường) → mục
+  *Quản trị PhyLab*: danh sách tài khoản + tiến độ, cấp mật khẩu tạm, công cụ test (mở khoá mọi Prelab, xem
+  lại hướng dẫn, xoá sạch tiến độ).
+- **Chuông "Có gì mới"**: các cập nhật của bản hiện tại lấy từ `src/data/changelog.ts` — lên bản mới thì
+  thêm mục vào đầu danh sách (id mới) và đổi `APP_RELEASE`.
+
 ### Hướng dẫn cho người mới (guided tour)
 
 - **Tham quan lần đầu vào app**, có linh vật **Photon** dẫn đường. Gồm ba chương: *Làm quen* (điều
@@ -117,10 +130,12 @@ Tạo `.env.local` từ `.env.example`. Thiếu biến nào thì tính năng đ�
 vẫn chạy đủ.
 
 ```bash
+npm run db:migrate   # lần đầu và mỗi khi có migration mới: tạo bảng D1 local (tài khoản, lớp học)
 npm run dev
 ```
 
-App chạy ở http://localhost:3000.
+App chạy ở http://localhost:3000. Tài khoản admin để test lấy từ `ADMIN_EMAIL` / `ADMIN_PASSWORD` trong
+`.env.local`. Trước khi deploy bản có migration mới: `npm run db:migrate:remote`.
 
 | Lệnh | Việc làm |
 |---|---|
@@ -169,9 +184,11 @@ SmartBot trực tiếp, cần dev server đang chạy và `.env.local`.
 ```
 src/
 ├─ app/                       Shell (page.tsx), trang giới thiệu, globals.css, API routes
-│  └─ api/                    vnpt/{chat,ocr,ekyc,tts,status} · class/[action] · auth/login
+│  ├─ dang-nhap/ · dang-ky/ · quyen-rieng-tu/   Đăng nhập, đăng ký, Quy định dữ liệu
+│  └─ api/                    vnpt/{chat,ocr,ekyc,tts,status} · class/[action] · auth/[action] · sync · admin/[action]
 ├─ data/
 │  ├─ labCatalog.ts           Danh mục bài thí nghiệm — nguồn dữ liệu duy nhất cho mọi màn
+│  ├─ changelog.ts            Tên bản (Beta Phi01) + các cập nhật hiện ở chuông thông báo
 │  └─ quizBank.ts             Flashcard + trắc nghiệm ôn tập theo bài
 ├─ experiments/specs.ts       Lý thuyết, dụng cụ, các bước, homework của từng bài
 ├─ engine/                    Vật lý thuần JS/TS, không phụ thuộc UI
@@ -179,7 +196,9 @@ src/
 │  ├─ circuit.js              Bộ giải mạch DC (phương pháp nút, MNA)
 │  └─ noise.js                Nhiễu đo dùng chung: gauss, jitter, quantize
 ├─ components/
-│  ├─ HomeScreen · ScanScreen · Prelab · NoteSection · LoginScreen
+│  ├─ HomeScreen · ScanScreen · Prelab · NoteSection
+│  ├─ landing/ · auth/        Trang chào, form đăng nhập / đăng ký
+│  ├─ account/ · admin/       Chuông thông báo, Tài khoản; Quản trị (admin)
 │  ├─ lab/                    LabHub, LabRoom (định tuyến bàn), LabChrome, animStore
 │  │  ├─ LabBench.jsx · FreeFallBench.jsx · ElectricalBench.jsx · EmfBench.jsx
 │  │  ├─ mech/MechParts.jsx   Dụng cụ cơ học SVG: máng, giá đỡ, cổng quang, MC964, nam châm…
@@ -194,7 +213,8 @@ src/
 └─ lib/                       grading, lessonMatch (nhận diện bài), labKnowledge (RAG),
                               problemGen, antiCheatQuiz, moeQuiz, db (D1 → file → bộ nhớ), security,
                               schematic (sơ đồ mạch + chấm), tourState (đã xem tour, huy hiệu),
-                              features (cờ tính năng)
+                              features (cờ tính năng), accountDb (tài khoản: D1 → file → bộ nhớ),
+                              session + password (phiên cookie, PBKDF2), cloudSync + syncMerge (đồng bộ)
 scripts/                      test.mjs, test-class.mjs, test-all.mjs, demo.js
 docs/                         PHYLAB_FEATURES.md (tài liệu đầy đủ), rubric chấm, dữ liệu SmartBot, tích hợp VNPT
 ```
@@ -274,14 +294,19 @@ Mỗi bài có một `id` dạng slug (ví dụ `do-tieu-cu`) dùng xuyên suố
 - Chức năng Lớp học đang tạm khoá (`FEATURES.classroom = false`).
 - Phần chấm điểm và trợ lý chat đã ẩn khỏi giao diện học sinh để làm lại. Logic chấm (`lib/grading.ts`)
   và API `/api/vnpt/chat` vẫn giữ nguyên; server vẫn chấm bài nộp cho giáo viên.
-- `src/app/page.tsx` còn vài lỗi lint cũ (`set-state-in-effect`, `any`, biến thừa).
+- `src/app/page.tsx` còn một lỗi lint cũ (`set-state-in-effect` khi thu thanh bên lúc vào Lab).
+- Bản Beta chưa gửi email đặt lại mật khẩu: học sinh quên mật khẩu nhờ admin cấp mật khẩu tạm.
 
 ---
 
 ## Bảo mật
 
-- **Xác thực phía server.** Mật khẩu kiểm tra ở `/api/auth/login`; phiên giáo viên ký HMAC-SHA256 với
-  `AUTH_SECRET`, không có mật khẩu nào trong mã phía client.
+- **Tài khoản.** Mật khẩu băm PBKDF2-SHA256 (100 000 vòng); phiên là cookie HttpOnly + SameSite=Lax, DB
+  chỉ giữ băm của token; yêu cầu ghi kiểm `Origin`; sai 8 lần thì khoá tạm 15 phút. Admin và giáo viên demo
+  đọc từ biến môi trường, không có mật khẩu nào trong mã. Token lớp học của giáo viên ký HMAC-SHA256 với
+  `AUTH_SECRET`.
+- **Dữ liệu học sinh.** Chỉ lưu tên, email, lớp/trường và tiến độ; xoá tài khoản là xoá hẳn. Thống kê VNPT
+  SmartUX không thu nội dung form (xem `/quyen-rieng-tu`).
 - **Token VNPT chỉ nằm ở server.** Mọi lời gọi VNPT đi qua API route; CSP đặt `connect-src 'self'`.
 - **Kiểm tra đầu vào.** Văn bản gửi lên được làm sạch và giới hạn độ dài; ảnh upload chỉ nhận
   png/jpg/webp/heic và tối đa 8 MB.

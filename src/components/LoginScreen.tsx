@@ -60,8 +60,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   }, [welcomeText, isDeleting]);
   
   // Password credentials state
-  const [email, setEmail] = useState("phylabhackaithon@gmail.com");
-  const [password, setPassword] = useState("khanhdeptrai");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 

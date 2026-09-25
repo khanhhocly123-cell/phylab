@@ -41,7 +41,7 @@ export default function LandingPage() {
           <nav className={styles.desktopNav} aria-label="Điều hướng chính">
             <a href="#cach-hoc">Cách học</a><a href="#bai-thuc-hanh">Bài thực hành</a><a href="#giao-vien">Dành cho giáo viên</a>
           </nav>
-          <div className={styles.navActions}><a href="#cach-hoc" className={styles.navCta}>Thử ngay <ArrowUpRight size={17} /></a><LandingMenu /></div>
+          <div className={styles.navActions}><a href="/dang-ky" className={styles.navCta}>Đăng ký <ArrowUpRight size={17} /></a><LandingMenu /></div>
         </div>
       </header>
 
@@ -66,7 +66,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <div className={styles.factsBand}><div className={`${styles.container} ${styles.factsInner}`}><p><span className={styles.factNumber}>04</span><span>bài thực hành<br /><strong>sẵn sàng khám phá</strong></span></p><div className={styles.factDivider} /><p><BookOpen strokeWidth={1.5} /><span>Bám theo bài học<br /><strong>Vật lí 10 & 11</strong></span></p><div className={styles.factDivider} /><p><MousePointer2 strokeWidth={1.5} /><span>Từ thao tác đầu tiên<br /><strong>đến báo cáo của bạn</strong></span></p><span className={styles.factDoodle} aria-hidden="true">F = ma <Sparkles size={23} /></span></div></div>
+        <div className={styles.factsBand}><div className={`${styles.container} ${styles.factsInner}`}><p><span className={styles.factNumber}>{String(labs.length).padStart(2, "0")}</span><span>bài thực hành<br /><strong>sẵn sàng khám phá</strong></span></p><div className={styles.factDivider} /><p><BookOpen strokeWidth={1.5} /><span>Bám theo bài học<br /><strong>Vật lí 10 & 11</strong></span></p><div className={styles.factDivider} /><p><MousePointer2 strokeWidth={1.5} /><span>Từ thao tác đầu tiên<br /><strong>đến báo cáo của bạn</strong></span></p><span className={styles.factDoodle} aria-hidden="true">F = ma <Sparkles size={23} /></span></div></div>
 
         <section id="cach-hoc" className={`${styles.journeySection} ${styles.container}`} aria-labelledby="journey-title">
           <div className={styles.sectionHeader}><div><SectionLabel number="01">HỌC BẰNG CÁCH LÀM</SectionLabel><h2 id="journey-title">Một buổi thực hành.<br /><span className={styles.serif}>Ba chặng khám phá.</span></h2></div><p>Đi từng bước, từ “cái này dùng thế nào?”<br />đến “mình đã hiểu vì sao”.</p></div>

@@ -69,6 +69,9 @@ export default function DevToolsGuard() {
     };
 
     const handleContextMenu = (e: MouseEvent) => {
+      // Ô nhập (email, mật khẩu…) vẫn cần menu Dán / Tự điền của trình duyệt — nhất là nhấn giữ trên điện thoại.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.('input, textarea, [contenteditable="true"]')) return;
       showWarning(e);
     };
 

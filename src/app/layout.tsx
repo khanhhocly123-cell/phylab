@@ -34,7 +34,8 @@ export default function RootLayout({
       <head>
         {/* Play font for digital style timers */}
         <link href="https://fonts.googleapis.com/css2?family=Play:wght@700&display=swap" rel="stylesheet" />
-        {/* VNPT SmartUX Web SDK Integration */}
+        {/* VNPT SmartUX Web SDK Integration — không bật track_forms / collect_from_forms: form đăng ký, đăng nhập
+            có tên và email học sinh, không gửi cho dịch vụ thống kê (xem /quyen-rieng-tu). */}
         <script
           type="text/javascript"
           dangerouslySetInnerHTML={{
@@ -49,8 +50,6 @@ export default function RootLayout({
               VNPT.q.push(['track_scrolls']);
               VNPT.q.push(['track_errors']);
               VNPT.q.push(['track_links']);
-              VNPT.q.push(['track_forms']);
-              VNPT.q.push(['collect_from_forms']);
 
               (function () {
                 const paths = [

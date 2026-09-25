@@ -59,7 +59,8 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
   useEffect(() => {
     if (needRotate || hasSeenTour(studentName, "lab")) return;
     const timer = window.setTimeout(() => {
-      if (!isTourOpen()) setTourSteps(labTour());
+      // Kiểm lại lúc mở: đồng bộ tài khoản có thể vừa báo đã xem ở máy khác.
+      if (!isTourOpen() && !hasSeenTour(studentName, "lab")) setTourSteps(labTour());
     }, 900);
     return () => window.clearTimeout(timer);
   }, [studentName, needRotate]);

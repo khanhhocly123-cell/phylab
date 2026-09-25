@@ -2,13 +2,16 @@
 
 import React, { useState } from "react";
 import {
-  Camera, BookOpen, Clipboard, User,
-  Settings, LogOut, CheckCircle,
-  FileText, Home, ChevronDown, Bell,
+  Camera, BookOpen, Clipboard,
+  Settings, LogOut, Cloud, CloudOff,
+  FileText, Home, ChevronDown, Sparkles,
   ChevronLeft, ChevronRight, AlertTriangle, GraduationCap,
   Compass, Lock, NotebookPen, ShieldCheck
 } from "lucide-react";
-import LoginScreen from "@/components/LoginScreen";
+import LandingPage from "@/components/landing/LandingPage";
+import UpdatesMenu from "@/components/account/UpdatesMenu";
+import AccountPanel from "@/components/account/AccountPanel";
+import AdminPanel from "@/components/admin/AdminPanel";
 import ScanScreen from "@/components/ScanScreen";
 import LabRoom, { LabExportPayload } from "@/components/lab/LabRoom";
 import LabHub from "@/components/lab/LabHub";
@@ -19,11 +22,18 @@ import Logo from "@/components/Logo";
 import TeacherShell from "@/components/teacher/TeacherShell";
 import MyClassTab from "@/components/student/MyClassTab";
 import { MathText } from "@/components/Latex";
-import { getExperimentSpec, EXPERIMENT_SPECS } from "@/experiments/specs";
+import { getExperimentSpec } from "@/experiments/specs";
 import { LessonId, ExperimentReport, RichTrial } from "@/lib/types";
 import { useMyClass } from "@/lib/useMyClass";
 import { getStudentId, logActivity } from "@/lib/activity";
-import { hasSeenTour, isTourOpen, markTourSeen } from "@/lib/tourState";
+import { hasSeenTour, isTourOpen, markTourSeen, setTourEntry, subscribeTours, tourEntryJson } from "@/lib/tourState";
+import {
+  LOCAL_KEYS, fetchMe, forgetLocalAccount, readCachedAccount, readLocal, readTeacherToken, rememberAccount, writeLocal,
+} from "@/lib/accountClient";
+import { ROLE_LABEL, type PublicAccount } from "@/lib/accountTypes";
+import { describeSync, useCloudSync, type SyncSnapshot } from "@/lib/cloudSync";
+import type { SyncKey } from "@/lib/syncMerge";
+import { APP_RELEASE, UPDATES, unreadCount } from "@/data/changelog";
 import GuidedTour from "@/components/tour/GuidedTour";
 import HelpMenu from "@/components/tour/HelpMenu";
 import { notesTour, safetySteps, studentTour } from "@/components/tour/tours";
@@ -39,9 +49,15 @@ import type { LabAssignmentPayload } from "@/lib/classTypes";
 type AppTab = "home" | "scan" | "lab" | "notes" | "myclass";
 const APP_TABS: AppTab[] = ["home", "scan", "lab", "notes", "myclass"];
 
+/** Số đo vừa xuất từ Phòng Lab chờ lập báo cáo; `at` để đồng bộ giữa các máy (bản mới hơn thắng). */
+type LabData = { lessonId: string; trials: RichTrial[]; at?: number };
+
 export default function Page() {
-  const [studentName, setStudentName] = useState<string | null>(null);
-  const [role, setRole] = useState<"student" | "teacher">("student");
+  // Tài khoản đang đăng nhập (null = chưa → trang chào). Tên / vai trò suy ra từ tài khoản.
+  const [account, setAccount] = useState<PublicAccount | null>(null);
+  const studentName = account?.name ?? null;
+  const role = account?.role ?? "student";
+  const accountId = account?.id ?? null;
   const [teacherToken, setTeacherToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AppTab>("home");
   const [activeLessonId, setActiveLessonId] = useState<LessonId | null>(null);
@@ -57,66 +73,9 @@ export default function Page() {
     }, 3200);
   };
 
-  // Load saved studentName and progress on mount to persist state
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedName = localStorage.getItem("studentName");
-      if (savedName) {
-        setStudentName(savedName);
-      }
-      const savedRole = localStorage.getItem("role");
-      if (savedRole === "teacher") {
-        setRole("teacher");
-        setTeacherToken(localStorage.getItem("teacherToken"));
-      }
-      const savedTab = localStorage.getItem("activeTab");
-      if (savedTab === "prelab") {
-        // Tab Prelab cũ đã gộp vào Phòng Lab (Prelab là chặng 1 của mỗi bài).
-        setActiveTab("lab");
-      } else if (savedTab && (APP_TABS as string[]).includes(savedTab) && (savedTab !== "myclass" || FEATURES.classroom)) {
-        setActiveTab(savedTab as AppTab);
-      }
-      const savedLesson = localStorage.getItem("activeLessonId");
-      if (savedLesson) {
-        setActiveLessonId(savedLesson as any);
-      }
-      const savedPrelab = localStorage.getItem("prelabPassed");
-      if (savedPrelab) {
-        try {
-          setPrelabPassed(JSON.parse(savedPrelab));
-        } catch (e) {}
-      }
-    }
-    setCheckingAuth(false);
-  }, []);
-
-  // Sync state changes to localStorage
-  React.useEffect(() => {
-    if (typeof window !== "undefined" && studentName) {
-      localStorage.setItem("activeTab", activeTab);
-    }
-  }, [activeTab, studentName]);
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined" && studentName) {
-      if (activeLessonId) {
-        localStorage.setItem("activeLessonId", activeLessonId);
-      } else {
-        localStorage.removeItem("activeLessonId");
-      }
-    }
-  }, [activeLessonId, studentName]);
-
-  React.useEffect(() => {
-    if (typeof window !== "undefined" && studentName) {
-      localStorage.setItem("prelabPassed", JSON.stringify(prelabPassed));
-    }
-  }, [prelabPassed, studentName]);
-
   const [theoryOpen, setTheoryOpen] = useState(false);
   // Bài đang mở "Xem lại Prelab" dạng lớp phủ (từ bàn thí nghiệm hoặc từ danh sách bài).
   const [reviewPrelabId, setReviewPrelabId] = useState<LessonId | null>(null);
-  const [completedCount, setCompletedCount] = useState(0);
   const [measuredD, setMeasuredD] = useState(0.0182); // đường kính bi mặc định 18,20mm (mét), cập nhật từ Prelab
 
   // Collapse sidebar state
@@ -124,31 +83,130 @@ export default function Page() {
   // Header dropdown states
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
-  // Lịch sử báo cáo (1 báo cáo mẫu để trang chủ không trống khi demo).
-  const [reports, setReports] = useState<ExperimentReport[]>([
-    {
-      id: "rep-mock-1",
-      lessonId: "do-gia-toc-roi-tu-do",
-      title: "Đo gia tốc rơi tự do",
-      shortTitle: "Gia tốc rơi tự do",
-      date: "28/06/2026 14:15",
-      attempt: 1,
-      measures: [
-        { s: 0.20, t: 0.203 },
-        { s: 0.40, t: 0.287 },
-        { s: 0.60, t: 0.352 }
-      ],
-      trials: [
-        { lab: "freefall", s: 0.20, t: 0.203, balanced: true, studentResult: 9.71 },
-        { lab: "freefall", s: 0.40, t: 0.287, balanced: true, studentResult: 9.71 },
-        { lab: "freefall", s: 0.60, t: 0.352, balanced: true, studentResult: 9.68 }
-      ],
-    }
-  ]);
+  // Lịch sử báo cáo trong Sổ Báo Cáo — lưu trên máy và đồng bộ theo tài khoản.
+  const [reports, setReports] = useState<ExperimentReport[]>([]);
+  const completedCount = React.useMemo(() => new Set(reports.map((r) => r.lessonId)).size, [reports]);
 
   // Dữ liệu đo giàu thông tin vừa xuất từ phòng Lab, chờ lập báo cáo ở Sổ Báo Cáo.
-  const [labData, setLabData] = useState<{ lessonId: string; trials: RichTrial[] } | null>(null);
+  const [labData, setLabData] = useState<LabData | null>(null);
+
+  // Thông báo cập nhật (chuông): các mục đã đọc, và các mục còn mới lúc vừa mở chuông.
+  const [updatesSeen, setUpdatesSeen] = useState<string[]>([]);
+  const [freshUpdates, setFreshUpdates] = useState<string[]>([]);
+
+  // Mở app: dùng ngay tài khoản + tiến độ nhớ trên máy (local-first), rồi kiểm phiên với máy chủ.
+  React.useEffect(() => {
+    const cached = readCachedAccount();
+    const savedTab = localStorage.getItem("activeTab");
+    const savedLesson = localStorage.getItem("activeLessonId");
+    /* eslint-disable react-hooks/set-state-in-effect -- đọc localStorage sau khi hydrate (trang "/" prerender tĩnh) */
+    setAccount(cached);
+    setTeacherToken(cached ? readTeacherToken() : null);
+    setPrelabPassed(readLocal<Record<string, boolean>>(LOCAL_KEYS.prelabPassed, {}));
+    setReports(readLocal<ExperimentReport[]>(LOCAL_KEYS.reports, []));
+    setLabData(readLocal<LabData | null>(LOCAL_KEYS.labData, null));
+    setUpdatesSeen(readLocal<string[]>(LOCAL_KEYS.updatesSeen, []));
+    if (savedTab === "prelab") {
+      // Tab Prelab cũ đã gộp vào Phòng Lab (Prelab là chặng 1 của mỗi bài).
+      setActiveTab("lab");
+    } else if (savedTab && (APP_TABS as string[]).includes(savedTab) && (savedTab !== "myclass" || FEATURES.classroom)) {
+      setActiveTab(savedTab as AppTab);
+    }
+    if (savedLesson) setActiveLessonId(savedLesson);
+    setCheckingAuth(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    let alive = true;
+    void fetchMe().then((me) => {
+      if (!alive) return;
+      if (me.state === "ok") {
+        setAccount(me.user);
+        setTeacherToken(me.teacherToken ?? null);
+        rememberAccount(me.user, me.teacherToken);
+      } else if (me.state === "anon" && cached) {
+        // Phiên hết hạn / đăng xuất ở máy khác: quên tài khoản, GIỮ tiến độ trên máy (đăng nhập lại là gộp vào).
+        writeLocal(LOCAL_KEYS.account, null);
+        writeLocal(LOCAL_KEYS.teacherToken, null);
+        setAccount(null);
+        setTeacherToken(null);
+      }
+      // "offline": giữ tài khoản nhớ trên máy, học tiếp bình thường.
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Lưu trạng thái trên máy (chỉ khi đã đăng nhập).
+  React.useEffect(() => {
+    if (accountId) localStorage.setItem("activeTab", activeTab);
+  }, [activeTab, accountId]);
+
+  React.useEffect(() => {
+    if (!accountId) return;
+    if (activeLessonId) localStorage.setItem("activeLessonId", activeLessonId);
+    else localStorage.removeItem("activeLessonId");
+  }, [activeLessonId, accountId]);
+
+  React.useEffect(() => {
+    if (!accountId) return;
+    writeLocal(LOCAL_KEYS.prelabPassed, prelabPassed);
+    writeLocal(LOCAL_KEYS.reports, reports);
+    writeLocal(LOCAL_KEYS.labData, labData);
+    writeLocal(LOCAL_KEYS.updatesSeen, updatesSeen);
+  }, [accountId, prelabPassed, reports, labData, updatesSeen]);
+
+  /** Rời tài khoản trên máy này. `clearProgress`: đăng xuất chủ động → xoá cả tiến độ trên máy (máy chủ vẫn giữ). */
+  const signOutLocally = (clearProgress: boolean) => {
+    if (clearProgress) {
+      forgetLocalAccount();
+      setPrelabPassed({});
+      setReports([]);
+      setLabData(null);
+      setUpdatesSeen([]);
+    } else {
+      writeLocal(LOCAL_KEYS.account, null);
+      writeLocal(LOCAL_KEYS.teacherToken, null);
+    }
+    setAccount(null);
+    setTeacherToken(null);
+    setActiveLessonId(null);
+    setActiveTab("home");
+    setProfileMenuOpen(false);
+    setNotificationsOpen(false);
+    setAccountOpen(false);
+    setAdminOpen(false);
+  };
+
+  // ── Đồng bộ tiến độ với tài khoản: Prelab đã qua, báo cáo, số đo chờ báo cáo, hướng dẫn, thông báo đã đọc ──
+  const toursJson = React.useSyncExternalStore(subscribeTours, () => tourEntryJson(studentName), () => "{}");
+  const syncSnapshot = React.useMemo<SyncSnapshot>(
+    () => ({ prelabPassed, reports, labData, updatesSeen, tours: JSON.parse(toursJson) as unknown }),
+    [prelabPassed, reports, labData, updatesSeen, toursJson]
+  );
+  const { engine: syncEngine, status: syncStatus } = useCloudSync(accountId, syncSnapshot, {
+    apply: (key: SyncKey, value: unknown) => {
+      if (key === "prelabPassed") setPrelabPassed(value as Record<string, boolean>);
+      else if (key === "reports") setReports(value as ExperimentReport[]);
+      else if (key === "labData") setLabData(value as LabData | null);
+      else if (key === "updatesSeen") setUpdatesSeen(value as string[]);
+      else setTourEntry(studentName, value as Record<string, number>);
+    },
+    onUnauthorized: () => signOutLocally(false),
+  });
+
+  const unreadUpdates = unreadCount(updatesSeen);
+  const toggleUpdates = () => {
+    if (!notificationsOpen) {
+      setFreshUpdates(UPDATES.filter((u) => !updatesSeen.includes(u.id)).map((u) => u.id));
+      if (unreadUpdates > 0) setUpdatesSeen((prev) => [...new Set([...prev, ...UPDATES.map((u) => u.id)])]);
+      setProfileMenuOpen(false);
+    }
+    setNotificationsOpen(!notificationsOpen);
+  };
 
   // ── Lớp học: dữ liệu "Lớp của tôi" (đề GV giao + trạng thái nộp) ──
   const { myClass, loading: myClassLoading, refresh: refreshMyClass } = useMyClass(
@@ -204,24 +262,26 @@ export default function Page() {
   // của Prelab nằm sát đáy màn hình (có nút ← về danh sách bài ở đầu Prelab).
   const isPrelabOpen = activeTab === "lab" && !!activeSpec && !prelabPassed[activeSpec.id];
 
-  // ── Hướng dẫn: tự mở lần đầu học sinh vào app (không chen vào lúc đang làm thí nghiệm / đang quét) ──
+  // ── Hướng dẫn: tự mở lần đầu học sinh (và admin test) vào app (không chen vào lúc đang làm thí nghiệm / đang quét) ──
+  // Đợi lần đồng bộ đầu xong: tài khoản đã xem hướng dẫn ở máy khác thì máy mới không hỏi lại.
   const [tour, setTour] = useState<null | "app" | "safety" | "notes">(null);
+  const syncSettled = syncStatus.state !== "idle" && syncStatus.state !== "syncing";
   React.useEffect(() => {
-    if (checkingAuth || role !== "student" || !studentName || isDoingExperiment || isScanMode || tour) return;
+    if (checkingAuth || !syncSettled || role === "teacher" || !studentName || isDoingExperiment || isScanMode || tour) return;
     if (hasSeenTour(studentName, "app")) return;
     const timer = window.setTimeout(() => {
-      if (!isTourOpen()) setTour("app");
+      if (!isTourOpen() && !hasSeenTour(studentName, "app")) setTour("app");
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [checkingAuth, role, studentName, isDoingExperiment, isScanMode, tour]);
+  }, [checkingAuth, syncSettled, role, studentName, isDoingExperiment, isScanMode, tour]);
   React.useEffect(() => {
-    if (activeTab !== "notes" || checkingAuth || role !== "student" || !studentName || tour) return;
+    if (activeTab !== "notes" || checkingAuth || !syncSettled || role === "teacher" || !studentName || tour) return;
     if (!hasSeenTour(studentName, "app") || hasSeenTour(studentName, "notes")) return;
     const timer = window.setTimeout(() => {
-      if (!isTourOpen()) setTour("notes");
+      if (!isTourOpen() && !hasSeenTour(studentName, "notes")) setTour("notes");
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [activeTab, checkingAuth, role, studentName, tour]);
+  }, [activeTab, checkingAuth, syncSettled, role, studentName, tour]);
   const tourSteps = React.useMemo(
     () =>
       tour === "app" ? studentTour({ name: studentName ?? "", goHome: () => setActiveTab("home") })
@@ -263,40 +323,24 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDoingExperiment]);
 
-  // Handle successful logins
-  const handleLoginSuccess = (name: string, loginRole: "student" | "teacher" = "student", token?: string) => {
-    setStudentName(name);
-    localStorage.setItem("studentName", name);
-    if (loginRole === "teacher" && token) {
-      setRole("teacher");
-      setTeacherToken(token);
-      localStorage.setItem("role", "teacher");
-      localStorage.setItem("teacherToken", token);
-    } else {
-      setRole("student");
-      localStorage.setItem("role", "student");
-      getStudentId(); // sinh UUID định danh HS trên thiết bị (nếu chưa có)
-      if (FEATURES.classroom) logActivity("login", name);
-    }
-    setActiveTab("home");
+  // Đăng xuất (mọi vai trò): đẩy nốt tiến độ chưa lưu, xoá phiên trên máy chủ, quên tài khoản trên máy.
+  // GIỮ studentId — định danh thiết bị cho tính năng lớp học.
+  const handleLogout = async () => {
+    setProfileMenuOpen(false);
+    await syncEngine.flush();
+    syncEngine.stop();
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    signOutLocally(true);
   };
 
-  // Đăng xuất (dùng chung cho cả 2 vai trò).
-  const handleLogout = () => {
-    setStudentName(null);
-    setRole("student");
-    setTeacherToken(null);
-    localStorage.removeItem("studentName");
-    localStorage.removeItem("activeTab");
-    localStorage.removeItem("activeLessonId");
-    localStorage.removeItem("prelabPassed");
-    localStorage.removeItem("role");
-    localStorage.removeItem("teacherToken");
-    // GIỮ studentId — định danh thiết bị để lần sau vào lại vẫn là "em đó" trong lớp.
-    setPrelabPassed({});
-    setActiveLessonId(null);
-    setActiveTab("home");
-    setProfileMenuOpen(false);
+  // Công cụ test của admin (AdminPanel).
+  const unlockAllPrelabs = () =>
+    setPrelabPassed((prev) => ({ ...prev, ...Object.fromEntries(OPEN_LABS.map((l) => [l.id, true])) }));
+  const replayTours = () => {
+    // Gộp chỉ cộng thêm nên phải xoá mục hướng dẫn trên máy chủ; mất mạng thì xoá trên máy thôi.
+    void syncEngine.reset(["tours"]).then((ok) => {
+      if (!ok) setTourEntry(studentName, {});
+    });
   };
 
   // Chọn/nhận diện bài -> sang tab Lab; nếu chưa hoàn thành Prelab của bài,
@@ -350,7 +394,7 @@ export default function Page() {
     }).filter((m) => m.t > 0);
     if (rich.length === 0) return;
 
-    setLabData({ lessonId: activeLessonId || "", trials: rich });
+    setLabData({ lessonId: activeLessonId || "", trials: rich, at: Date.now() });
     setActiveTab("notes");
     showToast(`Đã lưu ${rich.length} số đo vào Sổ Báo Cáo.`);
   };
@@ -359,7 +403,6 @@ export default function Page() {
   // (Phần chấm điểm phía học sinh đang tạm gỡ để làm lại; server vẫn tự tính điểm cho GV.)
   const handleReportSaved = (report: ExperimentReport) => {
     setReports((prev) => [report, ...prev]);
-    setCompletedCount((prev) => Math.min(Object.keys(EXPERIMENT_SPECS).length, prev + 1));
 
     // Có bài Lab giáo viên giao trùng bài học này → nộp lên lớp (server re-verify điểm).
     const matching = myClass?.assignments.find(
@@ -410,26 +453,14 @@ export default function Page() {
     );
   }
 
-  // Logged-out view
-  if (!studentName) {
-    return (
-      <div className="relative flex flex-col flex-1 items-center justify-center p-0 md:p-4 bg-[#FAF9F6] min-h-screen overflow-hidden">
-        {/* Animated background blobs */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br from-amber-300/20 via-orange-200/15 to-transparent blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-gradient-to-tr from-[#C85A17]/10 via-rose-250/10 to-transparent blur-[150px] pointer-events-none" />
-        
-        {/* Subtle grid pattern overlay */}
-        <div className="absolute inset-0 blueprint-grid opacity-[0.25] pointer-events-none" />
-
-        {/* Login Screen Card */}
-        <div className="relative z-10 w-full flex justify-center items-center">
-          <LoginScreen onLoginSuccess={handleLoginSuccess} />
-        </div>
-      </div>
-    );
+  // Chưa đăng nhập → trang chào (Đăng ký / Đăng nhập ở /dang-ky, /dang-nhap).
+  if (!account) {
+    return <LandingPage />;
   }
 
-  const shortName = studentName.split(" (")[0];
+  const shortName = account.name.split(" (")[0];
+  const initial = shortName.trim().charAt(0).toUpperCase() || "?";
+  const syncOk = syncStatus.state === "synced" || syncStatus.state === "syncing";
 
   return (
     <div className={`flex flex-col lg:flex-row h-[100dvh] w-screen bg-[#FAF9F6] text-[#321E12] font-nunito overflow-hidden select-none ${
@@ -533,15 +564,22 @@ export default function Page() {
           </nav>
         </div>
 
-        {/* Bottom Section: just the "you're on the latest version" badge */}
+        {/* Bottom Section: phiên bản + lối tắt tới "Có gì mới" */}
         <div className="space-y-4">
           {!sidebarCollapsed && (
-            <div className="bg-[#FFFDFB] border border-[#E2DFD8] rounded-3xl p-3.5 animate-fade-in">
-              <p className="text-[10px] text-[#137333] font-extrabold flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 stroke-[2.5]" />
-                Bạn đang ở bản cao nhất
+            <button
+              type="button"
+              onClick={() => { if (!notificationsOpen) toggleUpdates(); }}
+              className="w-full text-left bg-[#FFFDFB] hover:bg-[#FFF7EF] border border-[#E2DFD8] rounded-3xl p-3.5 animate-fade-in cursor-pointer transition-colors"
+            >
+              <p className="text-[10px] text-[#C85A17] font-black flex items-center gap-1.5 uppercase tracking-wide">
+                <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
+                PhyLab {APP_RELEASE.name}
               </p>
-            </div>
+              <p className="text-[10px] text-[#605248] font-bold mt-1">
+                {unreadUpdates > 0 ? `${unreadUpdates} cập nhật mới — xem ngay` : "Xem có gì mới"}
+              </p>
+            </button>
           )}
         </div>
 
@@ -594,50 +632,15 @@ export default function Page() {
           <div className="flex items-center gap-1.5 sm:gap-3 relative">
             <HelpMenu items={helpItems} />
 
-            {/* Notification Bell Dropdown Controller */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setNotificationsOpen(!notificationsOpen);
-                  setProfileMenuOpen(false);
-                }}
-                className="relative p-2 text-[#605248] hover:text-[#C85A17] hover:bg-[#FFF2E6] rounded-xl transition-all cursor-pointer"
-              >
-                <Bell className="w-5 h-5 stroke-[2]" />
-                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black border border-white">
-                  2
-                </span>
-              </button>
-
-              {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-[min(320px,calc(100vw-24px))] bg-[#FFFFFF] border border-[#E2DFD8] rounded-2xl shadow-lg p-3.5 z-50 animate-scale-up text-xs font-bold text-[#321E12] space-y-2">
-                  <div className="px-2 py-1.5 border-b border-[#E2DFD8]/60 flex justify-between items-center">
-                    <p className="font-black text-[#C85A17]">Thông báo (2)</p>
-                    <button
-                      onClick={() => setNotificationsOpen(false)}
-                      className="text-[10px] text-slate-400 hover:text-[#C85A17]"
-                    >
-                      Đóng
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5">
-                    <div className="p-2.5 rounded-xl bg-[#FFF2E6]/50 text-[#321E12] text-left">
-                      <p className="leading-snug">
-                        Chào mừng <strong>{shortName}</strong> đến với <strong>Phylab</strong> — phòng thí nghiệm vật lý ảo của bạn!
-                      </p>
-                      <p className="text-[9px] text-slate-400 mt-1 font-semibold">Bắt đầu bằng cách quét 1 trang SGK hoặc chọn bài thực hành ở trang chủ.</p>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-transparent text-[#605248] text-left">
-                      <p className="leading-snug">
-                        Mẹo: dùng nút <strong>Quét tài liệu</strong> ở thanh bên hoặc nút camera ở dưới đáy màn hình để mở nhanh bài thí nghiệm.
-                      </p>
-                      <p className="text-[9px] text-slate-400 mt-1 font-semibold">Mẹo sử dụng</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Chuông thông báo: những gì PhyLab vừa cập nhật (src/data/changelog.ts) */}
+            <UpdatesMenu
+              open={notificationsOpen}
+              fresh={freshUpdates}
+              seen={updatesSeen}
+              onToggle={toggleUpdates}
+              onClose={() => setNotificationsOpen(false)}
+              onOpenLesson={(id) => handleLessonSelect(id as LessonId)}
+            />
 
             {/* Profile Dropdown */}
             <div className="relative">
@@ -646,48 +649,67 @@ export default function Page() {
                   setProfileMenuOpen(!profileMenuOpen);
                   setNotificationsOpen(false);
                 }}
-                className="flex items-center gap-2 bg-[#FFFFFF] border border-[#E2DFD8] px-3.5 py-1.5 rounded-xl text-xs font-black text-[#321E12] cursor-pointer select-none hover:bg-[#FFF8F0] transition-all"
+                className="flex items-center gap-2 bg-[#FFFFFF] border border-[#E2DFD8] px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-black text-[#321E12] cursor-pointer select-none hover:bg-[#FFF8F0] transition-all"
               >
-                <div className="w-5.5 h-5.5 rounded-full overflow-hidden bg-[#EAE8E3] border border-[#E2DFD8] flex-shrink-0 flex items-center justify-center">
-                  <User className="w-3.5 h-3.5 text-[#605248]" />
+                <div className="w-6 h-6 rounded-full bg-[#C85A17] text-white flex-shrink-0 flex items-center justify-center text-[11px] font-black">
+                  {initial}
                 </div>
-                <span className="hidden sm:inline">Hồ sơ</span>
+                <span className="hidden sm:inline max-w-[110px] truncate">{shortName}</span>
                 <ChevronDown className="w-3.5 h-3.5 text-[#605248]" />
               </button>
 
               {profileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-[min(304px,calc(100vw-24px))] bg-[#FFFFFF] border border-[#E2DFD8] rounded-3xl shadow-lg p-4.5 z-50 animate-scale-up text-xs font-bold text-[#321E12] space-y-3">
                   <div className="flex items-center gap-3 pb-3 border-b border-[#E2DFD8]/60">
-                    <div className="w-10 h-10 rounded-full bg-[#C85A17] text-white flex items-center justify-center font-black text-lg">
-                      N
+                    <div className="w-10 h-10 rounded-full bg-[#C85A17] text-white flex flex-shrink-0 items-center justify-center font-black text-lg">
+                      {initial}
                     </div>
                     <div className="min-w-0">
                       <p className="font-black text-sm text-[#321E12] truncate">{shortName}</p>
-                      <p className="text-[10px] text-[#C85A17] font-extrabold uppercase">Tài khoản PRO (Học sinh)</p>
+                      <p className="text-[10px] text-[#C85A17] font-extrabold uppercase">{ROLE_LABEL[role]}</p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2 text-[#605248] font-bold">
-                    <div className="flex justify-between">
-                      <span>Lớp học:</span>
-                      <span className="text-[#321E12] font-black">10A1</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="flex-shrink-0">Email:</span>
+                      <span className="text-[#321E12] font-black truncate" title={account.email}>{account.email}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Trường:</span>
-                      <span className="text-[#321E12] font-black truncate max-w-[120px]" title="THPT Chuyên Lê Hồng Phong">THPT Chuyên LHP</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Mã HS:</span>
-                      <span className="text-[#321E12] font-black">PH-2026-09</span>
+                    {account.grade && (
+                      <div className="flex justify-between gap-3">
+                        <span className="flex-shrink-0">Lớp:</span>
+                        <span className="text-[#321E12] font-black">Lớp {account.grade}</span>
+                      </div>
+                    )}
+                    {account.school && (
+                      <div className="flex justify-between gap-3">
+                        <span className="flex-shrink-0">Trường:</span>
+                        <span className="text-[#321E12] font-black truncate" title={account.school}>{account.school}</span>
+                      </div>
+                    )}
+                    <div className={`flex items-start gap-1.5 rounded-xl px-2.5 py-2 ${syncOk ? "bg-[#E8F5EC] text-[#137333]" : "bg-[#FFF7EF] text-[#9A4A0C]"}`}>
+                      {syncOk ? <Cloud className="w-3.5 h-3.5 mt-px flex-shrink-0" /> : <CloudOff className="w-3.5 h-3.5 mt-px flex-shrink-0" />}
+                      <span className="text-[10.5px] leading-snug">{describeSync(syncStatus)}</span>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-[#E2DFD8]/60 flex flex-col gap-1">
-                    <button className="w-full text-left py-2 px-2.5 hover:bg-[#FFF0E0]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-2 font-black text-[#605248] hover:text-[#C85A17]">
-                      <Settings className="w-3.5 h-3.5" /> Cấu hình tài khoản
-                    </button>
                     <button
-                      onClick={handleLogout}
+                      onClick={() => { setProfileMenuOpen(false); setAccountOpen(true); }}
+                      className="w-full text-left py-2 px-2.5 hover:bg-[#FFF0E0]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-2 font-black text-[#605248] hover:text-[#C85A17]"
+                    >
+                      <Settings className="w-3.5 h-3.5" /> Tài khoản
+                    </button>
+                    {role === "admin" && (
+                      <button
+                        onClick={() => { setProfileMenuOpen(false); setAdminOpen(true); }}
+                        className="w-full text-left py-2 px-2.5 hover:bg-[#FFF0E0]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-2 font-black text-[#605248] hover:text-[#C85A17]"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Quản trị PhyLab
+                      </button>
+                    )}
+                    <button
+                      onClick={() => void handleLogout()}
                       className="w-full text-left py-2 px-2.5 text-red-650 hover:bg-red-50 rounded-xl transition-colors cursor-pointer flex items-center gap-2 font-black"
                     >
                       <LogOut className="w-3.5 h-3.5" /> Đăng xuất
@@ -715,7 +737,7 @@ export default function Page() {
               {activeTab === "home" && (
                 <div className="animate-scale-up">
                   <HomeScreen
-                    studentName={studentName}
+                    studentName={account.name}
                     completedCount={completedCount}
                     inProgressLabIds={activeLessonId ? [activeLessonId] : []}
                     reports={reports}
@@ -771,7 +793,7 @@ export default function Page() {
                       <LabRoom
                         spec={activeSpec}
                         measuredD={measuredD}
-                        studentName={studentName}
+                        studentName={account.name}
                         assignedSets={assignedSets}
                         onExportNote={handleExportNote}
                         onReplayPrelab={() => setReviewPrelabId(activeSpec.id)}
@@ -797,7 +819,7 @@ export default function Page() {
                   <NoteSection
                     reports={reports}
                     labData={labData}
-                    studentName={studentName}
+                    studentName={account.name}
                     hasAssignment={!!labData && assignedLessonIds.includes(labData.lessonId)}
                     onReportSaved={handleReportSaved}
                   />
@@ -808,7 +830,7 @@ export default function Page() {
               {FEATURES.classroom && activeTab === "myclass" && (
                 <div className="animate-scale-up">
                   <MyClassTab
-                    studentName={studentName}
+                    studentName={account.name}
                     myClass={myClass}
                     loading={myClassLoading}
                     onRefresh={() => void refreshMyClass()}
@@ -950,6 +972,31 @@ export default function Page() {
             </div>
           </div>
         </div>
+      )}
+
+      {accountOpen && (
+        <AccountPanel
+          account={account}
+          sync={syncStatus}
+          onClose={() => setAccountOpen(false)}
+          onUpdated={(user) => {
+            setAccount(user);
+            rememberAccount(user, teacherToken ?? undefined);
+          }}
+          onDeleted={() => {
+            syncEngine.stop();
+            signOutLocally(true);
+          }}
+        />
+      )}
+
+      {adminOpen && role === "admin" && (
+        <AdminPanel
+          onClose={() => setAdminOpen(false)}
+          onUnlockAll={unlockAllPrelabs}
+          onReplayTours={replayTours}
+          onResetProgress={() => syncEngine.reset()}
+        />
       )}
 
       {tour && (

@@ -62,7 +62,8 @@ export default function HelpMenu({
       {open && (
         <div
           role="menu"
-          className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-2 w-[min(272px,calc(100vw-24px))] bg-white border border-[#E2DFD8] rounded-2xl shadow-lg p-1.5 z-50 animate-scale-up`}
+          // Điện thoại: nút không sát mép màn nên menu trải ngang (lề 12px) dưới thanh tiêu đề, không tràn ra ngoài.
+          className={`fixed inset-x-3 top-[68px] sm:absolute sm:inset-x-auto sm:top-full ${align === "right" ? "sm:right-0" : "sm:left-0"} sm:mt-2 sm:w-[272px] bg-white border border-[#E2DFD8] rounded-2xl shadow-lg p-1.5 z-50 animate-scale-up`}
         >
           {items.map((item) => (
             <button
