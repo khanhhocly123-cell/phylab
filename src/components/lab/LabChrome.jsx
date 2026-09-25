@@ -4,13 +4,17 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
+  Award,
   BookOpen,
   Check,
   ChevronDown,
+  CircleHelp,
   ChevronUp,
   Flag,
+  Info,
   Play,
   RotateCcw,
+  TriangleAlert,
   Volume2,
   VolumeX,
   Wand2,
@@ -27,7 +31,7 @@ import { C, FONT } from "../../engine/tokens.js";
 export const LAB_PHASES = ["Lắp ráp", "Thiết lập", "Đo số liệu", "Hoàn thành"];
 
 /* ---------- Thanh trên cùng ---------- */
-export function LabTopBar({ isMobile, isPortrait, title, shortTitle, onExit, onPrelab, muted, onToggleMute, center, meta, onRestart }) {
+export function LabTopBar({ isMobile, isPortrait, title, shortTitle, onExit, onPrelab, muted, onToggleMute, center, meta, onRestart, onHelp }) {
   const stacked = Boolean(center) && isMobile && isPortrait;
   return (
     <div
@@ -78,6 +82,11 @@ export function LabTopBar({ isMobile, isPortrait, title, shortTitle, onExit, onP
             {!isMobile && <span>Prelab</span>}
           </button>
         )}
+        {onHelp && (
+          <button type="button" onClick={onHelp} title="Hướng dẫn" aria-label="Hướng dẫn" data-tour="lab-help" style={topBtn}>
+            <CircleHelp size={15} strokeWidth={2.4} />
+          </button>
+        )}
         {onToggleMute && (
           <button
             type="button"
@@ -120,7 +129,7 @@ export function PhaseTrack({ phase }) {
 export function NextStepCard({ phase, next, onSpeak, onPrimary, onAssist, showTrack = true }) {
   const done = next.key === "done";
   return (
-    <section aria-live="polite" style={{ ...panelCard, border: `1.5px solid ${done ? `${C.good}66` : `${C.orange}55`}`, background: done ? "#F5FAF4" : "#FFFBF6" }}>
+    <section aria-live="polite" data-tour="lab-next" style={{ ...panelCard, border: `1.5px solid ${done ? `${C.good}66` : `${C.orange}55`}`, background: done ? "#F5FAF4" : "#FFFBF6" }}>
       {showTrack && <div style={{ marginBottom: 12 }}><PhaseTrack phase={phase} /></div>}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, display: "grid", placeItems: "center", background: done ? C.good : C.orange, color: "#fff" }}>
@@ -233,6 +242,7 @@ export function FinishButton({ count, allDone, onFinish, blockedText }) {
   return (
     <button
       type="button"
+      data-tour="lab-finish"
       onClick={onFinish}
       disabled={disabled}
       style={{
@@ -432,7 +442,14 @@ export function LabToast({ toast, fixed = false }) {
           style={{ position: "absolute", left: "50%", top: "50%", width: 7, height: 7, borderRadius: i % 2 ? 2 : 99, background: color }}
         />
       ))}
-      <span style={{ position: "relative" }}>{toast.text}</span>
+      <span style={{ position: "relative", display: "inline-flex", alignItems: "flex-start", gap: 8, textAlign: "left" }}>
+        {kind === "win"
+          ? <Award size={17} strokeWidth={2.6} color={C.orangeDk} style={{ flexShrink: 0, marginTop: 1 }} />
+          : kind === "warn"
+            ? <TriangleAlert size={16} strokeWidth={2.6} color="#FECACA" style={{ flexShrink: 0, marginTop: 1 }} />
+            : <Info size={15} strokeWidth={2.6} color="#FCD9BD" style={{ flexShrink: 0, marginTop: 1 }} />}
+        <span>{toast.text}</span>
+      </span>
     </motion.div>
   );
 }

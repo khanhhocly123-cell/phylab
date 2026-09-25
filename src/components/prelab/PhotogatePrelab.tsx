@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Rabbit, Turtle } from "lucide-react";
 
 const INFO = {
   gateA: {
@@ -31,16 +32,16 @@ const PC = {
   ledFrame: "#61252C",
   ledInner: "#280C0F",
   ledText: "#FF2D2D",
-  gate: "#E8A93C",
-  gateShade: "#D49525",
-  gateFoot: "#B9821F",
-  eyeIdle: "#2B2B2B",
-  eyeBlocked: "#FF4D4D",
+  gate: "url(#pg-arm)",
+  gateShade: "#FFFFFF",
+  gateFoot: "#111827",
+  eyeIdle: "#5B1A1A",
+  eyeBlocked: "#FF3B3B",
   beamOn: "#FF4D4D",
   beamOff: "#D8D3C8",
-  ball: "#7C8A93",
-  ballHi: "#E7ECEF",
-  rail: "#888780",
+  ball: "url(#pg-steel)",
+  ballHi: "#FFFFFF",
+  rail: "#7B8794",
 };
 
 const TRACK_X0 = 55;
@@ -244,14 +245,19 @@ export default function PhotogatePrelab() {
     const rightArmX = gx + ARM_GAP;
     return (
       <g style={{ cursor: "pointer" }} onClick={() => setSel(key)}>
-        <rect x={gx - ARM_GAP - ARM_W} y={GATE_BOT} width={ARM_GAP * 2 + ARM_W * 2} height={BASE_H} rx={3} fill={PC.gate} />
+        <rect x={gx - ARM_GAP - ARM_W} y={GATE_BOT} width={ARM_GAP * 2 + ARM_W * 2} height={BASE_H} rx={3} fill="url(#pg-base)" stroke="#0F172A" strokeWidth={0.8} />
         <rect x={gx - 14} y={GATE_BOT + BASE_H} width={28} height={FOOT_H} rx={2} fill={PC.gateFoot} />
-        <rect x={rightArmX} y={GATE_TOP} width={ARM_W} height={GATE_BOT - GATE_TOP} rx={2} fill={PC.gate} />
-        <rect x={rightArmX} y={GATE_TOP + 4} width={2} height={GATE_BOT - GATE_TOP - 8} rx={0.5} fill={PC.gateShade} opacity={0.4} />
-        <circle cx={rightArmX + ARM_W / 2} cy={BEAM_Y} r={3.2} fill={blocked ? PC.eyeBlocked : PC.eyeIdle} />
-        <text x={rightArmX + ARM_W + 5} y={GATE_TOP + 16} textAnchor="start" style={{ fontSize: 11, fontWeight: 700, fill: "#C0392B" }}>D2</text>
-        <line x1={gx - ARM_GAP} y1={BEAM_Y} x2={gx + ARM_GAP} y2={BEAM_Y} stroke={blocked ? PC.beamOff : PC.beamOn} strokeWidth={blocked ? 1.2 : 2} strokeDasharray="3 2" />
-        <text x={gx} y={GATE_BOT + BASE_H + FOOT_H + 14} textAnchor="middle" style={{ fontSize: 12, fontWeight: 600, fill: "#1F4D78" }}>Cổng {label}</text>
+        <rect x={rightArmX} y={GATE_TOP} width={ARM_W} height={GATE_BOT - GATE_TOP} rx={3} fill={PC.gate} stroke="#0F172A" strokeWidth={0.8} />
+        <rect x={rightArmX + 2} y={GATE_TOP + 4} width={2} height={GATE_BOT - GATE_TOP - 8} rx={1} fill={PC.gateShade} opacity={0.18} />
+        <rect x={rightArmX - 1.5} y={BEAM_Y - 3.5} width={3} height={7} rx={1} fill="#0B1220" stroke="#475569" strokeWidth={0.6} />
+        <circle cx={rightArmX + ARM_W / 2} cy={GATE_TOP + 6} r={2.6} fill={blocked ? PC.eyeBlocked : PC.eyeIdle} />
+        {blocked && <circle cx={rightArmX + ARM_W / 2} cy={GATE_TOP + 6} r={5} fill={PC.eyeBlocked} opacity={0.3} />}
+        <text x={rightArmX + ARM_W + 5} y={GATE_TOP + 16} textAnchor="start" style={{ fontSize: 10.5, fontWeight: 800, fill: "#475569" }}>D2</text>
+        {blocked
+          ? <line x1={gx - ARM_GAP} y1={BEAM_Y} x2={gx + ARM_GAP} y2={BEAM_Y} stroke={PC.beamOff} strokeWidth={1.2} strokeDasharray="3 2" />
+          : <g><line x1={gx - ARM_GAP} y1={BEAM_Y} x2={gx + ARM_GAP} y2={BEAM_Y} stroke={PC.beamOn} strokeWidth={5} opacity={0.22} strokeLinecap="round" />
+              <line x1={gx - ARM_GAP} y1={BEAM_Y} x2={gx + ARM_GAP} y2={BEAM_Y} stroke={PC.beamOn} strokeWidth={1.6} /></g>}
+        <text x={gx} y={GATE_BOT + BASE_H + FOOT_H + 14} textAnchor="middle" style={{ fontSize: 12, fontWeight: 800, fill: "#1F4D78" }}>Cổng {label}</text>
       </g>
     );
   };
@@ -260,18 +266,19 @@ export default function PhotogatePrelab() {
     const leftArmX = gx - ARM_GAP - ARM_W;
     return (
       <g style={{ cursor: "pointer" }} onClick={() => setSel(key)}>
-        <rect x={leftArmX} y={GATE_TOP} width={ARM_W} height={GATE_BOT - GATE_TOP} rx={2} fill={PC.gate} />
-        <rect x={leftArmX + ARM_W - 2} y={GATE_TOP + 4} width={2} height={GATE_BOT - GATE_TOP - 8} rx={0.5} fill={PC.gateShade} opacity={0.35} />
-        <rect x={leftArmX + ARM_W} y={GATE_TOP + 2} width={3} height={GATE_BOT - GATE_TOP - 4} rx={1} fill="#000" opacity={0.06} />
-        <circle cx={leftArmX + ARM_W / 2} cy={BEAM_Y} r={3.2} fill={blocked ? PC.eyeBlocked : PC.eyeIdle} />
-        <text x={leftArmX - 5} y={GATE_TOP + 16} textAnchor="end" style={{ fontSize: 11, fontWeight: 700, fill: "#C0392B" }}>D1</text>
+        <rect x={leftArmX} y={GATE_TOP} width={ARM_W} height={GATE_BOT - GATE_TOP} rx={3} fill={PC.gate} stroke="#0F172A" strokeWidth={0.8} />
+        <rect x={leftArmX + 2} y={GATE_TOP + 4} width={2} height={GATE_BOT - GATE_TOP - 8} rx={1} fill={PC.gateShade} opacity={0.18} />
+        <rect x={leftArmX + ARM_W} y={GATE_TOP + 2} width={3} height={GATE_BOT - GATE_TOP - 4} rx={1} fill="#000" opacity={0.08} />
+        <rect x={leftArmX + ARM_W - 1.5} y={BEAM_Y - 3.5} width={3} height={7} rx={1} fill={blocked ? "#7F1D1D" : "#FF4D4D"} />
+        <text x={leftArmX - 5} y={GATE_TOP + 16} textAnchor="end" style={{ fontSize: 10.5, fontWeight: 800, fill: "#475569" }}>D1</text>
       </g>
     );
   };
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start">
+      <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         {["A", "B", "AAB"].map((m) => (
           <button key={m} style={modeStyle(mode === m)} onClick={() => { setMode(m); resetForMode(m); setSel("mode"); }}>
             {m === "AAB" ? "A ↔ B" : `MODE ${m}`}
@@ -281,36 +288,49 @@ export default function PhotogatePrelab() {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ background: "#f3f1ea", borderRadius: 12, padding: "1rem" }}>
           <svg ref={svgRef} width="100%" viewBox="0 0 440 250" role="img" aria-label="Cổng quang điện" style={{ display: "block", touchAction: "none" }}>
-            <rect x="5" y="6" width="430" height="238" rx="4" fill={PC.cream} stroke={PC.stroke} strokeWidth="0.5" />
+            <defs>
+              <linearGradient id="pg-arm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#475569" /><stop offset="0.45" stopColor="#334155" /><stop offset="1" stopColor="#1E293B" /></linearGradient>
+              <linearGradient id="pg-base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4B5563" /><stop offset="1" stopColor="#1F2937" /></linearGradient>
+              <radialGradient id="pg-steel" cx="36%" cy="32%" r="75%"><stop offset="0" stopColor="#FFFFFF" /><stop offset="0.22" stopColor="#D9DDE3" /><stop offset="0.6" stopColor="#7C8490" /><stop offset="1" stopColor="#2E343C" /></radialGradient>
+              <linearGradient id="pg-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#3B1010" /><stop offset="1" stopColor="#1A0505" /></linearGradient>
+            </defs>
+            <rect x="5" y="6" width="430" height="238" rx="10" fill="#FFFDF8" stroke="#E6DCC8" strokeWidth="1" />
             <g style={{ cursor: "pointer" }} onClick={() => setSel("led")}>
-              <rect x="150" y="16" width="140" height="38" rx="3" fill={PC.ledFrame} />
-              <rect x="155" y="19" width="130" height="32" rx={2} fill={PC.ledInner} />
-              <text x="220" y="42" textAnchor="middle" style={{ fontFamily: "monospace", fontSize: 19, fill: PC.ledText, letterSpacing: 1 }}>{ledValue}</text>
+              <rect x="148" y="14" width="144" height="42" rx="6" fill="#1F2937" />
+              <rect x="152" y="17" width="136" height="36" rx="4" fill="url(#pg-glass)" stroke={PC.ledFrame} strokeWidth={1.4} />
+              <text x="220" y="43" textAnchor="middle" style={{ fontFamily: "monospace", fontSize: 21, fill: PC.ledText, opacity: 0.09, letterSpacing: 2 }}>8.888</text>
+              <text x="220" y="43" textAnchor="middle" style={{ fontFamily: "monospace", fontSize: 21, fill: "none", stroke: "#FF2D2D", strokeOpacity: 0.3, strokeWidth: 3, letterSpacing: 2 }}>{ledValue}</text>
+              <text x="220" y="43" textAnchor="middle" style={{ fontFamily: "monospace", fontSize: 21, fill: "#FF4040", letterSpacing: 2 }}>{ledValue}</text>
             </g>
             <text x="220" y="66" textAnchor="middle" style={{ fontSize: 11, fill: "#8a8a8a" }}>{ledHint}</text>
             {renderGateBack(GATE_A_X, "A", gateABlocked, "gateA")}
             {renderGateBack(GATE_B_X, "B", gateBBlocked, "gateB")}
-            <line x1={TRACK_X0} y1={RAIL_Y} x2={TRACK_X1} y2={RAIL_Y} stroke={PC.rail} strokeWidth={4} strokeLinecap="round" />
+            <line x1={TRACK_X0} y1={RAIL_Y + BALL_R + 3} x2={TRACK_X1} y2={RAIL_Y + BALL_R + 3} stroke="#5F6B78" strokeWidth={7} strokeLinecap="round" />
+            <line x1={TRACK_X0} y1={RAIL_Y + BALL_R + 3} x2={TRACK_X1} y2={RAIL_Y + BALL_R + 3} stroke="#C3CAD3" strokeWidth={4.4} strokeLinecap="round" />
+            <line x1={TRACK_X0} y1={RAIL_Y + BALL_R + 2} x2={TRACK_X1} y2={RAIL_Y + BALL_R + 2} stroke="#F8FAFC" strokeWidth={1.2} strokeLinecap="round" />
             <g style={{ cursor: "grab", touchAction: "none" }} onPointerDown={() => { setSel("ball"); startDrag(); }}>
-              <circle cx={ballX} cy={RAIL_Y} r={BALL_R} fill={PC.ball} stroke="#4A5560" strokeWidth={1.2} />
-              <circle cx={ballX - 4} cy={RAIL_Y - 5} r={4} fill={PC.ballHi} opacity={0.7} />
-              <circle cx={ballX - 2} cy={RAIL_Y - 2} r={1.8} fill="#fff" opacity={0.5} />
+              <circle cx={ballX} cy={RAIL_Y} r={BALL_R} fill={PC.ball} stroke="#1F2937" strokeWidth={1} />
+              <ellipse cx={ballX + 2.5} cy={RAIL_Y + 8} rx={7} ry={2.4} fill="#E5E7EB" opacity={0.35} />
+              <circle cx={ballX - 4.8} cy={RAIL_Y - 5.3} r={2.8} fill={PC.ballHi} opacity={0.9} />
             </g>
             {renderGateFront(GATE_A_X, gateABlocked, "gateA")}
             {renderGateFront(GATE_B_X, gateBBlocked, "gateB")}
           </svg>
-          <p style={{ fontSize: 12, color: "#999", margin: "10px 4px 0" }}>Kéo viên bi qua khe hở giữa D1 – D2. Chạm vào bộ phận bất kì để tìm hiểu.</p>
+          <p style={{ fontSize: 12, color: "#8C7B6B", margin: "8px 4px 0", fontWeight: 700 }}>Kéo viên bi qua khe giữa D1 (phát) – D2 (thu). Chạm bộ phận bất kì để tìm hiểu.</p>
         </div>
+      </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ background: "#fff", border: "0.5px solid #e5e3dc", borderRadius: 12, padding: "10px 14px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
           <div style={{ flex: "1 1 240px", fontSize: 13.5, fontWeight: 800, color: "#1F4D78", lineHeight: 1.5 }}>
             {vNow != null
               ? <>{mode === "AAB" ? "v_tb = AB/t" : "v = d/t"} = {(distMm / 1000).toFixed(3)} m ÷ {(doneMs! / 1000).toFixed(3)} s = <b style={{ fontSize: 16 }}>{vNow.toFixed(2)} m/s</b></>
               : <>Kéo bi qua cổng: đồng hồ đo t, rồi {mode === "AAB" ? "v_tb = AB/t (AB = 10 cm)" : "v = d/t (d = 20 mm)"} hiện ở đây.</>}
           </div>
-          <span style={{ ...badge, ...(badges.slow ? badgeOn : {}) }} title={`Kéo chậm qua cổng A/B: v < ${V_SLOW} m/s`}>🐢 {badges.slow ? "Kéo chậm ✓" : `v < ${V_SLOW} m/s`}</span>
-          <span style={{ ...badge, ...(badges.fast ? badgeOn : {}) }} title={`Kéo nhanh qua cổng A/B: v > ${V_FAST} m/s`}>🐇 {badges.fast ? "Kéo nhanh ✓" : `v > ${V_FAST} m/s`}</span>
+          <span style={{ ...badge, ...(badges.slow ? badgeOn : {}) }} title={`Kéo chậm qua cổng A/B: v < ${V_SLOW} m/s`}><Turtle size={14} strokeWidth={2.4} /> {badges.slow ? "Kéo chậm ✓" : `v < ${V_SLOW} m/s`}</span>
+          <span style={{ ...badge, ...(badges.fast ? badgeOn : {}) }} title={`Kéo nhanh qua cổng A/B: v > ${V_FAST} m/s`}><Rabbit size={14} strokeWidth={2.4} /> {badges.fast ? "Kéo nhanh ✓" : `v > ${V_FAST} m/s`}</span>
         </div>
-        <div style={{ background: "#fff", border: "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px" }}>
+        <div style={{ background: "#fff", border: "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px", minHeight: 118 }}>
           <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700 }}>{info.title}</h3>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#555" }}>{info.body}</p>
         </div>

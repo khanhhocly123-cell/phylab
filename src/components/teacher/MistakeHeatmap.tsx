@@ -221,7 +221,7 @@ export default function MistakeHeatmap({ token, classId, onClose }: Props) {
             </section>
 
             <p className="text-xs font-bold text-[#605248] bg-[#FFF2E6]/60 border border-[#C85A17]/10 rounded-xl px-4 py-3">
-              🔥 Mục nào <span className="font-black text-red-600">đỏ</span> là chỗ cả lớp đang yếu —
+              Mục nào <span className="font-black text-red-600">đỏ</span> là chỗ cả lớp đang yếu —
               nên giảng lại câu/ý đó trước buổi thực hành sau.
             </p>
           </>

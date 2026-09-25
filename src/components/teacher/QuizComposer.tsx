@@ -288,7 +288,7 @@ export default function QuizComposer({ token, classId, labAssignments, onClose, 
               </select>
             )}
             <p className="text-[10px] font-bold text-[#605248] bg-emerald-50 border border-emerald-500/10 rounded-xl px-3 py-2">
-              🛡 Mỗi học sinh nhận bộ câu hỏi tính từ CHÍNH số liệu (s, t) em đó đã đo và nộp —
+              Mỗi học sinh nhận bộ câu hỏi tính từ CHÍNH số liệu (s, t) em đó đã đo và nộp —
               chép đáp án của bạn là vô nghĩa. Hệ thống chấm tự động trên server.
             </p>
           </section>

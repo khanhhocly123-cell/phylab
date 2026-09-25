@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  Camera, ChevronLeft, ChevronRight, Clock, FileText, FlaskConical, GraduationCap, History, Lock, Play, ScanLine, Sparkles, Trophy,
+  Camera, ChevronLeft, ChevronRight, Clock, FileText, FlaskConical, GraduationCap, History, Lock, Play, ScanLine, ShieldCheck, Sparkles, Trophy,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { OPEN_GRADES, OPEN_LABS, OPEN_SUBJECTS, SOON_LABS, type LabEntry } from "@/data/labCatalog";
+import { FEATURES } from "@/lib/features";
+import { hasSeenTour, subscribeTours } from "@/lib/tourState";
 
 interface HomeScreenProps {
   studentName: string;
@@ -37,6 +39,8 @@ export default function HomeScreen({
   onSubjectClick,
 }: HomeScreenProps) {
   const [grade, setGrade] = useState<Grade>("all");
+  // Huy hiệu An toàn PTN: có sau khi đi hết chuyến tham quan (kể cả phần An toàn).
+  const safetyBadge = useSyncExternalStore(subscribeTours, () => hasSeenTour(studentName, "badge-safety"), () => false);
   const [greeting, setGreeting] = useState("Xin chào");
 
   // Lời chào theo giờ (tính sau khi gắn để tránh lệch giờ server/client).
@@ -80,8 +84,15 @@ export default function HomeScreen({
           <div className="pointer-events-none absolute right-40 -bottom-20 w-44 h-44 rounded-full bg-[#DF742E]/8" />
           <div className="relative min-w-0 flex-1 flex flex-col justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/70 border border-[#EBC9A8] px-2.5 py-1 text-[10.5px] font-black text-[#C85A17]">
+              <div className="flex flex-wrap items-center gap-1.5">
+  <div className="inline-flex items-center gap-1.5 rounded-full bg-white/70 border border-[#EBC9A8] px-2.5 py-1 text-[10.5px] font-black text-[#C85A17]">
                 <Sparkles className="w-3.5 h-3.5" /> {OPEN_LABS.length} phòng Lab đang mở{SOON_LABS.length ? ` · ${SOON_LABS.length} bài sắp ra mắt` : ""}
+              </div>
+                {safetyBadge && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[10.5px] font-black text-emerald-700" title="Nhận sau khi đi hết phần tham quan và An toàn phòng thí nghiệm">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Huy hiệu An toàn PTN
+                  </span>
+                )}
               </div>
               <h1 className="mt-2 text-2xl md:text-[30px] font-black tracking-tight leading-tight">
                 {greeting}, <span className="text-[#C85A17]">{firstName}!</span>
@@ -93,18 +104,18 @@ export default function HomeScreen({
             <div className="flex gap-2">
               <button onClick={() => onNav("scan")}
                 className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-2xl bg-[#321E12] hover:bg-[#4A2E1C] text-white text-[13px] font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all shadow-[0_8px_18px_rgba(50,30,18,.18)] whitespace-nowrap">
-                <ScanLine className="w-4 h-4" /> Quét trang SGK
+                <ScanLine className="w-4 h-4" /> <span className="sm:hidden">Quét SGK</span><span className="hidden sm:inline">Quét trang SGK</span>
               </button>
               <button onClick={() => onNav("lab")}
                 className="flex-1 sm:flex-initial justify-center h-10 px-4 rounded-2xl bg-white/85 hover:bg-white border border-[#EBC9A8] text-[#321E12] text-[13px] font-black flex items-center gap-2 cursor-pointer active:scale-95 transition-all whitespace-nowrap">
-                <FlaskConical className="w-4 h-4 text-[#C85A17]" /> Tất cả phòng Lab
+                <FlaskConical className="w-4 h-4 text-[#C85A17]" /> <span className="sm:hidden">Phòng Lab</span><span className="hidden sm:inline">Tất cả phòng Lab</span>
               </button>
             </div>
           </div>
 
           {/* Bài nên làm tiếp */}
           {nextLab && (
-            <button onClick={() => onOpenLab(nextLab.id)}
+            <button onClick={() => onOpenLab(nextLab.id)} data-tour="next-lab"
               className="relative md:w-[300px] flex-shrink-0 text-left rounded-2xl bg-white border border-[#EBC9A8] shadow-[0_10px_24px_rgba(200,90,23,.12)] overflow-hidden flex md:flex-col cursor-pointer group active:scale-[.99] transition-all">
               <div className="relative w-28 md:w-full h-auto md:h-[92px] flex-shrink-0 overflow-hidden bg-[#EAE8E3]">
                 {nextLab.image && (
@@ -129,7 +140,7 @@ export default function HomeScreen({
         </motion.section>
 
         {/* Phòng Lab — hàng thẻ cuộn ngang: ít bài thì giãn đầy hàng, nhiều bài thì cuộn */}
-        <motion.section variants={fade} className="flex flex-col gap-2.5 min-w-0">
+        <motion.section variants={fade} className="flex flex-col gap-2.5 min-w-0" data-tour="lab-row">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-lg md:text-xl font-black tracking-tight">Phòng Lab <span className="text-[13px] font-black text-[#8C7B6B]">{shown.length} bài</span></h2>
             <div className="flex items-center gap-2">
@@ -215,13 +226,17 @@ export default function HomeScreen({
               { label: "Quét SGK", Icon: Camera, tab: "scan" as const, tone: "bg-[#FFF2E6] text-[#C85A17]" },
               { label: "Sổ báo cáo", Icon: FileText, tab: "notes" as const, tone: "bg-[#EEF4FC] text-[#1D5FAF]" },
               { label: "Lớp của tôi", Icon: GraduationCap, tab: "myclass" as const, tone: "bg-[#F1F8F0] text-[#2E7D32]" },
-            ].map(({ label, Icon, tab, tone }) => (
-              <button key={label} onClick={() => onNav(tab)}
-                className="rounded-2xl border border-[#EDE6D9] hover:border-[#DF742E]/45 hover:bg-[#FFFBF6] p-2 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-all">
-                <span className={`w-9 h-9 rounded-xl grid place-items-center ${tone}`}><Icon className="w-4.5 h-4.5" /></span>
-                <span className="text-[11.5px] font-black leading-none">{label}</span>
-              </button>
-            ))}
+            ].map(({ label, Icon, tab, tone }) => {
+              const locked = tab === "myclass" && !FEATURES.classroom;
+              return (
+                <button key={label} onClick={() => onNav(tab)} aria-disabled={locked || undefined} title={locked ? "Tạm khoá" : undefined}
+                  className={`relative rounded-2xl border border-[#EDE6D9] p-2 flex flex-col items-center gap-1.5 transition-all ${locked ? "opacity-45 cursor-not-allowed" : "hover:border-[#DF742E]/45 hover:bg-[#FFFBF6] cursor-pointer active:scale-95"}`}>
+                  <span className={`w-9 h-9 rounded-xl grid place-items-center ${tone}`}><Icon className="w-4.5 h-4.5" /></span>
+                  <span className="text-[11.5px] font-black leading-none">{label}</span>
+                  {locked && <Lock className="absolute top-1.5 right-1.5 w-3 h-3 text-[#8C7B6B]" />}
+                </button>
+              );
+            })}
           </div>
           <div>
             <h3 className="text-[11px] font-black uppercase tracking-wider text-[#8C7B6B] flex items-center gap-1.5"><History className="w-3.5 h-3.5 text-[#C85A17]" /> Nhật ký gần đây</h3>

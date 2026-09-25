@@ -332,7 +332,7 @@ export default function LabAssignmentComposer({ token, classId, onClose, onCreat
         )}
 
         <p className="text-xs font-bold text-[#605248] bg-[#FFF2E6]/60 border border-[#C85A17]/10 rounded-xl px-3.5 py-2.5">
-          👁 Cột xanh là <strong>đáp án mong đợi</strong> tính từ physics engine — chỉ giáo viên thấy.
+          Cột xanh là <strong>đáp án mong đợi</strong> tính từ physics engine — chỉ giáo viên thấy.
           Học sinh trong lớp sẽ nhận đề này thay cho đề Trợ lý AI giao.
         </p>
 

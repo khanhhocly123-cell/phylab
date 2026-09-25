@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ExperimentSpec } from "@/lib/types";
 import type { LabAssignmentPayload } from "@/lib/classTypes";
 import { useTTS } from "./useTTS";
@@ -10,6 +10,11 @@ import FreeFallBench from "./FreeFallBench.jsx";
 import ElectricalBench from "./ElectricalBench";
 import EmfBench from "./EmfBench";
 import { ballDiameterMm } from "../../engine/physics.js";
+import GuidedTour, { type TourStep } from "../tour/GuidedTour";
+import { labTour } from "../tour/tours";
+import { hasSeenTour, isTourOpen, markTourSeen } from "@/lib/tourState";
+import { canLockLandscape, enterLandscape, isPhoneDevice, isPortraitNow, leaveLandscape, subscribeOrientation } from "@/lib/orientation";
+import RotatePrompt from "./RotatePrompt";
 
 export interface LabExportPayload {
   lab: string;                 // "average" | "instant" | "freefall"
@@ -37,6 +42,30 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
   const isFreeFall = spec.id === "do-gia-toc-roi-tu-do";
   const isOhm = spec.id === "do-dien-tro-dinh-luat-ohm";
   const isEmf = spec.id === "do-suat-dien-dong-pin-dien-hoa";
+
+  // Điện thoại cầm dọc: nhắc xoay ngang (Android có nút tự khoá ngang; iPhone hướng dẫn tự xoay).
+  const phone = useSyncExternalStore(subscribeOrientation, isPhoneDevice, () => false);
+  const portrait = useSyncExternalStore(subscribeOrientation, isPortraitNow, () => false);
+  const [keepPortrait, setKeepPortrait] = useState(false);
+  const needRotate = phone && portrait && !keepPortrait;
+  // Rời Phòng Lab: trả lại hướng xoay tự do và thoát toàn màn hình.
+  useEffect(() => () => leaveLandscape(), []);
+
+  // Hướng dẫn trong Phòng Lab: tự mở đúng một lần — lần đầu vào bàn thí nghiệm (bài nào cũng được),
+  // đợi xoay ngang xong mới hiện.
+  const [tourSteps, setTourSteps] = useState<TourStep[] | null>(null);
+  useEffect(() => {
+    if (needRotate || hasSeenTour(studentName, "lab")) return;
+    const timer = window.setTimeout(() => {
+      if (!isTourOpen()) setTourSteps(labTour());
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [studentName, needRotate]);
+  const openTour = () => setTourSteps(labTour());
+  const closeTour = () => {
+    markTourSeen(studentName, "lab");
+    setTourSteps(null);
+  };
 
   // Rời lab (unmount) -> tắt hẳn voice, tránh trợ lý còn đọc chồng khi sang màn khác.
   useEffect(() => () => stop(), [stop]);
@@ -90,6 +119,7 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
           onExportNote={onExportNote}
           onReplayPrelab={onReplayPrelab}
           onBack={onExitLab}
+          onTour={openTour}
         />
       ) : isOhm ? (
         <ElectricalBench
@@ -100,6 +130,7 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
           onExportNote={onExportNote}
           onReplayPrelab={onReplayPrelab}
           onBack={onExitLab}
+          onTour={openTour}
         />
       ) : isFreeFall ? (
         <FreeFallBench
@@ -110,6 +141,7 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
           onExportNote={onExportNote}
           onReplayPrelab={onReplayPrelab}
           onBack={onExitLab}
+          onTour={openTour}
         />
       ) : (
         <LabBench
@@ -121,8 +153,17 @@ export default function LabRoom({ spec, measuredD, studentName, assignedSets, on
           onExportNote={onExportNote}
           onReplayPrelab={onReplayPrelab}
           onBack={onExitLab}
+          onTour={openTour}
         />
       )}
+      {needRotate && (
+        <RotatePrompt
+          canLock={canLockLandscape()}
+          onRotate={() => { void enterLandscape(); }}
+          onKeep={() => setKeepPortrait(true)}
+        />
+      )}
+      {tourSteps && <GuidedTour steps={tourSteps} finishLabel="Bắt đầu thí nghiệm" onClose={closeTour} />}
     </div>
   );
 }

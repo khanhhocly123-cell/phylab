@@ -239,7 +239,7 @@ export default function StudentDrilldown({ token, classId, studentId, studentNam
                                 </td>
                                 <td className="py-2">
                                   {tr.balanced === false ? (
-                                    <span className="text-red-600 font-black">Chưa ⚠</span>
+                                    <span className="text-red-600 font-black">Chưa</span>
                                   ) : (
                                     <span className="text-[#137333]">Rồi ✓</span>
                                   )}

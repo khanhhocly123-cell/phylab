@@ -44,7 +44,7 @@ const Y_REST = FLOOR - 24;                    // trụ thép rơi hẳn xuống 
 
 const MODES = ["A", "B", "A+B", "A<->B", "T"];
 const MODE_LABEL = { "A": "A", "B": "B", "A+B": "A+B", "A<->B": "A↔B", "T": "T" };
-const MODE_ANGLE = { "A": -50, "B": -25, "A+B": 0, "A<->B": 25, "T": 50 };
+const MODE_ANGLE = { "A": -101, "B": -49, "A+B": 0, "A<->B": 50, "T": 101 }; // kim núm MODE trỏ đúng nhãn
 
 // icon: bản vẽ trong mech/MechParts.jsx (cùng hình với bàn thí nghiệm).
 const TOOLS = [
@@ -97,7 +97,7 @@ const magnetTerm = { x: RAILX - 30, y: Y0 - 4 };
 
 const zeroDisplay = (scale) => (0).toFixed((FREEFALL.scales[scale] || FREEFALL.scales.fine).dp);
 
-export default function FreeFallBench({ assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+export default function FreeFallBench({ assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute, onTour }) {
   // Mốc giáo viên giao (nếu có) là các quãng rơi BẮT BUỘC; ngoài ra học sinh đo tự do.
   const teacherTargets = useMemo(
     () => [...new Set((assignedSets?.freefall || []).map((item) => +Number(item.s).toFixed(2)).filter((v) => v > 0))].sort((a, b) => a - b),
@@ -376,14 +376,14 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
     const metNext = gs.length >= REQ.positions && spreadNext >= REQ.spread - 1e-9
       && teacherTargets.every((ts) => gs.some((g) => Math.abs(g.s - ts) < 0.005));
     const msgs = [
-      next.length === 1 && hit("first") && "📍 Lần đo đầu tiên đã lên đồ thị s–t²!",
-      next.length === 2 && hit("quick") && "⚡ Em đã thạo quy trình — mở khóa nút “Đo nhanh”!",
-      gs.length === 2 && hit("line") && "📈 Hai vị trí → đường thẳng qua gốc O đã hiện. Độ dốc của nó chính là g/2!",
-      same.items.length === 3 && hit("repeat") && `🔁 Đo lặp 3 lần ở ${cm(same.s)}: t lệch nhau ${same.spreadMs.toFixed(0)} ms — đó là sai số ngẫu nhiên. Lấy trung bình cho chắc!`,
-      !trial.steady && hit("unsteady") && "🌀 Lần này thả khi trụ còn đung đưa — điểm viền đỏ lệch khỏi đường thẳng. Xoá rồi đo lại nhé!",
-      spreadNext >= 0.4 && hit("spread") && "🎯 Các điểm trải rộng ≥ 40 cm — đường thẳng rất chắc chắn.",
-      metNext && hit("enough") && `✅ Đủ ${REQ.positions} vị trí: g ≈ ${f.g.toFixed(2)} m/s². Lưu vào Sổ Báo Cáo được rồi!`,
-      metNext && Math.abs(f.g - FREEFALL.g) / FREEFALL.g < 0.01 && hit("close") && "🏆 g của em lệch dưới 1% so với 9,80 m/s² — chuẩn như phòng thí nghiệm!",
+      next.length === 1 && hit("first") && "Lần đo đầu tiên đã lên đồ thị s–t²!",
+      next.length === 2 && hit("quick") && "Em đã thạo quy trình — mở khóa nút “Đo nhanh”!",
+      gs.length === 2 && hit("line") && "Hai vị trí → đường thẳng qua gốc O đã hiện. Độ dốc của nó chính là g/2!",
+      same.items.length === 3 && hit("repeat") && `Đo lặp 3 lần ở ${cm(same.s)}: t lệch nhau ${same.spreadMs.toFixed(0)} ms — đó là sai số ngẫu nhiên. Lấy trung bình cho chắc!`,
+      !trial.steady && hit("unsteady") && "Lần này thả khi trụ còn đung đưa — điểm viền đỏ lệch khỏi đường thẳng. Xoá rồi đo lại nhé!",
+      spreadNext >= 0.4 && hit("spread") && "Các điểm trải rộng ≥ 40 cm — đường thẳng rất chắc chắn.",
+      metNext && hit("enough") && `Đủ ${REQ.positions} vị trí: g ≈ ${f.g.toFixed(2)} m/s². Lưu vào Sổ Báo Cáo được rồi!`,
+      metNext && Math.abs(f.g - FREEFALL.g) / FREEFALL.g < 0.01 && hit("close") && "g của em lệch dưới 1% so với 9,80 m/s² — chuẩn như phòng thí nghiệm!",
     ].filter(Boolean);
     if (msgs.length) { flash({ text: msgs[msgs.length - 1], kind: "win" }, 4400); sound("win"); }
     else { flash(`Đã ghi: s = ${cm(trial.s)} · t = ${trial.t.toFixed(3)} s → g = ${trial.g.toFixed(2)} m/s²`); sound("record"); }
@@ -417,7 +417,7 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
   function discardRun() { resetTimer(); flash("Đã bỏ lần đo vừa rồi."); }
   function removeTrial(id) { setTrials((old) => old.filter((t) => t.id !== id)); }
 
-  /** ⚡ Đo nhanh: tự gắn trụ, Reset, chờ trụ đứng yên rồi thả (mở khóa sau 2 lần đo tay). */
+  /** Đo nhanh: tự gắn trụ, Reset, chờ trụ đứng yên rồi thả (mở khóa sau 2 lần đo tay). */
   function quickMeasure() {
     if (!quickUnlocked || rolling || justRolled || quickArmed) return;
     if (!setupDone) { flash("Hoàn tất thiết lập trước khi đo nhanh."); return; }
@@ -662,7 +662,7 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
       : {
           key: "record",
           title: "Ghi số liệu vừa đo",
-          hint: `t = ${led} s → g = ${liveG.toFixed(2)} m/s².${lastRun.steady ? "" : " ⚠ Trụ còn đung đưa lúc thả — số đo dễ lệch, nên bỏ lần này."}`,
+          hint: `t = ${led} s → g = ${liveG.toFixed(2)} m/s².${lastRun.steady ? "" : " Trụ còn đung đưa lúc thả — số đo dễ lệch, nên bỏ lần này."}`,
           primaryLabel: "Ghi số liệu",
         };
   } else if (reqMet) {
@@ -737,7 +737,7 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
   const hasLine = Boolean(fit) && groups.length >= 2;
   const gTip = !hasLine ? null
     : trials.some((t) => !t.steady) ? "Điểm viền đỏ (thả khi trụ còn đung đưa) kéo lệch g — xoá rồi đo lại."
-      : gDev < -0.004 ? "💡 g hơi nhỏ hơn 9,80 vì nam châm còn từ dư: trụ rời chậm ~1 ms nên t hơi lớn. Đo ở s lớn thì ảnh hưởng nhỏ hơn."
+      : gDev < -0.004 ? "g hơi nhỏ hơn 9,80 vì nam châm còn từ dư: trụ rời chậm ~1 ms nên t hơi lớn. Đo ở s lớn thì ảnh hưởng nhỏ hơn."
         : null;
   const canRecord = justRolled && !rolling && lastRun && !lastRun.accumulated;
 
@@ -761,7 +761,7 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
           {!justRolled && hasLine && (
             <div style={{ fontSize: 10.5, fontWeight: 900, color: Math.abs(gDev) < 0.01 ? C.good : C.orangeDk }}>{gDev >= 0 ? "+" : ""}{(gDev * 100).toFixed(1)}% so với 9,80</div>
           )}
-          {justRolled && lastRun && !lastRun.steady && !lastRun.accumulated && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B91C1C" }}>⚠ trụ còn đung đưa</div>}
+          {justRolled && lastRun && !lastRun.steady && !lastRun.accumulated && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B91C1C" }}>trụ còn đung đưa</div>}
         </div>
       </div>
       <div style={{ marginTop: 8 }}>
@@ -784,7 +784,7 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
               <Zap size={13} strokeWidth={2.6} /> {quickArmed ? "Đang chuẩn bị…" : "Đo nhanh"}
             </button>
           ) : (
-            <span style={{ fontSize: 10.5, color: C.sub, fontWeight: 700 }}>⚡ Ghi 2 lần bằng tay để mở khóa “Đo nhanh”.</span>
+            <span style={{ fontSize: 10.5, color: C.sub, fontWeight: 700 }}>Ghi 2 lần bằng tay để mở khóa “Đo nhanh”.</span>
           )}
         </div>
       )}
@@ -929,6 +929,7 @@ export default function FreeFallBench({ assignedSets, onExportNote, onBack, onRe
         onPrelab={onReplayPrelab}
         muted={muted}
         onToggleMute={speak ? onToggleMute : null}
+        onHelp={onTour}
         meta={fit && groups.length >= 2 ? <>g của em ≈ <b style={{ color: C.navy }}>{fit.g.toFixed(2)} m/s²</b></> : <>g chuẩn = <b style={{ color: C.ink }}>9,80 m/s²</b></>}
       />
 

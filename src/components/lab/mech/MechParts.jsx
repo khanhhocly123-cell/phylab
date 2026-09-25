@@ -300,16 +300,57 @@ const NO_PLUG = () => null;
  * Reset, gạt thang đo, ổ A/B/C, công tắc nguồn — gợi ý (HintBox) và dây nối vẫn khớp.
  * wires[sock] = nguồn đang cắm ở ổ đó; plugInfo(nguồn) → { text, color } | null (hàm cấp module để memo).
  */
+/* Toạ độ nhãn MODE trên mặt trước (cùng chỗ kim núm chỉ tới). */
+export const MC964_MODE_POS = { "A": [148, 56], "B": [157, 30], "A+B": [180, 22], "A↔B": [204, 30], "T": [212, 56] };
+/** Góc kim núm MODE (độ, 0 = thẳng lên, chiều kim đồng hồ dương) trỏ đúng vào nhãn. */
+export const mc964ModeAngle = (label) => {
+  const p = MC964_MODE_POS[label];
+  return p ? (Math.atan2(p[0] - 180, 50 - p[1]) * 180) / Math.PI : 0;
+};
+
+/**
+ * Prelab dùng thêm: onModePick(nhãn) chọn thẳng một MODE, onLed / onSocket(ổ) bấm để xem giải thích,
+ * focus = bộ phận cần thao tác ("knob" | "mode:A" | "reset" | "scale" | "led" | "socket:A" | "power") → vòng sáng cam nhấp nháy.
+ * @param {{ face?: "front" | "back", led?: string, counting?: boolean, modeAngle?: number, modeLabel?: string, scale?: string, scaleLabel?: string,
+ *   power?: boolean, wires?: Record<string, any>, plugInfo?: (src: any) => any, hotSockets?: boolean, interactive?: boolean,
+ *   onFlip?: () => void, onCycleMode?: () => void, onReset?: () => void, onToggleScale?: () => void, onTogglePower?: () => void, onUnplug?: (sock: string) => void,
+ *   onModePick?: ((label: string) => void) | null, onLed?: (() => void) | null, onSocket?: ((sock: string) => void) | null, focus?: string | null }} props
+ */
 export function MC964Face({ face = "front", led = "0.000", counting = false, modeAngle = 0, modeLabel = "", scale = "fine", scaleLabel = "",
   power = false, wires = NO_WIRES, plugInfo = NO_PLUG, hotSockets = false, interactive = true,
-  onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug }) {
+  onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug, onModePick = null, onLed = null, onSocket = null, focus = null }) {
   return (
     <g>
       <MC964Body face={face} modeAngle={modeAngle} modeLabel={modeLabel} scale={scale} scaleLabel={scaleLabel} power={power}
         wires={wires} plugInfo={plugInfo} hotSockets={hotSockets} interactive={interactive}
-        onFlip={onFlip} onCycleMode={onCycleMode} onReset={onReset} onToggleScale={onToggleScale} onTogglePower={onTogglePower} onUnplug={onUnplug} />
+        onFlip={onFlip} onCycleMode={onCycleMode} onReset={onReset} onToggleScale={onToggleScale} onTogglePower={onTogglePower} onUnplug={onUnplug}
+        onModePick={onModePick} onLed={onLed} onSocket={onSocket} />
       {face === "front" && <MC964Led led={led} counting={counting} />}
+      {focus && <MC964Focus face={face} focus={focus} />}
     </g>
+  );
+}
+
+/** Vòng sáng cam nhấp nháy quanh bộ phận cần thao tác (Prelab "thử tay"). */
+function MC964Focus({ face, focus }) {
+  const [kind, arg] = String(focus).split(":");
+  const front = { knob: ["c", 180, 50, 27], reset: ["c", 250, 48, 17], scale: ["r", 228, 92, 48, 24], led: ["r", 20, 19, 116, 59] };
+  const back = { power: ["r", 231, 19, 40, 60] };
+  let shape = null;
+  if (face === "front" && kind === "mode" && MC964_MODE_POS[arg]) shape = ["c", MC964_MODE_POS[arg][0], MC964_MODE_POS[arg][1] - 3, 12];
+  else if (face === "front" && front[kind]) shape = front[kind];
+  else if (face === "back" && kind === "socket" && MC964_SOCKETS[arg]) shape = ["c", MC964_SOCKETS[arg], 52, 22];
+  else if (face === "back" && back[kind]) shape = back[kind];
+  if (!shape) return null;
+  const common = { fill: "none", stroke: C.orange, strokeWidth: 3, strokeDasharray: "5 4", style: { pointerEvents: "none" } };
+  return shape[0] === "c" ? (
+    <circle cx={shape[1]} cy={shape[2]} r={shape[3]} {...common}>
+      <animate attributeName="r" values={`${shape[3]};${shape[3] + 4};${shape[3]}`} dur="1.1s" repeatCount="indefinite" />
+    </circle>
+  ) : (
+    <rect x={shape[1]} y={shape[2]} width={shape[3]} height={shape[4]} rx="8" {...common}>
+      <animate attributeName="opacity" values="1;0.35;1" dur="1.1s" repeatCount="indefinite" />
+    </rect>
   );
 }
 
@@ -331,7 +372,7 @@ function MC964Led({ led, counting }) {
 }
 
 const MC964Body = memo(function MC964Body({ face, modeAngle, modeLabel, scale, scaleLabel, power, wires, plugInfo, hotSockets, interactive,
-  onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug }) {
+  onFlip, onCycleMode, onReset, onToggleScale, onTogglePower, onUnplug, onModePick, onLed, onSocket }) {
   const sockets = MC964_SOCKETS;
   const plug = (s) => (wires[s] ? plugInfo(wires[s]) : null);
   const uid = useUid();
@@ -368,8 +409,10 @@ const MC964Body = memo(function MC964Body({ face, modeAngle, modeLabel, scale, s
         <>
           <text x="26" y="18" fontSize="7" fontWeight="900" fill="#8C8472" fontFamily={FONT} letterSpacing=".6">MC-964</text>
           {/* cửa sổ LED */}
-          <rect x="22" y="21" width="112" height="55" rx="6" fill="#1F2937" />
-          <rect x="26" y="24" width="104" height="48" rx="4" fill={`url(#${uid}-glass)`} stroke="#61252C" strokeWidth="1.6" />
+          <g {...hit(onLed)} role={interactive && onLed ? "button" : undefined} aria-label={interactive && onLed ? "Màn hình LED" : undefined}>
+            <rect x="22" y="21" width="112" height="55" rx="6" fill="#1F2937" />
+            <rect x="26" y="24" width="104" height="48" rx="4" fill={`url(#${uid}-glass)`} stroke="#61252C" strokeWidth="1.6" />
+          </g>
           <path d="M28 27 h100 l-18 10 h-82 z" fill="#fff" opacity=".05" />
           <text x="30" y="98" fontFamily={FONT} fontSize="15" fontStyle="italic" fontWeight="900" fill="#C0392B">Phylab</text>
           <text x="30" y="110" fontFamily={FONT} fontSize="7" fontWeight="800" fill="#8C8472">Đồng hồ hiện số · 0,001 s</text>
@@ -378,7 +421,12 @@ const MC964Body = memo(function MC964Body({ face, modeAngle, modeLabel, scale, s
           <g {...hit(onCycleMode)} role={interactive ? "button" : undefined} aria-label={interactive ? `Núm MODE đang ở ${modeLabel}; bấm để xoay` : undefined}>
             <circle cx="180" cy="50" r="30" fill="transparent" />
             <g fontFamily={FONT} fontSize="9" fontWeight="800" fill="#374151" textAnchor="middle">
-              <text x="148" y="56">A</text><text x="157" y="30">B</text><text x="180" y="22">A+B</text><text x="204" y="30">A↔B</text><text x="212" y="56">T</text>
+              {Object.entries(MC964_MODE_POS).map(([label, [x, y]]) => (
+                <g key={label} {...(interactive && onModePick ? { onClick: (e) => { e.stopPropagation(); onModePick(label); }, style: { cursor: "pointer" }, role: "button", "aria-label": `Chọn MODE ${label}` } : {})}>
+                  {interactive && onModePick && <circle cx={x} cy={y - 3} r="10" fill={label === modeLabel ? "#FFE8D2" : "transparent"} />}
+                  <text x={x} y={y} fill={label === modeLabel ? C.orangeDk : "#374151"} fontWeight={label === modeLabel ? 900 : 800}>{label}</text>
+                </g>
+              ))}
             </g>
             <circle cx="180" cy="50" r="21" fill="#9CA3AF" />
             <circle cx="180" cy="50" r="20" fill="none" stroke="#4B5563" strokeWidth="2.4" strokeDasharray="1.2 2.1" />
@@ -409,7 +457,7 @@ const MC964Body = memo(function MC964Body({ face, modeAngle, modeLabel, scale, s
             const p = plug(s);
             const hot = hotSockets && s !== "C";
             return (
-              <g key={s} {...hit(p ? () => onUnplug?.(s) : null)} role={interactive && p ? "button" : undefined} aria-label={interactive && p ? `Rút dây ở ổ ${s}` : undefined}>
+              <g key={s} {...hit(p ? () => onUnplug?.(s) : onSocket ? () => onSocket(s) : null)} role={interactive && (p || onSocket) ? "button" : undefined} aria-label={interactive && p ? `Rút dây ở ổ ${s}` : interactive && onSocket ? `Ổ cắm ${s}` : undefined}>
                 <circle cx={cx} cy="52" r="17" fill="#CBD2DA" stroke={hot ? C.orange : "#8B95A1"} strokeWidth={hot ? 3 : 1.2} />
                 <circle cx={cx} cy="52" r="13" fill="#1F2937" stroke="#0B0F19" />
                 <circle cx={cx} cy="52" r="7.5" fill="#0B0F19" />

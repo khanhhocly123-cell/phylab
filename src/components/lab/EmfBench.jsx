@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Power } from "lucide-react";
+import { Plus, Power } from "lucide-react";
 import { C, FONT } from "../../engine/tokens.js";
 import { seededCellEmf, flickerCount } from "../../engine/physicsElectric";
 import {
@@ -108,7 +108,7 @@ function meterText(read, shown) {
   if (read.mode === "µA") return read.overload ? "OL" : `${read.value.toFixed(0)} µA`;
   if (read.mode === "Ω") {
     const o = ohmDisplay(read.value);
-    return o.open ? "OL · hở mạch" : `${o.text} ${o.unit}${read.live ? " ⚠" : ""}`;
+    return o.open ? "OL · hở mạch" : `${o.text} ${o.unit}${read.live ? " (sai)" : ""}`;
   }
   return "----";
 }
@@ -125,7 +125,7 @@ function ohmEvent(read) {
   return null;
 }
 
-export default function EmfBench({ studentName, assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+export default function EmfBench({ studentName, assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute, onTour }) {
   const name = studentName || "Học sinh";
   // Mốc R giáo viên giao (nếu có) là các điểm bắt buộc phải có; ngoài ra đo tự do.
   const targets = useMemo(() => uniqSorted((assignedSets?.emf || []).map((item) => item.resistance)), [assignedSets]);
@@ -500,7 +500,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
       const test = solveBoard({ placements, wires, switchClosed: true, rheostat, cell: cellPhysics[cell], modes, metersPlaced, r0: 10 * (1 + 0.02 * heat.r0) });
       const over = [test.ammeter, test.voltmeter].find((r) => r.overload && (r.mode === "mA" || r.mode === "µA"));
       if (over) {
-        flash({ text: "⚠ Không đóng K được: dòng qua đồng hồ nấc mA sẽ quá lớn (cháy cầu chì) — ampe kế đang mắc song song với pin hoặc thiếu R₀. Kiểm tra lại mạch!", kind: "warn" }, false, 5200);
+        flash({ text: "Không đóng K được: dòng qua đồng hồ nấc mA sẽ quá lớn (cháy cầu chì) — ampe kế đang mắc song song với pin hoặc thiếu R₀. Kiểm tra lại mạch!", kind: "warn" }, false, 5200);
         sound("warn");
         return;
       }
@@ -528,12 +528,12 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     const spread = currents.length ? Math.max(...currents) - Math.min(...currents) : 0;
     const fit = linearFit(mine);
     const messages = [
-      allRows.length === 1 && hit("first", "📍 Điểm đầu tiên đã lên đồ thị!"),
-      mine.length === 2 && hit(`line-${cellId}`, `📈 ${CELL_NAMES[cellId]}: đường U–I đã hiện — nhìn chỗ nó cắt trục U!`),
-      spread >= 60 && hit(`spread-${cellId}`, "🎯 Các điểm trải rộng — đường thẳng rất chắc chắn."),
-      mine.length === EMF_MIN_POINTS && hit(`enough-${cellId}`, `🔋 Đủ ${EMF_MIN_POINTS} điểm ${CELL_NAMES[cellId].toLowerCase()}: E ≈ ${fit.emf.toFixed(3)} V · r ≈ ${fit.internalR.toFixed(2)} Ω`),
+      allRows.length === 1 && hit("first", "Điểm đầu tiên đã lên đồ thị!"),
+      mine.length === 2 && hit(`line-${cellId}`, `${CELL_NAMES[cellId]}: đường U–I đã hiện — nhìn chỗ nó cắt trục U!`),
+      spread >= 60 && hit(`spread-${cellId}`, "Các điểm trải rộng — đường thẳng rất chắc chắn."),
+      mine.length === EMF_MIN_POINTS && hit(`enough-${cellId}`, `Đủ ${EMF_MIN_POINTS} điểm ${CELL_NAMES[cellId].toLowerCase()}: E ≈ ${fit.emf.toFixed(3)} V · r ≈ ${fit.internalR.toFixed(2)} Ω`),
       allRows.filter((row) => row.cell === "new").length >= 2 && allRows.filter((row) => row.cell === "old").length >= 2
-        && hit("compare", "⚖️ So hai đường: pin cũ dốc hơn → điện trở trong lớn hơn!"),
+        && hit("compare", "So hai đường: pin cũ dốc hơn → điện trở trong lớn hơn!"),
     ].filter(Boolean);
     if (messages.length) { flash({ text: messages[messages.length - 1], kind: "win" }, false, 4400); sound("win"); }
     else { flash(`Đã ghi điểm R = ${resistance} Ω (${mine.length} điểm ${CELL_NAMES[cellId].toLowerCase()}).`); sound("record"); }
@@ -547,8 +547,8 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     milestones.current.add("closed-loop");
     const id = window.setTimeout(() => {
       flash({ text: jumpers === 0
-        ? "⚡ Mạch khép kín! Pin → K → R₀ → biến trở nối tiếp nhau NGAY TRÊN BẢNG — các chân cắm chung mạng nên không tốn sợi dây nào."
-        : `⚡ Mạch khép kín! Bảng mạch nối các chân cắm chung mạng, ${jumpers} dây nối tắt nối các mạng còn lại.`, kind: "win" }, false, 5200);
+        ? "Mạch khép kín! Pin → K → R₀ → biến trở nối tiếp nhau NGAY TRÊN BẢNG — các chân cắm chung mạng nên không tốn sợi dây nào."
+        : `Mạch khép kín! Bảng mạch nối các chân cắm chung mạng, ${jumpers} dây nối tắt nối các mạng còn lại.`, kind: "win" }, false, 5200);
       sound("win");
     }, 0);
     return () => window.clearTimeout(id);
@@ -557,7 +557,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
   useEffect(() => {
     if (!openReadsE || milestones.current.has("open-E")) return;
     milestones.current.add("open-E");
-    const id = window.setTimeout(() => flash({ text: `🔋 K đang mở → không có dòng điện → vôn kế chỉ đúng E ≈ ${vmRead.value.toFixed(3)} V. Đóng K xem U tụt xuống!`, kind: "win" }, false, 5200), 900);
+    const id = window.setTimeout(() => flash({ text: `K đang mở → không có dòng điện → vôn kế chỉ đúng E ≈ ${vmRead.value.toFixed(3)} V. Đóng K xem U tụt xuống!`, kind: "win" }, false, 5200), 900);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openReadsE]);
@@ -566,7 +566,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
   useEffect(() => {
     if (!r0Hot || milestones.current.has("r0-hot")) return;
     milestones.current.add("r0-hot");
-    const id = window.setTimeout(() => flash({ text: "🔥 R₀ đang nóng lên (P = I²R). Nhờ R₀ mà dòng điện không quá lớn làm hỏng pin và đồng hồ. Đo xong nhớ mở K cho nguội!", kind: "warn" }, false, 5200), 0);
+    const id = window.setTimeout(() => flash({ text: "R₀ đang nóng lên (P = I²R). Nhờ R₀ mà dòng điện không quá lớn làm hỏng pin và đồng hồ. Đo xong nhớ mở K cho nguội!", kind: "warn" }, false, 5200), 0);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [r0Hot]);
@@ -579,11 +579,11 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
     milestones.current.add(`ohm-${ohmKey}`);
     const o = ohmDisplay(ohmMeter.value);
     const note = {
-      battery: { text: "🔋 Ôm kế KHÔNG đo được điện trở trong r của pin: pin tự có suất điện động nên số Ω chỉ là số ảo. Vì vậy bài này phải đo U và I rồi suy ra E, r!", kind: "warn" },
-      live: { text: "⚠ Đang đo Ω trên đoạn mạch còn điện (có nguồn trong vòng đo) — số chỉ SAI và dễ hỏng đồng hồ. Mở K / tách nguồn rồi mới đo điện trở.", kind: "warn" },
-      protect: { text: `🔎 Ôm kế đo R₀ = ${o.text} ${o.unit} — đúng giá trị ghi trên điện trở bảo vệ. R₀ nóng lên thì số này tăng nhẹ!`, kind: "win" },
-      rheostat: { text: `🔎 Ôm kế đo biến trở: ${o.text} ${o.unit}. Kéo con chạy — số Ω đổi theo đúng R(AC).`, kind: "win" },
-      switch: { text: "🔎 Khóa K đóng: ôm kế chỉ ≈ 0 Ω (thông mạch). Khóa hở thì điện trở rất lớn.", kind: "win" },
+      battery: { text: "Ôm kế KHÔNG đo được điện trở trong r của pin: pin tự có suất điện động nên số Ω chỉ là số ảo. Vì vậy bài này phải đo U và I rồi suy ra E, r!", kind: "warn" },
+      live: { text: "Đang đo Ω trên đoạn mạch còn điện (có nguồn trong vòng đo) — số chỉ SAI và dễ hỏng đồng hồ. Mở K / tách nguồn rồi mới đo điện trở.", kind: "warn" },
+      protect: { text: `Ôm kế đo R₀ = ${o.text} ${o.unit} — đúng giá trị ghi trên điện trở bảo vệ. R₀ nóng lên thì số này tăng nhẹ!`, kind: "win" },
+      rheostat: { text: `Ôm kế đo biến trở: ${o.text} ${o.unit}. Kéo con chạy — số Ω đổi theo đúng R(AC).`, kind: "win" },
+      switch: { text: "Khóa K đóng: ôm kế chỉ ≈ 0 Ω (thông mạch). Khóa hở thì điện trở rất lớn.", kind: "win" },
     }[ohmKey];
     const id = window.setTimeout(() => { flash(note, false, 5600); sound(note.kind === "warn" ? "warn" : "win"); }, 0);
     return () => window.clearTimeout(id);
@@ -844,7 +844,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
         <div style={{ flex: 1, minWidth: 0, fontFamily: "monospace", fontWeight: 900, lineHeight: 1.3 }}>
           <div style={{ fontSize: 15, color: live ? C.ink : amRead.mode === "Ω" ? C.navy : C.sub }}><span style={meterTag}>ĐO1</span>{meterText(amRead, ammeterShown)}</div>
           <div style={{ fontSize: 15, color: vmRead.mode === "V" ? C.ink : vmRead.mode === "Ω" ? C.navy : C.sub }}><span style={meterTag}>ĐO2</span>{meterText(vmRead, voltmeterShown)}</div>
-          {ohmMeter?.live && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B45309", fontFamily: FONT }}>⚠ Nấc Ω trên đoạn mạch còn điện — số chỉ sai</div>}
+          {ohmMeter?.live && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B45309", fontFamily: FONT }}>Nấc Ω trên đoạn mạch còn điện — số chỉ sai</div>}
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={miniLabel}>Biến trở trong mạch</div>
@@ -917,7 +917,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
             ? ["new", "old"].filter((id) => fits[id]).map((id) => `${CELL_NAMES[id]}: E ≈ ${fits[id].emf.toFixed(3)} V · r ≈ ${fits[id].internalR.toFixed(2)} Ω`).join("  |  ")
             : live ? "Kéo con chạy: chấm vàng trượt theo — bấm “Ghi điểm” để giữ lại." : "Khi K mở, chấm vàng nằm trên trục U đúng tại E."}
         </span>
-        <button type="button" onClick={record} disabled={!live} style={{ ...ghostPrimary, opacity: live ? 1 : 0.45, cursor: live ? "pointer" : "not-allowed" }}>📍 Ghi điểm</button>
+        <button type="button" onClick={record} disabled={!live} style={{ ...ghostPrimary, opacity: live ? 1 : 0.45, cursor: live ? "pointer" : "not-allowed" }}><Plus size={13} strokeWidth={3} /> Ghi điểm</button>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
         <EmfGraph rows={rows} fits={emfFits} live={emfLivePoint} activeCell={cell} compact={isMobile} tall={isMobile && isPortrait} />
@@ -964,10 +964,11 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
         onRestart={reset}
         muted={muted}
         onToggleMute={speak ? onToggleMute : null}
+        onHelp={onTour}
       />
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: isMobile ? (showTray ? "86px minmax(0,1fr)" : "minmax(0,1fr)") : (showTray ? "clamp(185px,13vw,225px) minmax(0,1fr) clamp(320px,23vw,390px)" : "minmax(0,1fr) clamp(320px,23vw,390px)"), overflow: "hidden", position: "relative" }}>
         {showTray && (
-          <aside data-lab-scroll style={{ borderRight: `1px solid ${C.line}`, padding: isMobile ? 4 : 9, overflowY: "auto", background: "#fff" }}>
+          <aside data-lab-tooltray data-lab-scroll style={{ borderRight: `1px solid ${C.line}`, padding: isMobile ? 4 : 9, overflowY: "auto", background: "#fff" }}>
             {isMobile ? (
               <div style={{ borderRadius: 9, background: C.peachLt, color: C.orangeDk, padding: "5px 4px", marginBottom: 5, fontSize: 9, fontWeight: 900, textAlign: "center" }}>DỤNG CỤ · {placed.size}/{TOOLS.length}</div>
             ) : (
@@ -996,7 +997,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
             })}
           </aside>
         )}
-        <main ref={mainRef} style={{ position: "relative", minWidth: 0, minHeight: 0, padding: isMobile ? 3 : 8, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -4, display: "flex", flexDirection: "column", gap: 8 }}>
+        <main ref={mainRef} data-lab-stage style={{ position: "relative", minWidth: 0, minHeight: 0, padding: isMobile ? 3 : 8, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -4, display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={portraitStack ? { flex: "0 0 auto", height: sceneH } : { flex: "1 1 0", minHeight: 0 }}>
             <EmfScene
               placed={placed} placements={placements} wires={wires} pending={pending} wireDrag={wireDrag} partDrag={partDrag}
@@ -1030,7 +1031,7 @@ export default function EmfBench({ studentName, assignedSets, onExportNote, onBa
           )}
         </main>
         {!isMobile && (
-          <aside style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+          <aside data-lab-guide style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
             <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 10 }}>{panelContent}</div>
             <div style={{ padding: 12, borderTop: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }}>{finishButton}</div>
           </aside>

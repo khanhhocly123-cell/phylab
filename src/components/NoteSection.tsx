@@ -229,19 +229,21 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
         </div>
         <LessonPicker value={activeLesson} options={lessonOptions} onChange={changeLesson}
           markOf={(id) => (labData?.lessonId === id && labData.trials.length > 0 ? "fresh" : reports.some((r) => r.lessonId === id) ? "saved" : null)} />
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-2xl border border-[#E2DFD8] bg-white p-1">
+        <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
+          <div data-tour="notes-views" className="flex-1 sm:flex-none flex items-center gap-1 rounded-2xl border border-[#E2DFD8] bg-white p-1">
             {([["book", "Sổ tay", Table], ["report", "Báo cáo", FileText], ["review", "Ôn tập", GraduationCap]] as const).map(([key, label, Icon]) => (
               <button key={key} onClick={() => setView(key)} role="tab" aria-selected={view === key}
-                className={`px-2.5 py-1.5 rounded-xl text-[12px] font-black flex items-center gap-1 cursor-pointer transition-all ${view === key ? "bg-[#321E12] text-white" : "text-[#605248] hover:bg-[#FBF6EC]"}`}>
+                className={`flex-1 sm:flex-none justify-center whitespace-nowrap px-2.5 py-1.5 rounded-xl text-[12px] font-black flex items-center gap-1 cursor-pointer transition-all ${view === key ? "bg-[#321E12] text-white" : "text-[#605248] hover:bg-[#FBF6EC]"}`}>
                 <Icon className="w-3.5 h-3.5" /> {label}
               </button>
             ))}
           </div>
           {view !== "review" && (
-            <button onClick={handleSave} disabled={isDemo || !trials.length}
-              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-[12px] font-black flex items-center gap-1.5 cursor-pointer shadow-[0_6px_14px_rgba(200,90,23,.25)] disabled:opacity-40 disabled:cursor-not-allowed">
-              {savedAt ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />} {savedAt ? "Đã lưu" : hasAssignment ? "Lưu & nộp" : "Lưu báo cáo"}
+            <button onClick={handleSave} disabled={isDemo || !trials.length} data-tour="notes-save"
+              className="h-9 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-[#DF742E] to-[#B24A0C] text-white text-[12px] font-black flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-[0_6px_14px_rgba(200,90,23,.25)] disabled:opacity-40 disabled:cursor-not-allowed">
+              {savedAt ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              <span className="sm:hidden">{savedAt ? "Đã lưu" : "Lưu"}</span>
+              <span className="hidden sm:inline">{savedAt ? "Đã lưu" : hasAssignment ? "Lưu & nộp" : "Lưu báo cáo"}</span>
             </button>
           )}
         </div>
@@ -267,7 +269,7 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] gap-3">
             <div className="min-h-0 flex flex-col gap-3 order-2 lg:order-1">
               <ResultHero lessonId={activeLesson} chart={chart} samples={samples} results={results} />
-              <section className="flex-1 min-h-[220px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] flex flex-col overflow-hidden">
+              <section data-tour="notes-table" className="flex-1 min-h-[220px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] flex flex-col overflow-hidden">
                 <div className="flex items-center gap-2 px-3 pt-2.5 pb-2 border-b border-[#F1EBE0]">
                   <Table className="w-4 h-4 text-[#C85A17]" />
                   <h3 className="text-[13px] font-black">Bảng số liệu</h3>
@@ -280,7 +282,7 @@ export default function NoteSection({ reports, labData, studentName, hasAssignme
                 </div>
               </section>
             </div>
-            <section className="order-1 lg:order-2 min-h-[380px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] p-3 flex flex-col gap-2">
+            <section data-tour="notes-graph" className="order-1 lg:order-2 min-h-[380px] lg:min-h-0 rounded-2xl bg-white border border-[#E2DFD8] p-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <LineChartIcon className="w-4 h-4 text-[#C85A17]" />
                 <h3 className="text-[13px] font-black">Đồ thị</h3>
@@ -334,7 +336,7 @@ function LessonPicker({ value, options, onChange, markOf }: { value: string; opt
     return m ? <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${m === "fresh" ? "bg-[#DF742E]" : "bg-[#2E7D32]"}`} title={m === "fresh" ? "Có số liệu mới" : "Đã có báo cáo"} /> : null;
   };
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" data-tour="notes-picker">
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}
         className="h-10 pl-1.5 pr-2.5 rounded-2xl border border-[#E2DFD8] bg-white hover:border-[#DF742E]/50 flex items-center gap-2 cursor-pointer max-w-[78vw]">
         {current?.image
@@ -408,7 +410,7 @@ function DotStrip({ values, mean, refValue, color, unit, dp }: { values: number[
 }
 
 function HeroCard({ children }: { children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-[#EBC9A8] bg-[linear-gradient(135deg,#FFF8F0,#FFEFDF)] p-3 flex flex-col gap-2">{children}</section>;
+  return <section data-tour="notes-hero" className="rounded-2xl border border-[#EBC9A8] bg-[linear-gradient(135deg,#FFF8F0,#FFEFDF)] p-3 flex flex-col gap-2">{children}</section>;
 }
 function Metric({ label, value, unit, sub, color = "#C85A17" }: { label: string; value: string; unit: string; sub?: string; color?: string }) {
   return (
@@ -548,7 +550,7 @@ function SampleTable({ lab, rows, results, onChange }: { lab: LabKind; rows: Ric
             return (
               <tr key={i} className="font-bold text-[#321E12] odd:bg-[#FBF8F3]">
                 <td className="py-1 pl-1 text-[#B5A590] font-black rounded-l-lg">
-                  {warn ? <span title={r.balanced === false ? "Chưa cân bằng" : "Thả khi còn rung"} className="text-[#B45309]">⚠</span> : i + 1}
+                  {warn ? <span title={r.balanced === false ? "Chưa cân bằng" : "Thả khi còn rung"} className="text-[#B45309] inline-flex"><AlertTriangle className="w-3.5 h-3.5" /></span> : i + 1}
                 </td>
                 {cols.map((c) => {
                   const v = c.get(r);

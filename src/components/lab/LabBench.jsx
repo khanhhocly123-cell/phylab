@@ -46,7 +46,7 @@ const RAIL_END_X = 766;          // đầu thấp của thước/ray (local)
 
 const MODES = ["A", "B", "A+B", "A<->B", "T"];
 const MODE_LABEL = { "A": "A", "B": "B", "A+B": "A+B", "A<->B": "A↔B", "T": "T" };
-const MODE_ANGLE = { "A": -50, "B": -25, "A+B": 0, "A<->B": 25, "T": 50 };
+const MODE_ANGLE = { "A": -101, "B": -49, "A+B": 0, "A<->B": 50, "T": 101 }; // kim núm MODE trỏ đúng nhãn
 
 // icon: bản vẽ trong mech/MechParts.jsx (cùng hình với bàn thí nghiệm).
 const TOOLS = [
@@ -135,7 +135,7 @@ const L_E = PATH.uAtX(gateLocalX(LAB6.sE)) * PATH.total;
 const X_END = LAB6.sE + (PATH.total - L_E) / PXM;
 const uOfX = (x) => clamp((x <= LAB6.sE ? (Math.max(0, x) / LAB6.sE) * L_E : L_E + (x - LAB6.sE) * PXM) / PATH.total, 0, 1);
 
-export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute, onTour }) {
   // Mốc giáo viên giao (nếu có) là cấu hình BẮT BUỘC; ngoài ra học sinh đo tự do.
   const teacherAvg = useMemo(() => (assignedSets?.average || []).map((t) => ({ theta: Number(t.theta), sEF: +Number(t.sEF).toFixed(2) })), [assignedSets]);
   const teacherInst = useMemo(() => [...new Set((assignedSets?.instant || []).map((t) => Number(t.theta)))], [assignedSets]);
@@ -475,16 +475,16 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
       && teacherAvg.every((tg) => next.some((t) => t.lab === "average" && Math.abs(t.theta - tg.theta) < 0.5 && Math.abs(t.sEF - tg.sEF) < 0.005))
       && teacherInst.every((th) => next.some((t) => t.lab === "instant" && Math.abs(t.theta - th) < 0.5));
     const msgs = [
-      next.length === 1 && hit("first") && `📍 Lần đo đầu tiên: v = ${trial.v.toFixed(3)} m/s — điểm đã lên đồ thị!`,
-      next.length === 2 && hit("quick") && "⚡ Em đã thạo quy trình — mở khóa nút “Đo nhanh”!",
-      trial.lab === "average" && distinct.length === 2 && hit(`pair-${key}`) && `📈 Cùng góc ${key}°: sEF dài hơn thì v_tb lớn hơn — vì bi đang NHANH DẦN trên máng!`,
-      trial.lab === "average" && distinct.length === REQ.series && hit(`series-${key}`) && `🔭 Đủ 3 khoảng sEF ở ${key}°: đường kéo dài tới sEF = 0 cho biết tốc độ tức thời tại E. Giờ thử MODE A để kiểm chứng!`,
-      trial.lab === "instant" && instAll.length === 1 && hit("instFirst") && `⏱ MODE A: bi che cổng E trong ${trial.t.toFixed(3)} s → v = d/t = ${trial.v.toFixed(2)} m/s.`,
-      trial.lab === "instant" && inst.length === 3 && new Set(inst.map((t) => t.t)).size <= 2 && hit("resolution") && "🔢 Bi che cổng chỉ ~0,01 s nên t chỉ có 2 chữ số có nghĩa — v tức thời tản nhiều. Đo lặp rồi lấy trung bình!",
-      match != null && match < 0.06 && hit(`match-${key}`) && `✨ Khớp! v tức thời đo bằng MODE A (${vA.toFixed(2)}) ≈ v_tb kéo dài tới sEF = 0 (${fit.a.toFixed(2)} m/s): tốc độ tức thời = tốc độ trung bình trên quãng RẤT NGẮN.`,
-      !trial.balanced && hit("unbalanced") && "⚠ Đo khi máng chưa cân bằng: bi cọ thành máng nên chậm hẳn — thấy điểm viền đỏ lệch chưa?",
-      !trial.steady && trial.balanced && hit("unsteady") && "🌀 Vừa đổi góc đã thả: máng/dây dọi còn rung nên số đo tản mạnh. Chờ dây dọi đứng yên rồi thả!",
-      doneNext && hit("done") && "✅ Đủ số liệu cả hai phần — lưu vào Sổ Báo Cáo được rồi!",
+      next.length === 1 && hit("first") && `Lần đo đầu tiên: v = ${trial.v.toFixed(3)} m/s — điểm đã lên đồ thị!`,
+      next.length === 2 && hit("quick") && "Em đã thạo quy trình — mở khóa nút “Đo nhanh”!",
+      trial.lab === "average" && distinct.length === 2 && hit(`pair-${key}`) && `Cùng góc ${key}°: sEF dài hơn thì v_tb lớn hơn — vì bi đang NHANH DẦN trên máng!`,
+      trial.lab === "average" && distinct.length === REQ.series && hit(`series-${key}`) && `Đủ 3 khoảng sEF ở ${key}°: đường kéo dài tới sEF = 0 cho biết tốc độ tức thời tại E. Giờ thử MODE A để kiểm chứng!`,
+      trial.lab === "instant" && instAll.length === 1 && hit("instFirst") && `MODE A: bi che cổng E trong ${trial.t.toFixed(3)} s → v = d/t = ${trial.v.toFixed(2)} m/s.`,
+      trial.lab === "instant" && inst.length === 3 && new Set(inst.map((t) => t.t)).size <= 2 && hit("resolution") && "Bi che cổng chỉ ~0,01 s nên t chỉ có 2 chữ số có nghĩa — v tức thời tản nhiều. Đo lặp rồi lấy trung bình!",
+      match != null && match < 0.06 && hit(`match-${key}`) && `Khớp! v tức thời đo bằng MODE A (${vA.toFixed(2)}) ≈ v_tb kéo dài tới sEF = 0 (${fit.a.toFixed(2)} m/s): tốc độ tức thời = tốc độ trung bình trên quãng RẤT NGẮN.`,
+      !trial.balanced && hit("unbalanced") && "Đo khi máng chưa cân bằng: bi cọ thành máng nên chậm hẳn — thấy điểm viền đỏ lệch chưa?",
+      !trial.steady && trial.balanced && hit("unsteady") && "Vừa đổi góc đã thả: máng/dây dọi còn rung nên số đo tản mạnh. Chờ dây dọi đứng yên rồi thả!",
+      doneNext && hit("done") && "Đủ số liệu cả hai phần — lưu vào Sổ Báo Cáo được rồi!",
     ].filter(Boolean);
     if (msgs.length) { flash({ text: msgs[msgs.length - 1], kind: "win" }, 4800); sound("win"); }
     else { flash(`Đã ghi: ${trial.lab === "average" ? `θ ${key}° · sEF ${cmKey(trial.sEF)} cm` : `θ ${key}° · MODE A`} → v = ${trial.v.toFixed(3)} m/s`); sound("record"); }
@@ -531,7 +531,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
   function discardRun() { resetTimer(); flash("Đã bỏ lần đo vừa rồi."); }
   function removeTrial(id) { setTrials((old) => old.filter((t) => t.id !== id)); }
 
-  /** ⚡ Đo nhanh: tự đưa bi về, Reset, chờ dây dọi đứng yên rồi thả (mở khóa sau 2 lần đo tay). */
+  /** Đo nhanh: tự đưa bi về, Reset, chờ dây dọi đứng yên rồi thả (mở khóa sau 2 lần đo tay). */
   function quickMeasure() {
     if (!quickUnlocked || rolling || justRolled || quickArmed) return;
     if (!setupDone) { flash("Hoàn tất thiết lập trước khi đo nhanh."); return; }
@@ -778,7 +778,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
         : {
             key: "record",
             title: "Ghi số liệu vừa đo",
-            hint: `t = ${led} s → v = ${lastRun.part === "average" ? "sEF" : "d"}/t = ${liveV.toFixed(3)} m/s.${lastRun.steady ? "" : " ⚠ Thả khi máng còn rung — nên bỏ lần này."}`,
+            hint: `t = ${led} s → v = ${lastRun.part === "average" ? "sEF" : "d"}/t = ${liveV.toFixed(3)} m/s.${lastRun.steady ? "" : " Thả khi máng còn rung — nên bỏ lần này."}`,
             primaryLabel: "Ghi số liệu",
           };
   } else if (allDone) {
@@ -901,7 +901,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
               <Zap size={13} strokeWidth={2.6} /> {quickArmed ? "Đang chuẩn bị…" : "Đo nhanh"}
             </button>
           ) : (
-            <span style={{ fontSize: 10.5, color: C.sub, fontWeight: 700 }}>⚡ Ghi 2 lần bằng tay để mở khóa “Đo nhanh”.</span>
+            <span style={{ fontSize: 10.5, color: C.sub, fontWeight: 700 }}>Ghi 2 lần bằng tay để mở khóa “Đo nhanh”.</span>
           )}
         </div>
       )}
@@ -1077,6 +1077,7 @@ export default function LabBench({ measuredD = 20.0, assignedSets, onExportNote,
         onPrelab={onReplayPrelab}
         muted={muted}
         onToggleMute={speak ? onToggleMute : null}
+        onHelp={onTour}
         center={assembled ? partChips : null}
         meta={<>d = <b style={{ color: C.ink }}>{measuredD.toFixed(2)} mm</b></>}
       />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Power } from "lucide-react";
+import { Power, Thermometer } from "lucide-react";
 import { C, FONT } from "../../engine/tokens.js";
 import { OHM_CONDUCTORS, OHM_SETUP, ohmCircuit, heatedResistance, stepHeat, flickerCount } from "../../engine/physicsElectric";
 import {
@@ -106,13 +106,13 @@ function fitResistance(rows) {
 }
 
 const heatWord = (h) => (h < 0.12 ? "nguội" : h < 0.35 ? "hơi ấm" : h < 0.6 ? "ấm lên" : "nóng!");
-/** Số đo ôm kế ở thẻ đo: tự đổi thang, hở mạch → OL, mạch còn điện → ⚠. */
+/** Số đo ôm kế ở thẻ đo: tự đổi thang, hở mạch → OL, mạch còn điện → "(sai)". */
 function ohmText(o) {
   const d = ohmDisplay(o.value);
-  return d.open ? "OL · hở mạch" : `${d.text} ${d.unit}${o.live ? " ⚠" : ""}`;
+  return d.open ? "OL · hở mạch" : `${d.text} ${d.unit}${o.live ? " (sai)" : ""}`;
 }
 
-export default function ElectricalBench({ assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute }) {
+export default function ElectricalBench({ assignedSets, onExportNote, onBack, onReplayPrelab, speak, muted, onToggleMute, onTour }) {
   // Toạ độ chốt nối TÍNH từ hình học linh kiện + bố cục.
   const ports = useMemo(() => Object.fromEntries(
     Object.entries(PORTS).map(([id, def]) => {
@@ -235,8 +235,8 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
     milestones.current.add(`ohm-${ohmKey}`);
     const o = ohmDisplay(vmOhm.value);
     const note = ohmKey === "live"
-      ? { text: "⚠ Không đo Ω khi mạch đang có điện: nguồn đặt điện áp lên vật dẫn nên số chỉ SAI (và dễ hỏng đồng hồ). Mở K hoặc tắt nguồn trước.", kind: "warn" }
-      : { text: `🔎 Ôm kế đo thẳng vật dẫn ${material}: R ≈ ${o.text} ${o.unit}. So với R = U/I em tính từ số đo — gần bằng nhau! Vật dẫn nóng thì số này tăng.`, kind: "win" };
+      ? { text: "Không đo Ω khi mạch đang có điện: nguồn đặt điện áp lên vật dẫn nên số chỉ SAI (và dễ hỏng đồng hồ). Mở K hoặc tắt nguồn trước.", kind: "warn" }
+      : { text: `Ôm kế đo thẳng vật dẫn ${material}: R ≈ ${o.text} ${o.unit}. So với R = U/I em tính từ số đo — gần bằng nhau! Vật dẫn nóng thì số này tăng.`, kind: "win" };
     const id = window.setTimeout(() => { flash(note, false, 5600); sound(note.kind === "warn" ? "warn" : "win"); }, 0);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,13 +419,13 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
     const us = mine.map((r) => r.voltage);
     const doneNow = mine.length >= REQ.points && Math.max(...us) - Math.min(...us) >= REQ.span - 1e-9;
     const messages = [
-      allRows.length === 1 && hit("first") && "📍 Điểm (U, I) đầu tiên đã lên đồ thị!",
-      Math.abs(row.voltage - row.setting) > 0.08 && hit("knob") && `🔎 Để ý: núm nguồn chỉ ${row.setting.toFixed(1)} V nhưng vôn kế đo ${row.voltage.toFixed(2)} V — một phần điện áp rơi trên ampe kế và dây nối. Luôn ghi số của VÔN KẾ!`,
-      mine.length === 2 && hit(`line-${row.material}`) && "📈 Các điểm nằm trên một đường thẳng qua gốc O: I tỉ lệ thuận với U!",
-      row.heat > 0.3 && hit("hot") && { text: "🔥 Vật dẫn đang nóng lên → R tăng, I tụt dần (điểm viền đỏ). Mở K vài giây cho nguội rồi đo tiếp để số liệu ổn định!", kind: "warn" },
-      doneNow && hit(`done-${row.material}`) && `✅ Đủ ${REQ.points} điểm vật dẫn ${row.material}: R ≈ ${fit.toFixed(1)} Ω.`,
-      bothTwo && hit("compare") && "⚖️ Đường nào DỐC hơn thì điện trở NHỎ hơn: vật dẫn X dốc hơn Y → R_X < R_Y.",
-      doneNow && mine.every((r) => r.heat < 0.12) && hit(`cool-${row.material}`) && `🧊 Số liệu vật dẫn ${row.material} rất ổn định: em luôn đo khi vật dẫn còn nguội!`,
+      allRows.length === 1 && hit("first") && "Điểm (U, I) đầu tiên đã lên đồ thị!",
+      Math.abs(row.voltage - row.setting) > 0.08 && hit("knob") && `Để ý: núm nguồn chỉ ${row.setting.toFixed(1)} V nhưng vôn kế đo ${row.voltage.toFixed(2)} V — một phần điện áp rơi trên ampe kế và dây nối. Luôn ghi số của VÔN KẾ!`,
+      mine.length === 2 && hit(`line-${row.material}`) && "Các điểm nằm trên một đường thẳng qua gốc O: I tỉ lệ thuận với U!",
+      row.heat > 0.3 && hit("hot") && { text: "Vật dẫn đang nóng lên → R tăng, I tụt dần (điểm viền đỏ). Mở K vài giây cho nguội rồi đo tiếp để số liệu ổn định!", kind: "warn" },
+      doneNow && hit(`done-${row.material}`) && `Đủ ${REQ.points} điểm vật dẫn ${row.material}: R ≈ ${fit.toFixed(1)} Ω.`,
+      bothTwo && hit("compare") && "Đường nào DỐC hơn thì điện trở NHỎ hơn: vật dẫn X dốc hơn Y → R_X < R_Y.",
+      doneNow && mine.every((r) => r.heat < 0.12) && hit(`cool-${row.material}`) && `Số liệu vật dẫn ${row.material} rất ổn định: em luôn đo khi vật dẫn còn nguội!`,
     ].filter(Boolean);
     const last = messages[messages.length - 1];
     if (last) { flash(typeof last === "string" ? { text: last, kind: "win" } : last, false, 4800); sound(last.kind === "warn" ? "warn" : "win"); }
@@ -660,12 +660,12 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
         <div style={{ flex: 1, minWidth: 0, fontFamily: "monospace", fontWeight: 900, lineHeight: 1.3 }}>
           <div style={{ fontSize: 15, color: live ? C.ink : amOhm ? C.navy : C.sub }}><span style={meterTag}>ĐO1</span>{amOhm ? ohmText(amOhm) : live ? `${ammeterShown.toFixed(1)} mA` : "----"}</div>
           <div style={{ fontSize: 15, color: live ? C.ink : vmOhm ? C.navy : C.sub }}><span style={meterTag}>ĐO2</span>{vmOhm ? ohmText(vmOhm) : live ? `${voltmeterShown.toFixed(3)} V` : "----"}</div>
-          {vmOhm?.live && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B45309", fontFamily: FONT }}>⚠ Nấc Ω khi mạch còn điện — số chỉ sai</div>}
+          {vmOhm?.live && <div style={{ fontSize: 10.5, fontWeight: 900, color: "#B45309", fontFamily: FONT }}>Nấc Ω khi mạch còn điện — số chỉ sai</div>}
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={miniLabel}>R = U / I</div>
           <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 900, color: COLORS[material], lineHeight: 1.1, whiteSpace: "nowrap" }}>{rShown ? `${rShown.toFixed(1)} Ω` : "—"}</div>
-          <div style={{ fontSize: 10.5, fontWeight: 900, color: heat[material] > 0.35 ? "#C2410C" : heat[material] > 0.12 ? C.orangeDk : C.sub }}>🌡 {heatWord(heat[material])}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 900, color: heat[material] > 0.35 ? "#C2410C" : heat[material] > 0.12 ? C.orangeDk : C.sub }}><Thermometer size={11} strokeWidth={2.8} style={{ display: "inline", verticalAlign: "-1px" }} /> {heatWord(heat[material])}</div>
         </div>
       </div>
       <div style={{ marginTop: 8 }}>
@@ -797,11 +797,12 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
         onRestart={reset}
         muted={muted}
         onToggleMute={speak ? onToggleMute : null}
+        onHelp={onTour}
         meta={fits.X || fits.Y ? <>R của em: <b style={{ color: C.ink }}>{fits.X ? `X ≈ ${fits.X.toFixed(0)}` : ""}{fits.X && fits.Y ? " · " : ""}{fits.Y ? `Y ≈ ${fits.Y.toFixed(0)}` : ""} Ω</b></> : null}
       />
       <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: isMobile ? (showTray ? "86px minmax(0,1fr)" : "minmax(0,1fr)") : (showTray ? "clamp(185px,13vw,225px) minmax(0,1fr) clamp(320px,23vw,390px)" : "minmax(0,1fr) clamp(320px,23vw,390px)"), overflow: "hidden", position: "relative" }}>
         {showTray && (
-          <aside data-lab-scroll style={{ borderRight: `1px solid ${C.line}`, padding: isMobile ? 4 : 9, overflowY: "auto", background: "#fff" }}>
+          <aside data-lab-tooltray data-lab-scroll style={{ borderRight: `1px solid ${C.line}`, padding: isMobile ? 4 : 9, overflowY: "auto", background: "#fff" }}>
             {isMobile ? (
               <div style={{ borderRadius: 9, background: C.peachLt, color: C.orangeDk, padding: "5px 4px", marginBottom: 5, fontSize: 9, fontWeight: 900, textAlign: "center" }}>DỤNG CỤ · {placed.size}/{TOOLS.length}</div>
             ) : (
@@ -830,7 +831,7 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
             })}
           </aside>
         )}
-        <main ref={mainRef} style={{ position: "relative", minWidth: 0, minHeight: 0, padding: isMobile ? 3 : 8, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -4, display: "flex", flexDirection: "column", gap: 8 }}>
+        <main ref={mainRef} data-lab-stage style={{ position: "relative", minWidth: 0, minHeight: 0, padding: isMobile ? 3 : 8, outline: dragTool ? `2px dashed ${C.orange}` : "none", outlineOffset: -4, display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={portraitStack ? { flex: "0 0 auto", height: sceneH } : { flex: "1 1 0", minHeight: 0 }}>
             <OhmScene
               placed={placed} ports={ports} wires={wires} wireDrag={wireDrag}
@@ -864,7 +865,7 @@ export default function ElectricalBench({ assignedSets, onExportNote, onBack, on
           )}
         </main>
         {!isMobile && (
-          <aside style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+          <aside data-lab-guide style={{ borderLeft: `1px solid ${C.line}`, background: C.bg, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
             <div data-lab-scroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 10 }}>{panelContent}</div>
             <div style={{ padding: 12, borderTop: `1px solid ${C.line}`, background: "#fff", flexShrink: 0 }}>{finishButton}</div>
           </aside>

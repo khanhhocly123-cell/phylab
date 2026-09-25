@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import { MC964Face, mc964ModeAngle } from "../lab/mech/MechParts.jsx";
 
 // Style constants matching the Phylab design system
 const C = {
@@ -80,27 +81,6 @@ const MC964_INFO = {
   },
 };
 
-const MC964_CHAU = [
-  { m: "A" as const, deg: 210, x: 216, y: 60, label: "A" },
-  { m: "B" as const, deg: -113, x: 224, y: 42, label: "B" },
-  { m: "AB" as const, deg: -76, x: 238, y: 30, label: "A+B" },
-  { m: "AAB" as const, deg: -8, x: 266, y: 42, label: "A↔B" },
-  { m: "T" as const, deg: 37, x: 280, y: 60, label: "T" },
-];
-
-const MC964_C = {
-  cream: "#FBF6EC",
-  stroke: "#888780",
-  metal: "#9B9B9B",
-  ledFrame: "#61252C",
-  ledInner: "#280C0F",
-  ledText: "#FF2D2D",
-  brand: "#D56A17",
-  needle: "#1F4D78",
-  reset: "#E24B4A",
-  navy: "#1F4D78",
-};
-
 type McKey = keyof typeof MC964_INFO;
 type McMode = "A" | "B" | "AB" | "AAB" | "T";
 
@@ -113,163 +93,105 @@ const MC964_TASKS: Array<{ face: "front" | "back"; target: McKey; ask: string; o
   { face: "back", target: "power", ask: "Bật nguồn cho đồng hồ.", ok: "Xong! Em đã sẵn sàng dùng MC964 trong Phòng Lab." },
 ];
 
+/* Nhãn MODE trên mặt đồng hồ ↔ khoá giải thích. */
+const MODE_KEYS: Array<{ key: McMode; label: string }> = [
+  { key: "A", label: "A" }, { key: "B", label: "B" }, { key: "AB", label: "A+B" }, { key: "AAB", label: "A↔B" }, { key: "T", label: "T" },
+];
+const labelOf = (m: McMode) => MODE_KEYS.find((x) => x.key === m)?.label ?? "A";
+const keyOfLabel = (label: string) => MODE_KEYS.find((x) => x.label === label)?.key ?? "A";
+/** Bộ phận thử thách → vòng sáng trên đồng hồ. */
+const FOCUS_OF: Partial<Record<McKey, string>> = { A: "mode:A", B: "mode:B", AB: "mode:A+B", AAB: "mode:A↔B", T: "mode:T", reset: "reset", thang: "scale", led: "led", socketA: "socket:A", socketB: "socket:B", socketC: "socket:C", power: "power" };
+
+/**
+ * MC964Interactive — cùng một chiếc đồng hồ với Phòng Lab (MC964Face trong MechParts): bấm từng bộ phận
+ * để đọc giải thích, làm 5 việc "thử tay" (vòng cam chỉ chỗ cần bấm). Xoay núm qua các nấc không bị báo
+ * sai — chỉ khen khi tới đúng MODE.
+ */
 export function MC964Interactive() {
   const [face, setFace] = useState<"front" | "back">("front");
   const [sel, setSel] = useState<McKey | null>(null);
   const [mode, setMode] = useState<McMode>("A");
+  const [scale, setScale] = useState<"fine" | "coarse">("fine");
   const [powerOn, setPowerOn] = useState(false);
   const [task, setTask] = useState(0);
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
   const current = MC964_TASKS[task] || null;
 
+  const succeed = () => {
+    if (!current) return;
+    setFeedback({ ok: true, text: current.ok });
+    const nextIndex = task + 1;
+    setTask(nextIndex);
+    if (MC964_TASKS[nextIndex] && MC964_TASKS[nextIndex].face !== face) setFace(MC964_TASKS[nextIndex].face);
+  };
   // Bấm một bộ phận: xem giải thích + chấm thử thách đang làm (nếu có).
   const press = (key: McKey) => {
     setSel(key);
-    if (MC964_CHAU.some((c) => c.m === key)) setMode(key as McMode);
+    if (MODE_KEYS.some((m) => m.key === key)) setMode(key as McMode);
     if (key === "power") setPowerOn((v) => !v);
+    if (key === "thang") setScale((v) => (v === "fine" ? "coarse" : "fine"));
     if (!current) return;
-    if (key === current.target) {
-      setFeedback({ ok: true, text: current.ok });
-      const nextIndex = task + 1;
-      setTask(nextIndex);
-      if (MC964_TASKS[nextIndex] && MC964_TASKS[nextIndex].face !== face) setFace(MC964_TASKS[nextIndex].face);
-    } else if (["A", "B", "AB", "AAB", "T", "reset", "socketA", "socketB", "socketC", "power"].includes(key)) {
-      setFeedback({ ok: false, text: `Chưa đúng — đó là ${MC964_INFO[key].title}. Đọc giải thích bên dưới rồi thử lại nhé.` });
+    if (key === current.target) succeed();
+    else if (["A", "B", "AB", "AAB", "T", "reset", "socketA", "socketB", "socketC", "power"].includes(key)) {
+      setFeedback({ ok: false, text: `Chưa đúng — đó là ${MC964_INFO[key].title}. Đọc giải thích bên cạnh rồi thử lại nhé.` });
     }
+  };
+  // Xoay núm: chuyển sang nấc kế tiếp; chỉ khen khi tới đúng nấc (không báo sai từng nấc đi qua).
+  const turnKnob = () => {
+    const i = MODE_KEYS.findIndex((m) => m.key === mode);
+    const next = MODE_KEYS[(i + 1) % MODE_KEYS.length].key;
+    setMode(next);
+    setSel(next);
+    if (current && current.target === next) succeed();
   };
 
   const info = sel
     ? MC964_INFO[sel]
-    : {
-        title: "Đồng hồ đo thời gian hiện số MC964",
-        body: "Thiết bị đo thời gian chính xác đến phần nghìn giây, điều khiển tự động bằng tín hiệu điện từ cổng quang. Chạm từng bộ phận trên đồng hồ để tìm hiểu.",
-      };
-  const chau = MC964_CHAU.find((c) => c.m === mode) || MC964_CHAU[0];
-  const ang = Math.atan2(chau.y - 3 - 55, chau.x - 248);
-  const needle = { x: 248 + 11 * Math.cos(ang), y: 55 + 11 * Math.sin(ang) };
-
-  const tabStyle = (active: boolean) => ({
-    padding: "8px 14px",
-    fontSize: 13,
-    fontWeight: 700,
-    borderRadius: 8,
-    cursor: "pointer",
-    border: active ? `1.5px solid ${C.navy}` : "1.5px solid #ccc",
-    background: active ? C.navy : "transparent",
-    color: active ? "#fff" : "#222",
-    fontFamily: FONT,
-  });
-  const hot = (key: McKey) => current?.target === key && face === current.face;
+    : { title: "Đồng hồ đo thời gian hiện số MC964", body: "Thiết bị đo thời gian chính xác đến phần nghìn giây, điều khiển tự động bằng tín hiệu điện từ cổng quang. Chạm từng bộ phận trên đồng hồ để tìm hiểu." };
+  const focus = current && current.face === face ? FOCUS_OF[current.target] ?? null : null;
+  const label = labelOf(mode);
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", fontFamily: FONT }}>
-      {/* Thử thách tay nghề — làm ngay trên máy */}
-      <div style={{ border: `1.5px solid ${current ? "#F5B67A" : "#86EFAC"}`, background: current ? "#FFF8F0" : "#F0FDF4", borderRadius: 12, padding: "10px 12px", marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 900, color: current ? C.orangeDk : C.good, textTransform: "uppercase", letterSpacing: 0.4 }}>
-            {current ? `Thử tay ${task + 1}/${MC964_TASKS.length}` : "Thử tay · hoàn thành"}
-          </span>
-          <span style={{ display: "flex", gap: 4 }}>
-            {MC964_TASKS.map((t, i) => <span key={t.target} style={{ width: 18, height: 6, borderRadius: 3, background: i < task ? C.good : i === task ? C.orange : "#E5E0D6" }} />)}
-          </span>
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start" style={{ fontFamily: FONT }}>
+      <div className="rounded-2xl border border-[#E9E2D4] bg-[#F6F1E7] p-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          {(["front", "back"] as const).map((f) => (
+            <button key={f} type="button" onClick={() => setFace(f)}
+              className={`px-3 py-1.5 rounded-xl text-[12px] font-black border cursor-pointer ${face === f ? "bg-[#321E12] text-white border-[#321E12]" : "bg-white text-[#605248] border-[#E2DFD8]"}`}>
+              {f === "front" ? "Mặt trước" : "Mặt sau"}
+            </button>
+          ))}
+          <span className="ml-auto text-[11px] font-bold text-[#8C7B6B]">Chạm bộ phận bất kì để tìm hiểu</span>
         </div>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink, marginTop: 4, lineHeight: 1.45 }}>
-          {current ? current.ask : "🎉 Em đã thao tác đúng cả 5 việc: chọn MODE, Reset, cắm dây, bật nguồn."}
-        </div>
-        {feedback && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4, color: feedback.ok ? C.good : "#B91C1C" }}>{feedback.ok ? "✓ " : "✗ "}{feedback.text}</div>}
+        <svg viewBox="-12 -6 324 150" role="img" aria-label={face === "front" ? "Mặt trước MC964" : "Mặt sau MC964"} className="w-full h-auto block select-none">
+          <MC964Face face={face} led="0.000" modeAngle={mc964ModeAngle(label)} modeLabel={label}
+            scale={scale} scaleLabel={scale === "fine" ? "0,001 s" : "0,01 s"} power={powerOn} focus={focus}
+            onCycleMode={turnKnob} onModePick={(l: string) => press(keyOfLabel(l))} onReset={() => press("reset")}
+            onToggleScale={() => press("thang")} onLed={() => press("led")} onTogglePower={() => press("power")}
+            onSocket={(s: string) => press(s === "A" ? "socketA" : s === "B" ? "socketB" : "socketC")} />
+        </svg>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button style={tabStyle(face === "front")} onClick={() => setFace("front")}>
-          Mặt trước
-        </button>
-        <button style={tabStyle(face === "back")} onClick={() => setFace("back")}>
-          Mặt sau
-        </button>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ background: "#f3f1ea", borderRadius: 12, padding: "1rem" }}>
-          {face === "front" ? (
-            <svg width="100%" viewBox="0 0 420 160" role="img" aria-label="Mặt trước MC964" style={{ display: "block", width: "100%", maxWidth: 420, height: "auto", aspectRatio: "420 / 160", margin: "0 auto" }}>
-              <rect x="5" y="6" width="410" height="148" rx="4" fill={MC964_C.cream} stroke={MC964_C.stroke} strokeWidth="0.5" />
-              <rect x="19" y="12" width="382" height="136" rx="2" fill={MC964_C.cream} stroke={MC964_C.stroke} strokeWidth="0.5" />
-              <rect x="9" y="74" width="6" height="42" fill={MC964_C.metal} />
-              <rect x="405" y="74" width="6" height="42" fill={MC964_C.metal} />
-
-              <g style={{ cursor: "pointer" }} onClick={() => press("led")}>
-                <rect x="34" y="26" width="140" height="58" rx="2" fill={MC964_C.ledFrame} />
-                <rect x="42" y="31" width="123" height="48" rx="1" fill={MC964_C.ledInner} />
-                <text x="103" y="63" textAnchor="middle" style={{ fontFamily: "monospace", fontSize: 27, fill: MC964_C.ledText, letterSpacing: 2 }}>0.000</text>
-              </g>
-              <text x="72" y="106" style={{ fontSize: 16, fill: MC964_C.brand, fontStyle: "italic", fontWeight: "bold" }}>Phylab</text>
-
-              <g style={{ cursor: "pointer" }} onClick={() => press("mode")}>
-                <circle cx="248" cy="55" r="14" fill="#C9C1C1" stroke={MC964_C.metal} strokeWidth="0.5" />
-                <line x1="248" y1="55" x2={needle.x} y2={needle.y} stroke={MC964_C.needle} strokeWidth="2.2" strokeLinecap="round" />
-                <circle cx="248" cy="55" r="2.5" fill={MC964_C.needle} />
-                <text x="248" y="82" textAnchor="middle" style={{ fontSize: 8.5, fontFamily: FONT, fontWeight: 900, fill: C.orangeDk }}>MODE {chau.label}</text>
-              </g>
-              {MC964_CHAU.map((c) => (
-                <g key={c.m} onClick={() => press(c.m)} style={{ cursor: "pointer" }}>
-                  <circle cx={c.x} cy={c.y - 3} r="9" fill={hot(c.m) ? "#FFE8D2" : c.m === mode ? "#E8F0FA" : "transparent"} />
-                  <text x={c.x} y={c.y} textAnchor="middle" style={{ fontSize: 9, fontFamily: FONT, fontWeight: 900, fill: c.m === mode ? C.navy : "#222" }}>{c.label}</text>
-                </g>
-              ))}
-
-              <g style={{ cursor: "pointer" }} onClick={() => press("reset")}>
-                <circle cx="332" cy="48" r="9" fill={MC964_C.reset} stroke={MC964_C.metal} strokeWidth="0.5" />
-                <text x="318" y="28" style={{ fontSize: 10, fontFamily: FONT, fontWeight: 800 }}>Reset</text>
-              </g>
-
-              <g style={{ cursor: "pointer" }} onClick={() => press("thang")}>
-                <rect x="306" y="96" width="46" height="13" rx="4" fill={MC964_C.metal} />
-                <line x1="329" y1="102" x2="340" y2="91" stroke="#4A4A4A" strokeWidth="1.5" strokeLinecap="round" />
-                <text x="305" y="90" style={{ fontSize: 9, fontFamily: FONT, fontWeight: 700 }}>0.01</text>
-                <text x="330" y="90" style={{ fontSize: 9, fontFamily: FONT, fontWeight: 700 }}>0.001</text>
-                <text x="306" y="122" style={{ fontSize: 10, fontFamily: FONT, fontWeight: 800 }}>Thang đo</text>
-              </g>
-            </svg>
-          ) : (
-            <svg width="100%" viewBox="0 0 420 160" role="img" aria-label="Mặt sau MC964" style={{ display: "block", width: "100%", maxWidth: 420, height: "auto", aspectRatio: "420 / 160", margin: "0 auto" }}>
-              <rect x="5" y="6" width="410" height="148" rx="4" fill={MC964_C.cream} stroke={MC964_C.stroke} strokeWidth="0.5" />
-              <rect x="19" y="12" width="382" height="136" rx="2" fill={MC964_C.cream} stroke={MC964_C.stroke} strokeWidth="0.5" />
-              <rect x="9" y="74" width="6" height="42" fill={MC964_C.metal} />
-              <rect x="405" y="74" width="6" height="42" fill={MC964_C.metal} />
-              {[
-                { k: "socketA" as const, cx: 70, label: "A", lx: 66 },
-                { k: "socketB" as const, cx: 120, label: "B", lx: 116 },
-                { k: "socketC" as const, cx: 170, label: "C", lx: 166 }
-              ].map((s) => (
-                <g key={s.k} style={{ cursor: "pointer" }} onClick={() => press(s.k)}>
-                  <circle cx={s.cx} cy="62" r="16" fill="#C9C1C1" stroke={hot(s.k) ? C.orange : MC964_C.stroke} strokeWidth={hot(s.k) ? 2.5 : 0.5} />
-                  <circle cx={s.cx} cy="62" r="11" fill="#1a1a1a" />
-                  <text x={s.lx} y="108" style={{ fontSize: 12, fontFamily: FONT, fontWeight: 700 }}>{s.label}</text>
-                </g>
-              ))}
-              <rect x="44" y="92" width="150" height="42" rx="2" fill="none" stroke={MC964_C.stroke} strokeWidth="0.5" />
-              <text x="150" y="128" style={{ fontSize: 11, fontFamily: FONT, fontWeight: 700 }}>+10V</text>
-              <g style={{ cursor: "pointer" }} onClick={() => press("power")}>
-                <rect x="320" y="40" width="22" height="40" rx="2" fill={MC964_C.metal} stroke={hot("power") ? C.orange : MC964_C.stroke} strokeWidth={hot("power") ? 2.5 : 0.5} />
-                <rect x="322" y="42" width="18" height="36" rx="1" fill={powerOn ? "#3E8E3E" : "#C04C4C"} />
-                <line x1="322" y1="60" x2="340" y2="60" stroke="#1a1a1a" strokeWidth="1" />
-                <text x="328" y="55" style={{ fontSize: 9, fontStyle: "italic", fontFamily: FONT, fontWeight: "bold", fill: powerOn ? "#fff" : "#222" }}>I</text>
-                <text x="328" y="74" style={{ fontSize: 9, fontStyle: "italic", fill: "#fff", fontFamily: FONT, fontWeight: "bold" }}>O</text>
-                <text x="331" y="96" textAnchor="middle" style={{ fontSize: 8.5, fontFamily: FONT, fontWeight: 900, fill: powerOn ? C.good : "#B91C1C" }}>{powerOn ? "BẬT" : "TẮT"}</text>
-              </g>
-              <rect x="300" y="100" width="42" height="28" rx="2" fill="#1a1a1a" />
-              <rect x="306" y="106" width="2" height="9" fill={MC964_C.metal} />
-              <rect x="333" y="106" width="2" height="9" fill={MC964_C.metal} />
-              <rect x="314" y="122" width="12" height="2" fill={MC964_C.metal} />
-            </svg>
-          )}
-          <p style={{ fontSize: 12, color: "#999", margin: "10px 4px 0", fontFamily: FONT }}>Chạm vào bộ phận bất kì trên đồng hồ — hoặc làm theo thử thách ở trên.</p>
+      <div className="flex flex-col gap-2.5">
+        {/* Thử thách tay nghề — làm ngay trên máy */}
+        <div className={`rounded-2xl border-[1.5px] p-3 ${current ? "border-[#F5B67A] bg-[#FFF8F0]" : "border-[#86EFAC] bg-[#F0FDF4]"}`}>
+          <div className="flex items-center justify-between gap-2">
+            <span className={`text-[11px] font-black uppercase tracking-wide ${current ? "text-[#D56A17]" : "text-[#3E8E3E]"}`}>
+              {current ? `Thử tay ${task + 1}/${MC964_TASKS.length}` : "Thử tay · hoàn thành"}
+            </span>
+            <span className="flex gap-1">
+              {MC964_TASKS.map((t, i) => <span key={t.target} className="w-[18px] h-1.5 rounded-full" style={{ background: i < task ? C.good : i === task ? C.orange : "#E5E0D6" }} />)}
+            </span>
+          </div>
+          <div className="text-[13.5px] font-black text-[#2A2A28] mt-1 leading-snug">
+            {current ? current.ask : "Em đã thao tác đúng cả 5 việc: chọn MODE, Reset, cắm dây, bật nguồn."}
+          </div>
+          {feedback && <div className={`text-[12px] font-black mt-1 ${feedback.ok ? "text-[#3E8E3E]" : "text-[#B91C1C]"}`}>{feedback.ok ? "✓ " : "✗ "}{feedback.text}</div>}
         </div>
-
-        {/* minHeight cố định để nội dung đổi khi bấm không làm co giãn / nhảy layout đồng hồ */}
-        <div style={{ background: "#fff", border: "0.5px solid #e5e3dc", borderRadius: 12, padding: "12px 14px", minHeight: 120 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 800, color: "#1a1a1a", fontFamily: FONT }}>{info.title}</h3>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#555", fontFamily: FONT }}>{info.body}</p>
+        {/* Giải thích bộ phận vừa chạm (chiều cao cố định để khỏi nhảy bố cục) */}
+        <div className="rounded-2xl border border-[#E5E3DC] bg-white p-3 min-h-[118px]">
+          <h3 className="m-0 mb-1.5 text-[15px] font-black text-[#1A1A1A]">{info.title}</h3>
+          <p className="m-0 text-[13px] leading-relaxed text-[#555]">{info.body}</p>
         </div>
       </div>
     </div>
@@ -364,8 +286,8 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
   const probeX = 17 - cv;
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", fontFamily: FONT }}>
-      <div style={{ background: "#ffffff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "1rem" }}>
+    <div style={{ maxWidth: 640, margin: "0 auto", fontFamily: FONT }}>
+      <div style={{ background: "#ffffff", border: `1px solid ${C.line}`, borderRadius: 14, padding: "0.75rem" }}>
         <svg
           ref={ref} width="100%" viewBox="0 30 640 250"
           style={{ display: "block", touchAction: "none", cursor: dragging ? "grabbing" : "default" }}
@@ -386,7 +308,7 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
               <stop offset="0%" stopColor="#f3f3f6" />
               <stop offset="100%" stopColor="#aaaab0" />
             </linearGradient>
-            <radialGradient id="cz-ball" cx="38%" cy="34%" r="72%"><stop offset="0%" stopColor="#a6a6aa" /><stop offset="55%" stopColor="#606065" /><stop offset="100%" stopColor="#37373b" /></radialGradient>
+            <radialGradient id="cz-ball" cx="36%" cy="32%" r="75%"><stop offset="0%" stopColor="#FFFFFF" /><stop offset="22%" stopColor="#D9DDE3" /><stop offset="60%" stopColor="#7C8490" /><stop offset="100%" stopColor="#2E343C" /></radialGradient>
           </defs>
           <rect x={CX(-4.5)} y={CY(1.5)} width={(17 + 4.5) * CZ.PX} height={(1.5 + 0.9) * CZ.PX} rx="2" fill="url(#cz-beam)" stroke="#888" strokeWidth="0.6" />
           <rect x={CX(-4.0)} y={CY(1.0)} width={(16.8 + 4.0) * CZ.PX} height={1.0 * CZ.PX} fill="#fbfbfb" stroke="#bbb" strokeWidth="0.4" />
@@ -395,7 +317,7 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
           <path d={jlf} fill="url(#cz-jaw)" stroke="#888" strokeWidth="0.6" />
           <path d={juf} fill="url(#cz-jaw)" stroke="#888" strokeWidth="0.6" />
           <circle cx={CX(ballCx)} cy={CY(ballCy)} r={ballR * CZ.PX} fill="url(#cz-ball)" stroke={touched ? C.good : "#2a2a2e"} strokeWidth={touched ? 2.4 : 0.7} />
-          <ellipse cx={CX(ballCx) - 7} cy={CY(ballCy) - 7} rx="5" ry="3.4" fill="#cdcdd0" opacity="0.5" />
+          <circle cx={CX(ballCx) - ballR * CZ.PX * 0.34} cy={CY(ballCy) - ballR * CZ.PX * 0.38} r={ballR * CZ.PX * 0.2} fill="#fff" opacity="0.9" />
           <g
             style={{ cursor: "grab" }}
             onPointerDown={(e) => {
@@ -416,7 +338,7 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
           </g>
         </svg>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
           <span style={{ fontSize: 13, color: "#555", whiteSpace: "nowrap", fontWeight: 700, fontFamily: FONT }}>Kéo hàm di động</span>
           <input
             type="range" min={ballMm} max={maxMm} step={0.05}
@@ -424,7 +346,8 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
             style={{ flex: 1, accentColor: C.orange }}
           />
         </div>
-        <div style={{ background: touched ? GOOD_BG : "#E6F1FB", borderRadius: 8, padding: "9px 12px", marginTop: 10 }}>
+        <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-center mt-2.5">
+        <div style={{ background: touched ? GOOD_BG : "#E6F1FB", borderRadius: 8, padding: "9px 12px" }}>
           <p style={{ margin: 0, fontSize: 13, color: touched ? C.good : "#0C447C", lineHeight: 1.5, fontFamily: FONT, fontWeight: 700 }}>
             {touched
               ? "Vừa vặn! Hai hàm đã kẹp sát viên bi. Hãy đọc phần nguyên ở vạch 0 của du xích (nằm dưới thanh chính), rồi tìm vạch du xích nào trùng khít nhất với vạch trên thanh chính (vạch tô cam) nhân 0,05 mm để lấy phần lẻ."
@@ -432,7 +355,7 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
           </p>
         </div>
         {onSubmit && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, color: "#555", fontWeight: 700, fontFamily: FONT }}>Đường kính bi đọc được: d =</span>
             <input
               value={reading}
@@ -457,6 +380,7 @@ export function CaliperZoom({ ballMm = BALL_D_MM, maxMm = 80, onSubmit }: Calipe
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

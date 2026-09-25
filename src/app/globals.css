@@ -322,3 +322,54 @@ body.lab-active {
   from { transform: translateY(100%); }
   to { transform: none; }
 }
+
+/* ===== Sơ đồ mạch (Prelab điện) ===== */
+@keyframes schFlow {
+  to { stroke-dashoffset: -28; }
+}
+.sch-flow { animation: schFlow 0.9s linear infinite; }
+@keyframes schBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.sch-blink { animation: schBlink 1.2s ease-in-out infinite; }
+
+/* ===== Guided tour ===== */
+@keyframes tourPulse {
+  0% { box-shadow: 0 0 0 0 rgba(223, 116, 46, 0.55); }
+  70% { box-shadow: 0 0 0 12px rgba(223, 116, 46, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(223, 116, 46, 0); }
+}
+@keyframes tourIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sch-flow, .sch-blink { animation: none; }
+}
+@keyframes tourFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mascotHop {
+  0% { transform: translateY(0) rotate(0deg); }
+  35% { transform: translateY(-9px) rotate(-8deg); }
+  65% { transform: translateY(0) rotate(6deg); }
+  100% { transform: none; }
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-24px) rotate(0deg); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateY(240px) rotate(560deg); opacity: 0; }
+}
+@keyframes stampIn {
+  0% { transform: scale(1.8) rotate(-20deg); opacity: 0; }
+  60% { transform: scale(0.94) rotate(-10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+}
+@keyframes rotatePhone {
+  0%, 18% { transform: rotate(0deg); }
+  42%, 72% { transform: rotate(-90deg); }
+  96%, 100% { transform: rotate(0deg); }
+}

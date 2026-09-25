@@ -47,9 +47,12 @@ export default function LabHub({ prelabPassed, completedLessonIds, assignedLesso
       <header className="text-center space-y-3">
         <div>
           <h2 className="text-xl md:text-2xl font-black text-[#321E12] tracking-tight">Phòng Lab</h2>
-          <p className="text-xs md:text-sm font-bold text-[#605248] mt-1">Chọn một bài thực hành. Mỗi bài đi qua 3 chặng:</p>
+          <p className="text-xs md:text-sm font-bold text-[#605248] mt-1">Chọn một bài thực hành. Mỗi bài đi qua 3 chặng<span className="hidden sm:inline">:</span></p>
+          <p className="sm:hidden mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/85 border border-[#E2DFD8] px-3 py-1 text-[11.5px] font-black text-[#321E12]">
+            Prelab <ArrowRight className="w-3 h-3 text-[#C85A17]" /> Thực hành <ArrowRight className="w-3 h-3 text-[#C85A17]" /> Sổ Báo Cáo
+          </p>
         </div>
-        <ol className="grid grid-cols-3 gap-2 max-w-2xl mx-auto text-left">
+        <ol className="hidden sm:grid grid-cols-3 gap-2 max-w-2xl mx-auto text-left">
           {[
             { icon: BookOpen, title: "Prelab", text: "Làm quen dụng cụ" },
             { icon: FlaskConical, title: "Thực hành", text: "Lắp ráp & đo số liệu" },
@@ -119,20 +122,20 @@ function LabCard({ spec, passed, completed, assigned, onStart, onReviewPrelab }:
   const cta = passed ? "Vào phòng Lab" : "Bắt đầu Prelab";
 
   return (
-    <article className="group bg-white border border-[#E2DFD8] hover:border-[#C85A17]/40 shadow-sm hover:shadow-md rounded-3xl transition-all duration-300 overflow-hidden flex flex-col">
+    <article className="group bg-white border border-[#E2DFD8] hover:border-[#C85A17]/40 shadow-sm hover:shadow-md rounded-3xl transition-all duration-300 overflow-hidden flex flex-row sm:flex-col">
       <button
         type="button"
         onClick={onStart}
         tabIndex={-1}
         aria-hidden
-        className="relative h-32 sm:h-36 w-full overflow-hidden bg-slate-100 border-b border-[#E2DFD8]/60 cursor-pointer"
+        className="relative w-[104px] flex-shrink-0 self-stretch sm:w-full sm:h-36 overflow-hidden bg-slate-100 border-r sm:border-r-0 sm:border-b border-[#E2DFD8]/60 cursor-pointer"
       >
         {img && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
         )}
         <span className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-        <span className="absolute top-3 left-3 px-2.5 py-0.5 bg-[#C85A17] text-white font-black text-[9px] rounded uppercase tracking-wider">
+        <span className="absolute top-2 left-2 sm:top-3 sm:left-3 px-2 sm:px-2.5 py-0.5 bg-[#C85A17] text-white font-black text-[9px] rounded uppercase tracking-wider">
           {lesson}
         </span>
         {assigned && (
@@ -142,16 +145,16 @@ function LabCard({ spec, passed, completed, assigned, onStart, onReviewPrelab }:
         )}
       </button>
 
-      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5">
+      <div className="p-3 sm:p-5 flex-1 min-w-0 flex flex-col gap-2 sm:gap-3.5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-wider text-[#C85A17]">{spec.book}</p>
-          <h3 className="text-base font-black text-[#321E12] leading-snug mt-0.5">{spec.title}</h3>
-          <div className="text-xs font-semibold text-[#605248] leading-relaxed line-clamp-2 mt-1">
+          <h3 className="text-[14px] sm:text-base font-black text-[#321E12] leading-snug mt-0.5 line-clamp-2">{spec.title}</h3>
+          <div className="hidden sm:block text-xs font-semibold text-[#605248] leading-relaxed line-clamp-2 mt-1">
             <MathText text={spec.theory.objective} />
           </div>
         </div>
 
-        <ol className="grid grid-cols-2 gap-2" aria-label="Tiến độ bài">
+        <ol className="grid grid-cols-2 gap-1.5 sm:gap-2" aria-label="Tiến độ bài">
           <StageChip n={1} label="Prelab" detail={passed ? "Đã hoàn thành" : prelabOf(spec.id) ?? "Làm quen dụng cụ"} state={passed ? "done" : "next"} />
           <StageChip
             n={2}
@@ -165,7 +168,7 @@ function LabCard({ spec, passed, completed, assigned, onStart, onReviewPrelab }:
           <button
             type="button"
             onClick={onStart}
-            className="flex-1 h-11 px-4 rounded-xl bg-gradient-to-r from-[#DF742E] to-[#B24A0C] hover:from-[#E3813C] hover:to-[#A33E04] text-white text-xs font-black inline-flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(200,90,23,0.16)] active:scale-[0.98] transition-all cursor-pointer"
+            className="flex-1 h-10 sm:h-11 px-3 sm:px-4 rounded-xl bg-gradient-to-r from-[#DF742E] to-[#B24A0C] hover:from-[#E3813C] hover:to-[#A33E04] text-white text-xs font-black inline-flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(200,90,23,0.16)] active:scale-[0.98] transition-all cursor-pointer"
           >
             {cta} <ArrowRight className="w-4 h-4" />
           </button>
@@ -174,7 +177,7 @@ function LabCard({ spec, passed, completed, assigned, onStart, onReviewPrelab }:
               type="button"
               onClick={onReviewPrelab}
               title="Xem lại Prelab"
-              className="h-11 px-3.5 rounded-xl border border-[#E2DFD8] bg-white text-[#605248] hover:text-[#C85A17] hover:border-[#C85A17]/40 text-xs font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="h-10 sm:h-11 px-3 sm:px-3.5 rounded-xl border border-[#E2DFD8] bg-white text-[#605248] hover:text-[#C85A17] hover:border-[#C85A17]/40 text-xs font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <BookOpen className="w-4 h-4" /> <span className="hidden sm:inline">Xem Prelab</span>
             </button>
@@ -197,14 +200,14 @@ function StageChip({ n, label, detail, state }: { n: number; label: string; deta
       ? "bg-[#C85A17] text-white"
       : "bg-[#E9E3DA] text-[#605248]";
   return (
-    <li className={`rounded-xl border px-2.5 py-2 min-w-0 ${tone}`}>
-      <div className="flex items-center gap-1.5 text-[11px] font-black">
+    <li className={`rounded-xl border px-2 sm:px-2.5 py-1.5 sm:py-2 min-w-0 ${tone}`}>
+      <div className="flex items-center gap-1.5 text-[11px] font-black whitespace-nowrap">
         <span className={`w-4.5 h-4.5 rounded-full grid place-items-center text-[9px] flex-shrink-0 ${badge}`}>
           {state === "done" ? <Check className="w-2.5 h-2.5" strokeWidth={3.5} /> : state === "locked" ? <Lock className="w-2.5 h-2.5" /> : n}
         </span>
         {label}
       </div>
-      <p className="text-[10px] font-bold mt-0.5 truncate">{detail}</p>
+      <p className="hidden sm:block text-[10px] font-bold mt-0.5 truncate">{detail}</p>
     </li>
   );
 }

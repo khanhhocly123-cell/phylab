@@ -5,7 +5,8 @@ import {
   Camera, BookOpen, Clipboard, User,
   Settings, LogOut, CheckCircle,
   FileText, Home, ChevronDown, Bell,
-  ChevronLeft, ChevronRight, AlertTriangle, GraduationCap
+  ChevronLeft, ChevronRight, AlertTriangle, GraduationCap,
+  Compass, Lock, NotebookPen, ShieldCheck
 } from "lucide-react";
 import LoginScreen from "@/components/LoginScreen";
 import ScanScreen from "@/components/ScanScreen";
@@ -22,6 +23,17 @@ import { getExperimentSpec, EXPERIMENT_SPECS } from "@/experiments/specs";
 import { LessonId, ExperimentReport, RichTrial } from "@/lib/types";
 import { useMyClass } from "@/lib/useMyClass";
 import { getStudentId, logActivity } from "@/lib/activity";
+import { hasSeenTour, isTourOpen, markTourSeen } from "@/lib/tourState";
+import GuidedTour from "@/components/tour/GuidedTour";
+import HelpMenu from "@/components/tour/HelpMenu";
+import { notesTour, safetySteps, studentTour } from "@/components/tour/tours";
+import { CLASSROOM_LOCKED_MESSAGE, FEATURES } from "@/lib/features";
+import { enterLandscape } from "@/lib/orientation";
+import { safetyKindOf } from "@/components/tour/SafetyDeck";
+import { OPEN_LABS } from "@/data/labCatalog";
+
+// Nhóm dụng cụ của các bài đang mở (thêm bài quang/nhiệt là mục An toàn tự có phần tương ứng).
+const OPEN_SAFETY_KINDS = [...new Set(OPEN_LABS.map((l) => safetyKindOf(l.subject)))];
 import type { LabAssignmentPayload } from "@/lib/classTypes";
 
 type AppTab = "home" | "scan" | "lab" | "notes" | "myclass";
@@ -61,7 +73,7 @@ export default function Page() {
       if (savedTab === "prelab") {
         // Tab Prelab cũ đã gộp vào Phòng Lab (Prelab là chặng 1 của mỗi bài).
         setActiveTab("lab");
-      } else if (savedTab && (APP_TABS as string[]).includes(savedTab)) {
+      } else if (savedTab && (APP_TABS as string[]).includes(savedTab) && (savedTab !== "myclass" || FEATURES.classroom)) {
         setActiveTab(savedTab as AppTab);
       }
       const savedLesson = localStorage.getItem("activeLessonId");
@@ -140,7 +152,7 @@ export default function Page() {
 
   // ── Lớp học: dữ liệu "Lớp của tôi" (đề GV giao + trạng thái nộp) ──
   const { myClass, loading: myClassLoading, refresh: refreshMyClass } = useMyClass(
-    !!studentName && role === "student"
+    FEATURES.classroom && !!studentName && role === "student"
   );
 
   // Assignment Lab đang active cho bài học hiện tại (mới nhất trước) → override đề seeded/AI.
@@ -189,6 +201,51 @@ export default function Page() {
   const isDoingExperiment = activeTab === "lab" && activeLessonId !== null && !!prelabPassed[activeLessonId];
   const isScanMode = activeTab === "scan";
 
+  // ── Hướng dẫn: tự mở lần đầu học sinh vào app (không chen vào lúc đang làm thí nghiệm / đang quét) ──
+  const [tour, setTour] = useState<null | "app" | "safety" | "notes">(null);
+  React.useEffect(() => {
+    if (checkingAuth || role !== "student" || !studentName || isDoingExperiment || isScanMode || tour) return;
+    if (hasSeenTour(studentName, "app")) return;
+    const timer = window.setTimeout(() => {
+      if (!isTourOpen()) setTour("app");
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [checkingAuth, role, studentName, isDoingExperiment, isScanMode, tour]);
+  React.useEffect(() => {
+    if (activeTab !== "notes" || checkingAuth || role !== "student" || !studentName || tour) return;
+    if (!hasSeenTour(studentName, "app") || hasSeenTour(studentName, "notes")) return;
+    const timer = window.setTimeout(() => {
+      if (!isTourOpen()) setTour("notes");
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, checkingAuth, role, studentName, tour]);
+  const tourSteps = React.useMemo(
+    () =>
+      tour === "app" ? studentTour({ name: studentName ?? "", goHome: () => setActiveTab("home") })
+        : tour === "notes" ? notesTour()
+          : tour === "safety" ? safetySteps({ withGear: OPEN_SAFETY_KINDS })
+            : [],
+    [tour, studentName]
+  );
+  const closeTour = (finished: boolean) => {
+    if (tour === "app") {
+      // Đi hết chuyến (qua cả phần An toàn) thì nhận huy hiệu An toàn PTN.
+      if (finished) markTourSeen(studentName, "app", "badge-safety");
+      else markTourSeen(studentName, "app");
+      if (finished) {
+        setActiveLessonId(null);
+        setActiveTab("lab");
+      }
+    }
+    if (tour === "notes") markTourSeen(studentName, "notes");
+    setTour(null);
+  };
+  const helpItems = [
+    { icon: Compass, label: "Tham quan PhyLab", desc: "Đi một vòng các chức năng chính", onClick: () => setTour("app") },
+    { icon: NotebookPen, label: "Hướng dẫn Sổ Báo Cáo", desc: "Số liệu, đồ thị tự vẽ, báo cáo", tone: "#1D5FAF", onClick: () => { setActiveTab("notes"); setTour("notes"); } },
+    { icon: ShieldCheck, label: "An toàn phòng thí nghiệm", desc: "Săn nguy hiểm, kí hiệu, biển báo, quy tắc", tone: "#047857", onClick: () => setTour("safety") },
+  ].map((item) => ({ ...item, onClick: () => { setProfileMenuOpen(false); setNotificationsOpen(false); item.onClick(); } }));
+
   React.useEffect(() => {
     if (isDoingExperiment) {
       setSidebarCollapsed(true);
@@ -197,7 +254,7 @@ export default function Page() {
 
   // Ghi hoạt động "vào phòng Lab" cho dashboard giáo viên.
   React.useEffect(() => {
-    if (isDoingExperiment && studentName && role === "student") {
+    if (FEATURES.classroom && isDoingExperiment && studentName && role === "student") {
       logActivity("lab_start", studentName, activeLessonId || undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -216,7 +273,7 @@ export default function Page() {
       setRole("student");
       localStorage.setItem("role", "student");
       getStudentId(); // sinh UUID định danh HS trên thiết bị (nếu chưa có)
-      logActivity("login", name);
+      if (FEATURES.classroom) logActivity("login", name);
     }
     setActiveTab("home");
   };
@@ -251,12 +308,15 @@ export default function Page() {
     setActiveTab("lab");
     setProfileMenuOpen(false);
     setNotificationsOpen(false);
+    // Đã qua Prelab → vào thẳng bàn thí nghiệm: điện thoại tự xoay ngang (cần đúng cú bấm này).
+    if (prelabPassed[lessonId]) void enterLandscape();
   };
 
   // Hoàn thành Prelab (đã khóa dây dọi / đo bi thép / nắm an toàn điện) -> mở khóa phòng Lab của bài đó.
   const handlePrelabComplete = (lessonId: LessonId, d?: number) => {
     if (d && d > 0) setMeasuredD(d);
     setPrelabPassed((prev) => ({ ...prev, [lessonId]: true }));
+    void enterLandscape();
   };
 
   // Nhận số liệu xuất từ engine phòng Lab -> giữ dữ liệu giàu thông tin + sang Sổ Báo Cáo.
@@ -338,6 +398,9 @@ export default function Page() {
   }
 
   // ── SHELL GIÁO VIÊN: nhánh riêng hoàn toàn, không render shell học sinh ──
+  if (studentName && role === "teacher" && teacherToken && !FEATURES.classroom) {
+    return <ClassroomLocked name={studentName} onLogout={handleLogout} />;
+  }
   if (studentName && role === "teacher" && teacherToken) {
     return (
       <TeacherShell teacherName={studentName} token={teacherToken} onLogout={handleLogout} />
@@ -401,6 +464,7 @@ export default function Page() {
                 setNotificationsOpen(false);
               }}
               title="Quét tài liệu"
+              data-tour="scan"
               className="w-12 h-12 rounded-2xl bg-gradient-to-r from-[#DF742E] to-[#B24A0C] hover:from-[#E3813C] hover:to-[#A33E04] text-white flex items-center justify-center cursor-pointer transition-all shadow-md mx-auto"
             >
               <Camera className="w-5 h-5 stroke-[2.5]" />
@@ -412,6 +476,7 @@ export default function Page() {
                 setProfileMenuOpen(false);
                 setNotificationsOpen(false);
               }}
+              data-tour="scan"
               className="w-full py-4 bg-gradient-to-r from-[#DF742E] to-[#B24A0C] hover:from-[#E3813C] hover:to-[#A33E04] text-white text-xs font-black rounded-2xl shadow-[0_4px_12px_rgba(200,90,23,0.12)] flex items-center justify-center gap-2.5 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               <Camera className="w-4 h-4 stroke-[2.5]" /> Quét tài liệu
@@ -419,7 +484,7 @@ export default function Page() {
           )}
 
           {/* Navigation Menu */}
-          <nav className="space-y-1">
+          <nav className="space-y-1" data-tour="nav">
             {[
               { label: "Trang chủ", tab: "home" as const, icon: Home },
               { label: "Phòng Lab của tôi", tab: "lab" as const, icon: Clipboard },
@@ -429,27 +494,36 @@ export default function Page() {
             ].map((item) => {
               const Icon = item.icon;
               const active = activeTab === item.tab;
+              const locked = item.tab === "myclass" && !FEATURES.classroom;
               return (
                 <button
                   key={item.label}
+                  aria-disabled={locked || undefined}
                   onClick={() => {
+                    if (locked) {
+                      showToast(CLASSROOM_LOCKED_MESSAGE);
+                      return;
+                    }
                     setActiveTab(item.tab);
                     // Phòng Lab: luôn về danh sách bài, không nhảy thẳng vào bài đã chọn trước đó.
                     if (item.tab === "lab") setActiveLessonId(null);
                     setProfileMenuOpen(false);
                     setNotificationsOpen(false);
                   }}
-                  title={sidebarCollapsed ? item.label : undefined}
-                  className={`w-full py-3.5 px-4 text-xs font-black rounded-2xl flex items-center transition-all cursor-pointer ${
+                  title={locked ? "Tạm khoá" : sidebarCollapsed ? item.label : undefined}
+                  className={`w-full py-3.5 px-4 text-xs font-black rounded-2xl flex items-center transition-all ${
                     sidebarCollapsed ? "justify-center" : "gap-3"
                   } ${
-                    active 
-                      ? "bg-[#FFF2E6] text-[#C85A17] border-l-4 border-[#C85A17] shadow-[0_2px_6px_rgba(200,90,23,0.02)]" 
-                      : "bg-transparent text-[#605248] hover:text-[#C85A17] hover:bg-[#FFF0E0]/50"
+                    locked
+                      ? "bg-transparent text-[#605248]/40 cursor-not-allowed"
+                      : active
+                        ? "bg-[#FFF2E6] text-[#C85A17] border-l-4 border-[#C85A17] shadow-[0_2px_6px_rgba(200,90,23,0.02)] cursor-pointer"
+                        : "bg-transparent text-[#605248] hover:text-[#C85A17] hover:bg-[#FFF0E0]/50 cursor-pointer"
                   }`}
                 >
                   <Icon className="w-4.5 h-4.5 stroke-[2.5] flex-shrink-0" />
                   {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                  {locked && !sidebarCollapsed && <Lock className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
                 </button>
               );
             })}
@@ -514,8 +588,9 @@ export default function Page() {
           </div>
 
           {/* Right Header: Notification + Profile Dropdowns */}
-          <div className="flex items-center gap-3 relative">
-            
+          <div className="flex items-center gap-1.5 sm:gap-3 relative">
+            <HelpMenu items={helpItems} />
+
             {/* Notification Bell Dropdown Controller */}
             <div className="relative">
               <button
@@ -640,6 +715,10 @@ export default function Page() {
                     inProgressLabIds={activeLessonId ? [activeLessonId] : []}
                     reports={reports}
                     onNav={(tab) => {
+                      if (tab === "myclass" && !FEATURES.classroom) {
+                        showToast(CLASSROOM_LOCKED_MESSAGE);
+                        return;
+                      }
                       // "Vào Phòng Lab" luôn mở danh sách bài, giống thanh điều hướng.
                       if (tab === "lab") setActiveLessonId(null);
                       setActiveTab(tab);
@@ -721,7 +800,7 @@ export default function Page() {
               )}
 
               {/* 3b. LỚP CỦA TÔI — tham gia lớp giáo viên + bài tập được giao */}
-              {activeTab === "myclass" && (
+              {FEATURES.classroom && activeTab === "myclass" && (
                 <div className="animate-scale-up">
                   <MyClassTab
                     studentName={studentName}
@@ -740,7 +819,7 @@ export default function Page() {
       {/* ================= MOBILE BOTTOM FLOATING DOCK (Fixed at bottom) ================= */}
       {activeTab !== "scan" && !isDoingExperiment && (
         <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden print:hidden">
-        <nav className="h-16 bg-white/85 backdrop-blur-md border border-[#E2DFD8]/80 rounded-2xl flex items-center justify-around px-2.5 shadow-[0_8px_32px_rgba(50,30,18,0.12)]">
+        <nav data-tour="dock" className="h-16 bg-white/85 backdrop-blur-md border border-[#E2DFD8]/80 rounded-2xl flex items-center justify-around px-2.5 shadow-[0_8px_32px_rgba(50,30,18,0.12)]">
           {/* Tab: Home */}
           <button 
             onClick={() => setActiveTab("home")}
@@ -768,6 +847,7 @@ export default function Page() {
             <button 
               onClick={() => setActiveTab("scan")}
               title="Chụp ảnh quét bài"
+              data-tour="dock-scan"
               className="w-14 h-14 rounded-full bg-gradient-to-br from-[#DF742E] to-[#B24A0C] text-white flex items-center justify-center shadow-lg border-4 border-[#FAF9F6] active:scale-90 hover:scale-105 transition-all cursor-pointer"
             >
               <Camera className="w-6 h-6 stroke-[2.5] animate-pulse" />
@@ -776,12 +856,15 @@ export default function Page() {
 
           {/* Tab: Lớp của tôi */}
           <button
-            onClick={() => setActiveTab("myclass")}
-            className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all active:scale-95 cursor-pointer ${
-              activeTab === "myclass" ? "text-[#C85A17]" : "text-[#605248]/70"
+            onClick={() => (FEATURES.classroom ? setActiveTab("myclass") : showToast(CLASSROOM_LOCKED_MESSAGE))}
+            aria-disabled={!FEATURES.classroom || undefined}
+            title={FEATURES.classroom ? undefined : "Tạm khoá"}
+            className={`relative flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all active:scale-95 cursor-pointer ${
+              !FEATURES.classroom ? "text-[#605248]/35" : activeTab === "myclass" ? "text-[#C85A17]" : "text-[#605248]/70"
             }`}
           >
             <GraduationCap className="w-5 h-5 stroke-[2.5]" />
+            {!FEATURES.classroom && <Lock className="absolute top-1 right-[calc(50%-18px)] w-3 h-3" />}
             <span className="text-[9px] font-black mt-1">Lớp học</span>
           </button>
 
@@ -807,7 +890,7 @@ export default function Page() {
           aria-modal="true"
           aria-label={`Xem lại Prelab — ${reviewSpec.shortTitle}`}
           onClick={(e) => { if (e.target === e.currentTarget) setReviewPrelabId(null); }}
-          className="fixed inset-0 z-[70] bg-[#321E12]/45 backdrop-blur-xs overflow-auto p-3 py-6 sm:p-6"
+          className="fixed inset-0 z-[70] bg-[#321E12]/45 backdrop-blur-xs overflow-auto p-1.5 py-3 sm:p-6"
         >
           <Prelab key={reviewSpec.id} spec={reviewSpec} studentName={studentName ?? undefined} viewOnly onStartExperiment={() => setReviewPrelabId(null)} />
         </div>
@@ -864,6 +947,15 @@ export default function Page() {
         </div>
       )}
 
+      {tour && (
+        <GuidedTour
+          key={tour}
+          steps={tourSteps}
+          finishLabel={tour === "app" ? "Vào Phòng Lab" : "Đã hiểu"}
+          onClose={closeTour}
+        />
+      )}
+
       {/* Cozy claymorphic toast notification */}
       {toastMsg && (
         <div className="fixed bottom-20 sm:bottom-6 right-6 left-6 sm:left-auto sm:max-w-sm bg-white/95 backdrop-blur-md border-2 border-[#C85A17]/30 rounded-2xl p-4 shadow-lg z-50 animate-[slideUp_0.25s_ease-out] text-[#321E12] font-nunito flex items-center gap-3">
@@ -881,6 +973,30 @@ export default function Page() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Tài khoản giáo viên khi chức năng Lớp học đang tạm khoá (xem lib/features.ts). */
+function ClassroomLocked({ name, onLogout }: { name: string; onLogout: () => void }) {
+  return (
+    <div className="min-h-[100dvh] w-full grid place-items-center bg-[#FAF9F6] p-6 font-nunito text-[#321E12]">
+      <div className="w-full max-w-md rounded-3xl border border-[#E2DFD8] bg-white p-7 text-center shadow-[0_12px_40px_rgba(50,30,18,0.08)]">
+        <div className="mx-auto w-14 h-14 rounded-2xl bg-[#FFF2E6] text-[#C85A17] grid place-items-center">
+          <Lock className="w-7 h-7" />
+        </div>
+        <h1 className="mt-4 text-xl font-black">Bảng điều khiển giáo viên đang tạm khoá</h1>
+        <p className="mt-2 text-sm font-semibold text-[#605248] leading-relaxed">
+          Chào {name.split(" (")[0]}. {CLASSROOM_LOCKED_MESSAGE} Trong lúc chờ, học sinh vẫn dùng đầy đủ Prelab, Phòng Lab và Sổ Báo Cáo.
+        </p>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#C85A17] hover:bg-[#B24A0C] px-5 py-2.5 text-sm font-black text-white cursor-pointer transition-colors"
+        >
+          <LogOut className="w-4 h-4" /> Đăng xuất
+        </button>
+      </div>
     </div>
   );
 }

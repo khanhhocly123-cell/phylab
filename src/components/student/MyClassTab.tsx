@@ -267,7 +267,7 @@ export default function MyClassTab({ studentName, myClass, loading, onRefresh, o
       {/* Ghi chú đề GV */}
       {assignments.some((s) => s.assignment.kind === "lab" && s.score == null) && (
         <p className="text-xs font-bold text-[#605248] bg-[#FFF2E6]/60 border border-[#C85A17]/10 rounded-xl px-4 py-3">
-          💡 Với bài Lab giáo viên giao: khi em vào phòng Lab, <strong>Đề bài sẽ là đề của giáo viên</strong> (không
+          Với bài Lab giáo viên giao: khi em vào phòng Lab, <strong>Đề bài sẽ là đề của giáo viên</strong> (không
           phải đề tự sinh). Đo xong, bấm <strong>“Lưu &amp; nộp cho giáo viên”</strong> trong Sổ Báo Cáo để nộp bài.
         </p>
       )}

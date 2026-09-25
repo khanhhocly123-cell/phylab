@@ -5,6 +5,8 @@ import { solveDC } from "../src/engine/circuit.js";
 import { CANONICAL_LAYOUT, planWires, analyzeBoard, solveBoard, pinNodes, freeNodesIn } from "../src/components/lab/electric/emfBoard.js";
 import { moduleOf } from "../src/components/lab/electric/boardGeometry.js";
 import { normalizeVi, retrieveAnswer, buildRagContext } from "../src/lib/labKnowledge.ts";
+import { SCHEMATICS, checkSchematic } from "../src/lib/schematic.ts";
+import { CALC_DRILLS, parseNumber, isCorrect, diagnose } from "../src/components/prelab/calcDrillData.ts";
 
 let passed = 0;
 let failed = 0;
@@ -113,6 +115,27 @@ const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 42949672
   const r0Live = solveBoard({ placements, wires: probeR0, switchClosed: true, rheostat: 50, cell, modes: ohmModes });
   assert("Ôm kế đo R₀ khi K đóng: báo đoạn mạch còn điện", r0Live.voltmeter.live);
   assert("Ôm kế chưa nối que: OL (hở mạch)", solveBoard({ placements, wires: others, switchClosed: false, rheostat: 50, cell, modes: ohmModes }).voltmeter.overload);
+}
+
+// 2b. Prelab điện: chấm sơ đồ mạch bằng giải mạch thật + các bài tính gốc
+{
+  const W = (a, b) => ({ a, b });
+  const O = SCHEMATICS.ohm;
+  const E = SCHEMATICS.emf;
+  const okO = checkSchematic(O, O.solution);
+  assert("Sơ đồ Bài 23 mẫu: đúng, ampe kế 40 mA, vôn kế 6 V", okO.ok && Math.abs(okO.current - 0.04) < 1e-4 && Math.abs(okO.voltage - 6) < 1e-3);
+  const okE = checkSchematic(E, E.solution);
+  assert("Sơ đồ Bài 26 mẫu: đúng, vôn kế ở hai cực pin chỉ U = E − I·r", okE.ok && Math.abs(okE.current - 0.05) < 1e-4 && Math.abs(okE.voltage - 1.45) < 2e-3);
+  const swapped = checkSchematic(O, [W("src:0", "k:0"), W("k:1", "v:0"), W("v:1", "r:0"), W("r:1", "src:1"), W("a:0", "r:0"), W("a:1", "r:1")]);
+  assert("Sơ đồ: đổi chỗ ampe kế ↔ vôn kế thì chỉ ra cả hai lỗi", !swapped.ok && swapped.issues.some((i) => i.code === "a-par") && swapped.issues.some((i) => i.code === "v-series"));
+  const reversed = checkSchematic(O, [W("src:0", "k:0"), W("k:1", "a:1"), W("a:0", "r:0"), W("r:1", "src:1"), W("v:0", "r:0"), W("v:1", "r:1")]);
+  assert("Sơ đồ: ampe kế đảo cực bị phát hiện", !reversed.ok && reversed.issues[0].code === "a-pol");
+  const kParallel = checkSchematic(O, [W("src:0", "a:0"), W("a:1", "r:0"), W("r:1", "src:1"), W("k:0", "r:0"), W("k:1", "r:1"), W("v:0", "r:0"), W("v:1", "r:1")]);
+  assert("Sơ đồ: khoá K mắc song song với R bị phát hiện", !kParallel.ok && kParallel.issues[0].code === "k-par");
+  const allAccepted = Object.values(CALC_DRILLS).flat().every((q) => q.fields.every((f) => isCorrect(f, parseNumber(String(f.answer).replace(".", ",")))));
+  assert("Bài tính Prelab: mọi đáp số đều được nhận khi gõ dấu phẩy", allAccepted);
+  const q = CALC_DRILLS.ohm[0];
+  assert("Bài tính Prelab: quên đổi A → mA được nhắc đúng lỗi", !isCorrect(q.fields[0], 0.025) && diagnose(q, q.fields[0], 0.025).includes("mA"));
 }
 
 // 3. RAG tests

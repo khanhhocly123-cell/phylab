@@ -102,13 +102,13 @@ export default function PlumbBasePrelab({ onLocked }: PlumbBasePrelabProps) {
     const dy = side === "L" ? eTilt.x * 0.5 : -eTilt.x * 0.5;
     return (
       <g style={{ cursor: isAligned && !bothLocked ? "pointer" : "default" }} onClick={() => lock(side)} transform={`translate(0, ${dy})`}>
-        <rect x={x - 2} y={SCREW_TOP} width="4" height={SCREW_BOT - SCREW_TOP} fill={locked ? "#22C55E" : "#D97706"} />
-        <rect x={x - 11} y={SCREW_TOP - 5} width="22" height="10" rx="2" fill={locked ? "#22C55E" : "#F59E0B"} stroke={locked ? "#16A34A" : "#B45309"} strokeWidth="0.6" />
+        <rect x={x - 2} y={SCREW_TOP} width="4" height={SCREW_BOT - SCREW_TOP} fill={locked ? "#22C55E" : "#9CA3AF"} />
+        <rect x={x - 11} y={SCREW_TOP - 5} width="22" height="10" rx="3" fill={locked ? "#22C55E" : "url(#pb-brass)"} stroke={locked ? "#16A34A" : "#7A5C0A"} strokeWidth="0.8" />
         {[0, 1, 2, 3, 4].map((i) => {
           const phase = ((turns * 4 + i) % 5 + 5) % 5;
-          return <line key={i} x1={x - 9 + phase * 4.5} y1={SCREW_TOP - 4} x2={x - 9 + phase * 4.5} y2={SCREW_TOP + 4} stroke={locked ? "#15803D" : "#92400E"} strokeWidth="0.7" />;
+          return <line key={i} x1={x - 9 + phase * 4.5} y1={SCREW_TOP - 4} x2={x - 9 + phase * 4.5} y2={SCREW_TOP + 4} stroke={locked ? "#15803D" : "#7A5C0A"} strokeWidth="0.8" opacity="0.7" />;
         })}
-        <polygon points={`${x - 6},${SCREW_BOT} ${x + 6},${SCREW_BOT} ${x + 8},${GND} ${x - 8},${GND}`} fill="#1E293B" />
+        <polygon points={`${x - 6},${SCREW_BOT} ${x + 6},${SCREW_BOT} ${x + 8},${GND} ${x - 8},${GND}`} fill="url(#pb-iron)" />
         {locked && (
           <g transform={`translate(${x + 15}, ${SCREW_TOP})`}>
             <circle r="6" fill="#22C55E" />
@@ -121,7 +121,7 @@ export default function PlumbBasePrelab({ onLocked }: PlumbBasePrelabProps) {
   };
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", fontFamily: FONT }}>
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start" style={{ fontFamily: FONT }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <StepChip n={1} label="Đưa mũi dọi vào tâm" active={step === "align"} done={step !== "align"} />
@@ -129,31 +129,37 @@ export default function PlumbBasePrelab({ onLocked }: PlumbBasePrelabProps) {
           <StepChip n={2} label={`Xiết vít (${lockedCount}/2)`} active={step === "lock"} done={step === "done"} />
         </div>
 
-        <div style={{ background: "#f3f1ea", borderRadius: 12, padding: "0.75rem" }}>
+        <div style={{ background: "#F6F1E7", borderRadius: 14, padding: "0.6rem", border: "1px solid #E9E2D4" }}>
           <svg width="100%" viewBox="0 0 440 300" role="img" aria-label="Giá đỡ 3 chân, dây dọi và bia nhìn từ trên" style={{ display: "block", overflow: "visible" }}>
-            <rect x="5" y="5" width="430" height="290" rx="6" fill="#FBF6EC" stroke="#888780" strokeWidth="0.5" />
+            <defs>
+              <linearGradient id="pb-iron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#5B6472" /><stop offset="0.45" stopColor="#374151" /><stop offset="1" stopColor="#1F2937" /></linearGradient>
+              <linearGradient id="pb-rod" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#F8FAFC" /><stop offset="0.35" stopColor="#D9DEE5" /><stop offset="0.7" stopColor="#A7B0BC" /><stop offset="1" stopColor="#CBD2DA" /></linearGradient>
+              <linearGradient id="pb-brass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FDE68A" /><stop offset="0.5" stopColor="#D4A017" /><stop offset="1" stopColor="#8A6A0B" /></linearGradient>
+            </defs>
+            <rect x="5" y="5" width="430" height="290" rx="10" fill="#FFFDF8" stroke="#E6DCC8" strokeWidth="1" />
             <line x1="20" y1={GND} x2="330" y2={GND} stroke="#475569" strokeWidth="1.5" strokeDasharray="4 4" />
 
             {/* Thanh trục nghiêng theo độ lệch */}
             <g transform={`rotate(${eTilt.x * 0.45}, ${CX}, ${HUB_Y + HUB_H / 2})`} style={{ cursor: "pointer" }} onClick={() => setSel("rod")}>
-              <rect x={CX - 6} y={ROD_TOP} width="12" height={ROD_BOT - ROD_TOP} fill="#E2E8F0" />
-              <rect x={CX + 3} y={ROD_TOP} width="3" height={ROD_BOT - ROD_TOP} fill="#CBD5E1" />
+              <rect x={CX - 6} y={ROD_TOP} width="12" height={ROD_BOT - ROD_TOP} rx="3" fill="url(#pb-rod)" stroke="#8B95A1" strokeWidth="0.8" />
+              <circle cx={CX} cy={ROD_TOP + 1} r="6.5" fill="#CBD2DA" stroke="#8B95A1" strokeWidth="0.8" />
             </g>
             {/* Khung gang */}
             <g>
-              <rect x={CX - 18} y={HUB_Y} width="36" height={HUB_H} rx="4" fill="#3A3D40" />
-              <path d={`M ${CX - 18} ${HUB_Y + 14} C ${CX - 60} ${HUB_Y + 14}, ${SCREW_X_L + 30} ${ARM_END_Y - 4}, ${SCREW_X_L + 8} ${ARM_END_Y} L ${SCREW_X_L + 8} ${ARM_END_Y + 12} C ${SCREW_X_L + 30} ${ARM_END_Y + 6}, ${CX - 60} ${HUB_Y + 24}, ${CX - 18} ${HUB_Y + 24} Z`} fill="#3A3D40" />
-              <path d={`M ${CX + 18} ${HUB_Y + 14} C ${CX + 60} ${HUB_Y + 14}, ${SCREW_X_R - 30} ${ARM_END_Y - 4}, ${SCREW_X_R - 8} ${ARM_END_Y} L ${SCREW_X_R - 8} ${ARM_END_Y + 12} C ${SCREW_X_R - 30} ${ARM_END_Y + 6}, ${CX + 60} ${HUB_Y + 24}, ${CX + 18} ${HUB_Y + 24} Z`} fill="#3A3D40" />
-              <rect x={SCREW_X_L - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill="#3A3D40" />
-              <rect x={SCREW_X_R - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill="#3A3D40" />
-              <rect x={CX - 6} y={HUB_Y + HUB_H - 4} width="12" height={GND - HUB_Y - HUB_H + 4} fill="#3A3D40" />
+              <rect x={CX - 18} y={HUB_Y} width="36" height={HUB_H} rx="4" fill="url(#pb-iron)" />
+              <path d={`M ${CX - 18} ${HUB_Y + 14} C ${CX - 60} ${HUB_Y + 14}, ${SCREW_X_L + 30} ${ARM_END_Y - 4}, ${SCREW_X_L + 8} ${ARM_END_Y} L ${SCREW_X_L + 8} ${ARM_END_Y + 12} C ${SCREW_X_L + 30} ${ARM_END_Y + 6}, ${CX - 60} ${HUB_Y + 24}, ${CX - 18} ${HUB_Y + 24} Z`} fill="url(#pb-iron)" />
+              <path d={`M ${CX + 18} ${HUB_Y + 14} C ${CX + 60} ${HUB_Y + 14}, ${SCREW_X_R - 30} ${ARM_END_Y - 4}, ${SCREW_X_R - 8} ${ARM_END_Y} L ${SCREW_X_R - 8} ${ARM_END_Y + 12} C ${SCREW_X_R - 30} ${ARM_END_Y + 6}, ${CX + 60} ${HUB_Y + 24}, ${CX + 18} ${HUB_Y + 24} Z`} fill="url(#pb-iron)" />
+              <rect x={SCREW_X_L - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill="url(#pb-iron)" />
+              <rect x={SCREW_X_R - 8} y={ARM_END_Y - 2} width="16" height="16" rx="2" fill="url(#pb-iron)" />
+              <rect x={CX - 6} y={HUB_Y + HUB_H - 4} width="12" height={GND - HUB_Y - HUB_H + 4} fill="url(#pb-iron)" />
             </g>
             {screw(SCREW_X_L, "L", leftLocked, turnL)}
             {screw(SCREW_X_R, "R", rightLocked, turnR)}
             {/* Dây dọi (nhìn ngang) */}
             <g style={{ cursor: "pointer" }} onClick={() => setSel("plumbLine")}>
-              <line x1={CX} y1={PLUMB_TOP} x2={CX + eTilt.x * 1.6} y2={PLUMB_BOT} stroke={bothLocked ? C.good : "#EF4444"} strokeWidth="1" />
-              <polygon points={`${CX + eTilt.x * 1.6 - 4},${PLUMB_BOT} ${CX + eTilt.x * 1.6 + 4},${PLUMB_BOT} ${CX + eTilt.x * 1.6},${PLUMB_BOT + 13}`} fill={isAligned || bothLocked ? C.good : "#B45309"} />
+              <line x1={CX} y1={PLUMB_TOP} x2={CX + eTilt.x * 1.6} y2={PLUMB_BOT} stroke={bothLocked ? C.good : "#1F2937"} strokeWidth="1.1" />
+              <path d={`M${CX + eTilt.x * 1.6 - 5} ${PLUMB_BOT + 2} Q${CX + eTilt.x * 1.6 - 5} ${PLUMB_BOT - 1} ${CX + eTilt.x * 1.6} ${PLUMB_BOT - 1} Q${CX + eTilt.x * 1.6 + 5} ${PLUMB_BOT - 1} ${CX + eTilt.x * 1.6 + 5} ${PLUMB_BOT + 2} L${CX + eTilt.x * 1.6 + 0.7} ${PLUMB_BOT + 14} L${CX + eTilt.x * 1.6 - 0.7} ${PLUMB_BOT + 14} Z`}
+                fill={isAligned || bothLocked ? C.good : "url(#pb-brass)"} stroke={isAligned || bothLocked ? "#166534" : "#7A5C0A"} strokeWidth="0.8" strokeLinejoin="round" />
             </g>
 
             {/* Bia nhìn từ trên xuống */}
@@ -177,6 +183,8 @@ export default function PlumbBasePrelab({ onLocked }: PlumbBasePrelabProps) {
           </svg>
         </div>
 
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {/* Hai vít: vặn luân phiên; thẳng đứng rồi thì xiết khóa */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {([["L", "Vít trái", C.orangeDk, leftLocked], ["R", "Vít phải", C.navy, rightLocked]] as const).map(([side, label, color, locked]) => (

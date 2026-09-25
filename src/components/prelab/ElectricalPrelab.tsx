@@ -3,11 +3,13 @@
 import { useState } from "react";
 import {
   BatteryCharging,
+  Calculator,
   Check,
   CircleDot,
   Gauge,
   Hand,
   MousePointerClick,
+  PenLine,
   PlugZap,
   Power,
   RotateCw,
@@ -16,6 +18,10 @@ import {
 import type { ExperimentSpec } from "@/lib/types";
 import PrelabShell, { type PrelabStep } from "./PrelabShell";
 import { Multimeter, DcSource, CircuitBoard, boardModuleRect, boardNode } from "../lab/electric/ElectricParts.jsx";
+import CircuitSketch from "./CircuitSketch";
+import CalcDrills, { drillsDone, type DrillState } from "./CalcDrills";
+import { CALC_DRILLS } from "./calcDrillData";
+import { SCHEMATICS, type SchWire } from "@/lib/schematic";
 
 type Props = { spec: ExperimentSpec; viewOnly?: boolean; onFinish: () => void; onExit?: () => void };
 type MeterMode = "OFF" | "V" | "Ω" | "mA" | "µA";
@@ -25,7 +31,7 @@ const MODES: MeterMode[] = ["OFF", "V", "Ω", "mA", "µA"];
 const MODE_INFO: Record<MeterMode, { name: string; unit: string; description: string }> = {
   OFF: { name: "Tắt đồng hồ", unit: "—", description: "Đưa về OFF trước khi cắm/rút dây hoặc thay đổi mạch." },
   V: { name: "Đo hiệu điện thế", unit: "V", description: "Mắc song song với phần tử cần đo; que đỏ vào VΩ, que đen vào COM." },
-  Ω: { name: "Đo điện trở", unit: "Ω", description: "Chỉ đo khi mạch đã mất điện và phần tử được tách khỏi nguồn." },
+  Ω: { name: "Đo điện trở (ôm kế)", unit: "Ω", description: "Que VΩ và COM kẹp hai đầu phần tử; máy tự đổi thang Ω/kΩ/MΩ, hở mạch hiện OL. Chỉ đo khi đoạn mạch đã mất điện (mở K / tắt nguồn) — còn điện thì số chỉ sai và đồng hồ nháy cảnh báo. Ôm kế cũng không đo được r của pin." },
   mA: { name: "Đo dòng miliampe", unit: "mA", description: "Mắc nối tiếp trong mạch; que đỏ vào mAµA, que đen vào COM." },
   µA: { name: "Đo dòng microampe", unit: "µA", description: "Dùng cho dòng rất nhỏ; luôn bắt đầu từ thang lớn hơn để bảo vệ đồng hồ." },
 };
@@ -47,9 +53,17 @@ export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onE
   const [sourceVoltage, setSourceVoltage] = useState(3);
   const [networkPair, setNetworkPair] = useState(0);
   const [safe, setSafe] = useState(false);
+  // Sơ đồ mạch + tính toán gốc: giữ ở đây để chuyển qua lại giữa các bước không mất bài làm.
+  const [sketchWires, setSketchWires] = useState<SchWire[]>([]);
+  const [sketchDone, setSketchDone] = useState(false);
+  const [drills, setDrills] = useState<DrillState>({});
+  const labKey = isEmf ? "emf" : "ohm";
+  const questions = CALC_DRILLS[labKey];
+  const calcDone = drillsDone(questions, drills);
+  const calcLeft = questions.filter((q) => drills[q.id]?.status !== "ok").length;
   const exploredModes = modesSeen.size === MODES.length;
   const exploredPorts = portsSeen.size === Object.keys(PORT_INFO).length;
-  const ready = exploredModes && exploredPorts && safe;
+  const ready = exploredModes && exploredPorts && sketchDone && calcDone && safe;
 
   const visitMode = (next: MeterMode) => {
     setMode(next);
@@ -63,6 +77,8 @@ export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onE
   const missing = [
     !exploredModes && `${MODES.length - modesSeen.size} nấc núm xoay`,
     !exploredPorts && `${Object.keys(PORT_INFO).length - portsSeen.size} cổng cắm`,
+    !sketchDone && "vẽ đúng sơ đồ mạch",
+    !calcDone && `${calcLeft} câu tính toán`,
     !safe && "xác nhận an toàn",
   ].filter(Boolean).join(" · ");
   const steps: PrelabStep[] = [
@@ -70,6 +86,8 @@ export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onE
     { key: "modes", label: "Núm xoay", done: exploredModes },
     { key: "ports", label: "Cổng cắm", done: exploredPorts },
     { key: isEmf ? "board" : "source", label: isEmf ? "Bảng mạch" : "Nguồn DC" },
+    { key: "sketch", label: "Sơ đồ mạch", done: sketchDone },
+    { key: "calc", label: "Tính toán", done: calcDone },
     { key: "safety", label: "An toàn", done: safe },
   ];
 
@@ -85,17 +103,31 @@ export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onE
       onFinish={onFinish}
       onExit={onExit}
     >
-      <div className="min-h-[440px] flex flex-col justify-center">
+      {/* Bước vẽ sơ đồ và tính toán căn từ trên xuống: phản hồi hiện ra không được xô khung vẽ. */}
+      <div className={`min-h-[440px] flex flex-col ${slide === 4 || slide === 5 ? "justify-start" : "justify-center"}`}>
         {slide === 0 && (
           <div className="max-w-3xl mx-auto text-center py-4">
             <div className="inline-flex items-center gap-2 text-[10px] tracking-[.18em] text-brand-orange font-black uppercase mb-3"><MousePointerClick className="w-4 h-4" /> Làm quen trước khi lắp</div>
             <h3 className="text-xl md:text-2xl font-black text-brand-blue">Chỉ học những dụng cụ quyết định phép đo</h3>
             <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed mt-4">
               {isEmf
-                ? "Em sẽ học cách dùng đồng hồ đa năng và cách các nút trong cùng một mạng trên bảng lắp mạch nối điện với nhau. Các linh kiện còn lại sẽ được giới thiệu đúng lúc trong phòng Lab."
-                : "Bài 23 dùng mạch nổi, không có bảng lắp mạch. Em chỉ cần nắm chắc đồng hồ đa năng và nguồn DC điều chỉnh trước khi vào bàn thí nghiệm."}
+                ? "Em sẽ làm quen đồng hồ đa năng và bảng lắp mạch, tự vẽ sơ đồ mạch đo E, r rồi làm các phép tính sẽ dùng để xử lí số liệu."
+                : "Em sẽ làm quen đồng hồ đa năng và nguồn DC, tự vẽ sơ đồ mạch đo điện trở rồi làm các phép tính sẽ dùng để xử lí số liệu."}
             </p>
-            <div className="grid sm:grid-cols-2 gap-4 mt-7 text-left">
+            <div className="flex flex-wrap justify-center gap-1.5 mt-4">
+              {[
+                { icon: <RotateCw className="w-3.5 h-3.5" />, text: "Núm xoay" },
+                { icon: <PlugZap className="w-3.5 h-3.5" />, text: "Cổng cắm" },
+                { icon: <PenLine className="w-3.5 h-3.5" />, text: "Vẽ sơ đồ mạch" },
+                { icon: <Calculator className="w-3.5 h-3.5" />, text: "Tính toán gốc" },
+                { icon: <ShieldCheck className="w-3.5 h-3.5" />, text: "An toàn" },
+              ].map((chip) => (
+                <span key={chip.text} className="inline-flex items-center gap-1.5 rounded-full border border-brand-orange/20 bg-white px-2.5 py-1 text-[11px] font-black text-brand-blue">
+                  <span className="text-brand-orange">{chip.icon}</span>{chip.text}
+                </span>
+              ))}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4 mt-5 text-left">
               <IntroCard icon={<Gauge className="w-5 h-5" />} title="Đồng hồ đa năng hiện số" text="Một thân máy, năm nấc chức năng. Màn hình và cổng cắm thay đổi ý nghĩa theo nấc đang chọn." visual={<svg viewBox="0 0 130 214" className="h-full w-auto"><Multimeter at={{ x: 0, y: 0, s: 1 }} mode="V" reading={0} /></svg>} />
               {isEmf
                 ? <IntroCard icon={<CircleDot className="w-5 h-5" />} title="Bảng lắp mạch 216 nút" text="24 mạng độc lập; 9 nút trong cùng một mạng dẫn điện với nhau." visual={<svg viewBox="0 0 994 684" className="w-full h-auto"><CircuitBoard at={{ x: 0, y: 0, s: 1 }} /></svg>} />
@@ -172,6 +204,28 @@ export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onE
         )}
 
         {slide === 4 && (
+          <div className="w-full">
+            <CircuitSketch
+                spec={SCHEMATICS[labKey]}
+                title={isEmf ? "Vẽ sơ đồ mạch đo suất điện động và điện trở trong của pin" : "Vẽ sơ đồ mạch đo điện trở của vật dẫn"}
+                wires={sketchWires}
+                onWires={setSketchWires}
+                solved={sketchDone}
+                onSolved={() => setSketchDone(true)}
+              />
+          </div>
+        )}
+
+        {slide === 5 && (
+          <div className="w-full">
+            <SectionHeading eyebrow="Tính toán gốc" title="Làm đúng ba câu — đây là các phép tính em sẽ dùng để xử lí số liệu" />
+            <div className="mt-4">
+              <CalcDrills drills={questions} state={drills} onChange={setDrills} />
+            </div>
+          </div>
+        )}
+
+        {slide === 6 && (
           <div className="max-w-2xl mx-auto w-full text-center py-3">
             <SectionHeading eyebrow="Kiểm tra trước khi vào Lab" title="An toàn trước, cấp điện sau" />
             <div className="grid sm:grid-cols-3 gap-3 mt-6 text-left">
@@ -182,7 +236,7 @@ export default function ElectricalPrelab({ spec, viewOnly = false, onFinish, onE
             <button type="button" onClick={() => setSafe((value) => !value)} className={`mt-5 w-full rounded-2xl border-2 p-4 text-left transition ${safe ? "bg-emerald-50 border-emerald-400" : "bg-white border-brand-orange/25"}`}>
               <div className="flex gap-3"><div className={`w-7 h-7 rounded-full shrink-0 grid place-items-center ${safe ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>{safe ? <Check className="w-4 h-4" /> : <Hand className="w-4 h-4" />}</div><div><b className="text-sm text-brand-blue">Em đã hiểu quy trình an toàn và cách chọn đúng cổng, đúng nấc.</b><p className="text-xs font-semibold text-slate-500 mt-1">Chạm để xác nhận.</p></div></div>
             </button>
-            {(!exploredModes || !exploredPorts) && <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-bold text-orange-900">Còn thiếu: {!exploredModes ? `${5 - modesSeen.size} nấc VOM` : ""}{!exploredModes && !exploredPorts ? " · " : ""}{!exploredPorts ? `${4 - portsSeen.size} cổng cắm` : ""}. Bấm tên bước ở thanh trên để quay lại.</div>}
+            {(!exploredModes || !exploredPorts || !sketchDone || !calcDone) && <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-bold text-orange-900">Còn thiếu: {[!exploredModes && `${5 - modesSeen.size} nấc VOM`, !exploredPorts && `${4 - portsSeen.size} cổng cắm`, !sketchDone && "vẽ đúng sơ đồ mạch", !calcDone && `${calcLeft} câu tính toán`].filter(Boolean).join(" · ")}. Bấm tên bước ở thanh trên để quay lại.</div>}
           </div>
         )}
       </div>
