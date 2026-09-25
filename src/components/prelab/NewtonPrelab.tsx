@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Check, Hand, Search, Wind } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Hand, Search, Sigma, Timer, Wind } from "lucide-react";
 import type { ExperimentSpec } from "@/lib/types";
 import PrelabShell, { PrelabStepHeading, type PrelabStep } from "./PrelabShell";
 import { MC964Interactive } from "./MC964Prelab";
-import CalcDrills, { drillsDone, type DrillState } from "./CalcDrills";
-import { CALC_DRILLS } from "./calcDrillData";
 import { MathText } from "../Latex";
 import { MC964Face } from "../lab/mech/MechParts.jsx";
 import {
   AT, G1_X, rulerX, hookYOf,
   AirTrackRoom, AirTrack15, AirPump15, Glider15, Photogate15, Pulley15, Hanger15, WeightBox15, Scale15,
 } from "../lab/mech/AirTrackParts.jsx";
-import { NEWTON2, newtonRun, computeNewtonTime, accelFromTime } from "@/engine/physicsNewton2.js";
+import { NEWTON2, newtonRun, computeNewtonTime } from "@/engine/physicsNewton2.js";
 
 type Props = { spec: ExperimentSpec; viewOnly?: boolean; onFinish: () => void; onExit?: () => void };
 
 const G2_X = rulerX(AT.G1_CM + 50);
-const DRILLS = CALC_DRILLS.newton2;
 
 /** Chú thích Hình 15.2 (SGK) — số, vị trí trên hình, tên, vai trò. */
 const PARTS = [
@@ -36,16 +33,17 @@ const PARTS = [
 
 export default function NewtonPrelab({ spec, viewOnly = false, onFinish, onExit }: Props) {
   const [slide, setSlide] = useState(0);
-  const [drills, setDrills] = useState<DrillState>({});
-  const calcDone = drillsDone(DRILLS, drills);
+  // Việc bắt buộc (như các Prelab khác): tự tay đẩy thử xe ở ít nhất hai nấc máy nén khí.
+  const [levelsTried, setLevelsTried] = useState(0);
+  const airDone = levelsTried >= 2;
 
   const steps: PrelabStep[] = [
+    { key: "overview", label: "Tổng quan" },
     { key: "fig", label: "Hình 15.2" },
     { key: "pump", label: "Máy nén khí" },
-    { key: "air", label: "Thử đệm khí" },
+    { key: "air", label: "Thử đệm khí", done: viewOnly ? undefined : airDone },
     { key: "clock", label: "Đồng hồ A↔B" },
-    { key: "start", label: "Sát cổng 1" },
-    { key: "calc", label: "Tính toán", done: viewOnly ? undefined : calcDone },
+    { key: "formula", label: "Công thức" },
   ];
 
   return (
@@ -55,15 +53,16 @@ export default function NewtonPrelab({ spec, viewOnly = false, onFinish, onExit 
       current={slide}
       onStep={setSlide}
       mode={viewOnly ? "review" : "gate"}
-      canFinish={calcDone}
-      requirement="Còn thiếu: làm đúng 3 phép tính gốc ở bước Tính toán"
+      canFinish={airDone}
+      requirement="Còn thiếu: đẩy thử xe ở ít nhất 2 nấc máy nén khí (bước Thử đệm khí)"
       onFinish={onFinish}
       onExit={onExit}
     >
-      {slide === 0 && <FigureStep spec={spec} />}
-      {slide === 1 && <CompressorStep />}
-      {slide === 2 && <AirCushionStep />}
-      {slide === 3 && (
+      {slide === 0 && <Overview15 spec={spec} />}
+      {slide === 1 && <FigureStep />}
+      {slide === 2 && <CompressorStep />}
+      {slide === 3 && <AirCushionStep onTested={(n) => setLevelsTried((v) => Math.max(v, n))} />}
+      {slide === 4 && (
         <div className="animate-[fadeIn_0.25s_ease-out]">
           <PrelabStepHeading
             eyebrow="Đồng hồ đo thời gian hiện số (7)"
@@ -73,30 +72,57 @@ export default function NewtonPrelab({ spec, viewOnly = false, onFinish, onExit 
           <MC964Interactive />
         </div>
       )}
-      {slide === 4 && <StartStep />}
-      {slide === 5 && (
-        <div className="animate-[fadeIn_0.25s_ease-out] flex flex-col gap-3">
-          <PrelabStepHeading
-            eyebrow="Tính toán gốc"
-            title="Hệ vật, lực kéo và gia tốc"
-            lead="Ba phép tính em sẽ dùng trong Lab: tính F và M + m của hệ, tính a từ t đo được, và cách đổi F mà giữ nguyên khối lượng."
-            required
-          />
-          <CalcDrills drills={DRILLS} state={drills} onChange={setDrills} />
-          {calcDone && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex items-center gap-2 text-emerald-800 text-xs font-bold">
-              <span className="w-5 h-5 bg-emerald-500 text-white rounded-full grid place-items-center flex-shrink-0"><Check className="w-3 h-3" strokeWidth={3} /></span>
-              Đúng cả ba! Vào Phòng Lab để đo đủ 5 cột Bảng 15.1.
-            </div>
-          )}
-        </div>
-      )}
+      {slide === 5 && <FormulaStep />}
     </PrelabShell>
   );
 }
 
+/* ============================ Tổng quan (như các Prelab khác) ============================ */
+function Overview15({ spec }: { spec: ExperimentSpec }) {
+  const items = [
+    { icon: <Search className="w-4 h-4" />, title: "Bố trí theo Hình 15.2", text: "Chạm từng số (1)–(9) để biết dụng cụ nào làm gì." },
+    { icon: <Wind className="w-4 h-4" />, title: "Máy nén khí & đệm khí", text: "Bật máy, vặn núm lưu lượng, đẩy thử xe ở từng nấc.", required: true },
+    { icon: <Timer className="w-4 h-4" />, title: "Đồng hồ MODE A↔B", text: "Đếm thời gian xe đi từ cổng quang 1 tới cổng quang 2." },
+    { icon: <Sigma className="w-4 h-4" />, title: "Công thức", text: "F, M + m, a = 2s/t² và a = F/(M + m) — đọc là hiểu." },
+  ];
+  return (
+    <div className="max-w-4xl mx-auto py-1 animate-[fadeIn_0.25s_ease-out]">
+      <div className="text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#C85A17]">Mục tiêu bài thực hành · {spec.book}</p>
+        <h3 className="text-lg sm:text-xl font-black text-[#321E12] mt-1 leading-snug">{spec.title}</h3>
+        <div className="text-xs sm:text-sm font-semibold text-[#605248] leading-relaxed mt-2 max-w-2xl mx-auto">
+          <MathText text={spec.theory.objective} />
+        </div>
+        <div className="inline-flex items-center gap-2.5 mt-4 px-4 py-2 rounded-2xl bg-white border border-[#E2DFD8] text-sm font-black text-[#321E12]">
+          <span className="text-[10px] uppercase tracking-wider text-[#605248]">Định luật 2 Newton</span>
+          <MathText text={`$${spec.theory.formula}$`} />
+        </div>
+      </div>
+
+      <p className="mt-6 text-[11px] font-black uppercase tracking-wider text-[#605248]">Em sẽ làm quen</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
+        {items.map((it, i) => (
+          <div key={it.title} className="rounded-2xl border border-[#E2DFD8] bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-[#FFF2E6] text-[#C85A17] grid place-items-center">{it.icon}</span>
+              <span className="text-[10px] font-black text-[#605248]">Bước {i + 2}</span>
+              {it.required && <span className="ml-auto text-[9px] font-black uppercase text-white bg-[#C85A17] px-1.5 py-0.5 rounded">Bắt buộc</span>}
+            </div>
+            <h4 className="text-sm font-black text-[#321E12] mt-2">{it.title}</h4>
+            <p className="text-[11px] font-semibold text-[#605248] leading-relaxed mt-0.5">{it.text}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-[#C85A17]/20 bg-[#FFF7ED] px-4 py-3 text-[11px] sm:text-xs font-bold text-[#321E12] leading-relaxed">
+        Sau Prelab: vào Phòng Lab → lắp 10 dụng cụ → bật máy nén khí, chỉnh máng, cân, nối đồng hồ → tự tay giữ và thả xe để đo đủ 5 cột Bảng 15.1 → lưu vào Sổ Báo Cáo.
+      </div>
+    </div>
+  );
+}
+
 /* ============================ Bước 1 — Hình 15.2 chạm để khám phá ============================ */
-function FigureStep({ spec }: { spec: ExperimentSpec }) {
+function FigureStep() {
   const [picked, setPicked] = useState<string | null>(null);
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const pick = (id: string) => {
@@ -106,17 +132,11 @@ function FigureStep({ spec }: { spec: ExperimentSpec }) {
   const part = PARTS.find((p) => p.id === picked);
   return (
     <div className="animate-[fadeIn_0.25s_ease-out] flex flex-col gap-3">
-      <div className="flex flex-col lg:flex-row lg:items-end gap-2 lg:gap-6">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#C85A17]">Mục tiêu · {spec.book}</p>
-          <h3 className="text-base sm:text-lg font-black text-[#321E12] leading-snug">{spec.title}</h3>
-          <div className="text-xs font-semibold text-[#605248] leading-relaxed mt-1"><MathText text={spec.theory.objective} /></div>
-        </div>
-        <div className="inline-flex items-center gap-2 self-start lg:self-auto px-3 py-1.5 rounded-2xl bg-white border border-[#E2DFD8] text-sm font-black text-[#321E12]">
-          <span className="text-[10px] uppercase tracking-wider text-[#605248]">Định luật 2</span>
-          <MathText text="$\vec{a} = \dfrac{\vec{F}}{m}$" />
-        </div>
-      </div>
+      <PrelabStepHeading
+        eyebrow="Bố trí thí nghiệm"
+        title="Hình 15.2 — đủ 9 dụng cụ như SGK"
+        lead="Xe trượt 200 g buộc vào sợi dây vắt qua ròng rọc; đầu dây móc các quả nặng 50 g. Chạm vào từng số để biết dụng cụ đó làm gì."
+      />
 
       <div className="rounded-2xl border border-[#E2DFD8] bg-white overflow-hidden">
         <div className="flex items-center gap-2 px-3 pt-2.5">
@@ -309,13 +329,14 @@ const DEMO_V0 = 0.7;           // tốc độ đẩy nhẹ (m/s)
 const DECEL_AIR = 0.015;       // đệm khí đủ: cản rất nhỏ (m/s²)
 /** Gia tốc hãm theo nấc máy nén khí: tắt μ = 0,2; yếu μ = 0,05; vừa/mạnh gần như 0. */
 const decelOf = (level: number) => (level === 0 ? NEWTON2.friction.kinetic * NEWTON2.g : level === 1 ? NEWTON2.weakFriction.kinetic * NEWTON2.g : DECEL_AIR);
-function AirCushionStep() {
+function AirCushionStep({ onTested }: { onTested?: (levels: number) => void }) {
   const [on, setOn] = useState(true);
   const [flow, setFlow] = useState(2);
   const level = on ? flow : 0;
   const [pos, setPos] = useState(0);          // quãng đã trượt (m)
   const [result, setResult] = useState<{ level: number; dist: number; hitEnd: boolean } | null>(null);
   const [tries, setTries] = useState<Record<number, number>>({});
+  const triesRef = useRef<Record<number, number>>({});
   const raf = useRef<number | null>(null);
   const running = useRef(false);
   const maxDist = (AT.TRACK_R - 30 - (G1_X - 60)) / AT.PXM;
@@ -339,7 +360,10 @@ function AirCushionStep() {
         running.current = false;
         setPos(stopDist);
         setResult({ level: levelNow, dist: stopDist, hitEnd: stopDist >= maxDist - 1e-6 });
-        setTries((old) => ({ ...old, [levelNow]: stopDist }));
+        const nextTries = { ...triesRef.current, [levelNow]: stopDist };
+        triesRef.current = nextTries;
+        setTries(nextTries);
+        onTested?.(Object.keys(nextTries).length);
       }
     };
     raf.current = requestAnimationFrame(tick);
@@ -354,6 +378,7 @@ function AirCushionStep() {
       <PrelabStepHeading
         eyebrow="Máng đệm khí (2) · Máy nén khí (9)"
         title="Thử đệm khí: cùng một cú đẩy, xe đi được bao xa?"
+        required
         lead="Định luật 2 Newton nói về hợp lực. Muốn lực kéo F gần như là lực duy nhất theo phương chuyển động thì phải triệt tiêu ma sát — đó là việc của đệm khí. Đẩy nhẹ xe ở các nấc: máy tắt, nấc 1 (yếu), nấc 2 (vừa)."
       />
       <div className="rounded-2xl border border-[#E2DFD8] bg-white overflow-hidden">
@@ -397,69 +422,57 @@ function AirCushionStep() {
   );
 }
 
-/* ============================ Bước 4 — Vì sao đặt tấm chắn sát cổng 1 ============================ */
-function StartStep() {
-  const [dCm, setDCm] = useState(2);
-  const cfg = NEWTON2.sgkConfigs[2]; // F = 1 N, M + m = 0,5 kg
-  const truth = newtonRun({ ...cfg, d: 0, withNoise: false });
-  const run = newtonRun({ ...cfg, d: dCm / 100, withNoise: false });
-  const shown = computeNewtonTime({ run });
-  const aCalc = accelFromTime(Number(shown.display));
-  const err = ((aCalc - truth.a) / truth.a) * 100;
-  const xs = G1_X - (dCm / 100) * AT.PXM;
+/* ============================ Bước cuối — Công thức (chỉ giới thiệu, không bắt tính) ============================ */
+function FormulaStep() {
+  const [t, setT] = useState(0.64);
+  const a = 1 / (t * t);
+  // Vì sao sát cổng 1: cùng cột ③ (F = 1 N, M + m = 0,5 kg), chạy mô hình thật không nhiễu.
+  const cfg = NEWTON2.sgkConfigs[2];
+  const tSat = Number(computeNewtonTime({ run: newtonRun({ ...cfg, d: 0, withNoise: false }) }).display);
+  const tBack = Number(computeNewtonTime({ run: newtonRun({ ...cfg, d: 0.03, withNoise: false }) }).display);
+  const vi = (v: number, dp: number) => v.toFixed(dp).replace(".", ",");
   return (
     <div className="animate-[fadeIn_0.25s_ease-out] flex flex-col gap-3">
       <PrelabStepHeading
-        eyebrow="Lưu ý của SGK"
-        title="Vì sao phải đặt tấm chắn sáng SÁT cổng quang 1?"
-        lead="Công thức a = 2s/t² chỉ đúng khi lúc đồng hồ bắt đầu đếm, xe có v₀ = 0. Kéo thanh trượt để xe xuất phát lùi xa cổng 1 và xem a tính ra lệch thế nào."
+        eyebrow="Công thức"
+        title="Bốn công thức dùng trong Lab"
+        lead="Không phải tính trước — trong Lab máy tự tính giúp em. Hiểu các công thức này để đọc đúng số liệu và đồ thị."
       />
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start">
-        <div className="rounded-2xl border border-[#E2DFD8] bg-white overflow-hidden">
-          <svg viewBox={`${G1_X - 110} 166 330 104`} className="w-full h-auto block" role="img" aria-label="Vị trí xuất phát của xe so với cổng quang 1">
-            <AirTrackRoom />
-            <AirTrack15 level pump />
-            <Photogate15 x={G1_X} label="1" />
-            <Glider15 xs={xs} lift={1.6} />
-            {dCm > 0 && (
-              <g>
-                <line x1={xs} y1={184} x2={G1_X} y2={184} stroke="#DC2626" strokeWidth="1.6" />
-                <text x={(xs + G1_X) / 2} y={180} textAnchor="middle" fontSize="10" fontWeight="900" fill="#B91C1C">d = {dCm.toFixed(1).replace(".", ",")} cm</text>
-              </g>
-            )}
-            {dCm === 0 && <text x={G1_X - 14} y={180} textAnchor="middle" fontSize="10" fontWeight="900" fill="#15803D">sát cổng 1 ✓</text>}
-          </svg>
-          <div className="px-3 pb-3">
-            <label className="text-[11px] font-black text-[#605248] uppercase tracking-wide" htmlFor="start-d">Xe xuất phát cách cổng 1: {dCm.toFixed(1).replace(".", ",")} cm</label>
-            <input id="start-d" type="range" min={0} max={5} step={0.5} value={dCm} onChange={(e) => setDCm(Number(e.target.value))} className="w-full accent-[#C85A17]" />
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label="Đồng hồ chỉ t" value={`${shown.display.replace(".", ",")} s`} />
-            <Stat label="a = 2s/t²" value={`${aCalc.toFixed(2).replace(".", ",")} m/s²`} tone={Math.abs(err) < 2 ? "ok" : "bad"} />
-            <Stat label="a thật của hệ" value={`${truth.a.toFixed(2).replace(".", ",")} m/s²`} />
-            <Stat label="Sai lệch" value={`${err >= 0 ? "+" : ""}${err.toFixed(0)} %`} tone={Math.abs(err) < 2 ? "ok" : "bad"} />
-          </div>
-          <p className="text-[12px] font-bold text-[#605248] leading-relaxed">
-            {dCm === 0
-              ? "Tấm chắn sát cổng 1: đồng hồ bắt đầu đếm đúng lúc xe bắt đầu chạy (v₀ = 0) → a = 2s/t² khớp a thật."
-              : `Xe lùi ${dCm.toFixed(1).replace(".", ",")} cm: tới cổng 1 xe đã có vận tốc, đi 0,5 m nhanh hơn → t nhỏ → a tính ra LỚN hơn thật. Chỉ vài cm mà sai tới hàng chục phần trăm!`}
-          </p>
-          <div className="rounded-xl border border-[#E2DFD8] bg-[#FBF8F3] px-3 py-2 text-[11.5px] font-semibold text-[#605248] leading-relaxed">
-            <b className="text-[#321E12]">Cách khác (SGK):</b> thay tấm chắn dài 1 cm, đo thời gian che mỗi cổng ⇒ <MathText text="$v_1 = \ell/t_1,\ v_2 = \ell/t_2$" /> rồi <MathText text="$a = \dfrac{v_2^2 - v_1^2}{2s}$" /> — cách này không cần v₀ = 0.
-          </div>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormulaCard n={1} title="Lực kéo F" formula="F = n_{treo}\,m\,g \approx n_{treo} \times 0{,}5\ \text{N}"
+          note="Chỉ các quả TREO kéo xe. Mỗi quả 50 g nặng 0,5 N (SGK lấy g ≈ 10 m/s²): 2 quả → 1 N." />
+        <FormulaCard n={2} title="Khối lượng hệ vật" formula="M + m = 0{,}2 + (n_{treo} + n_{xe}) \times 0{,}05\ \text{kg}"
+          note="Hệ vật gồm xe trượt và MỌI quả nặng — cả quả trên xe lẫn quả treo." />
+        <FormulaCard n={3} title="Gia tốc từ số đo" formula="s = \tfrac{1}{2}at^2 \;\Rightarrow\; a = \dfrac{2s}{t^2} = \dfrac{1}{t^2}\quad(s = 0{,}5\ \text{m})">
+          <label className="mt-2 flex items-center gap-2 text-[11.5px] font-bold text-[#605248]">
+            <span className="whitespace-nowrap">Thử kéo t:</span>
+            <input type="range" min={0.4} max={0.8} step={0.01} value={t} onChange={(e) => setT(Number(e.target.value))} className="flex-1 accent-[#C85A17]" aria-label="Thời gian t (s)" />
+            <span className="font-black text-[#321E12] tabular-nums whitespace-nowrap">t = {vi(t, 2)} s → a = {vi(a, 2)} m/s²</span>
+          </label>
+        </FormulaCard>
+        <FormulaCard n={4} title="Định luật 2 Newton" formula="a = \dfrac{F}{M + m}"
+          note="Giữ M + m, tăng F → a tăng tỉ lệ; giữ F, tăng M + m → a giảm. Hai đồ thị Hình 15.3 là đường thẳng qua gốc." />
+      </div>
+      <div className="rounded-xl border border-[#C85A17]/20 bg-[#FFF7ED] px-3 py-2 text-[12px] font-bold text-[#321E12] leading-relaxed">
+        Công thức 3 chỉ đúng khi xe bắt đầu chạy <b>sát cổng quang 1</b> (v₀ = 0). Cùng một cấu hình: sát cổng 1 thì t = {vi(tSat, 3)} s → a = {vi(1 / (tSat * tSat), 2)} m/s²;
+        xe lùi 3 cm thì t chỉ còn {vi(tBack, 3)} s → a = {vi(1 / (tBack * tBack), 2)} m/s² — sai hẳn.
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "bad" }) {
+function FormulaCard({ n, title, formula, note, children }: { n: number; title: string; formula: string; note?: string; children?: ReactNode }) {
   return (
-    <div className={`rounded-xl border px-2.5 py-2 ${tone === "bad" ? "border-rose-200 bg-rose-50" : tone === "ok" ? "border-emerald-200 bg-emerald-50" : "border-[#E2DFD8] bg-white"}`}>
-      <div className="text-[10px] font-black uppercase tracking-wide text-[#8C7B6B]">{label}</div>
-      <div className={`text-[17px] font-black tabular-nums ${tone === "bad" ? "text-rose-700" : tone === "ok" ? "text-emerald-700" : "text-[#321E12]"}`}>{value}</div>
-    </div>
+    <section className="rounded-2xl border border-[#E6DCC8] bg-white p-3.5 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-black text-white bg-[#C85A17] flex-shrink-0">{n}</span>
+        <h4 className="text-[13px] font-black text-[#321E12] leading-tight">{title}</h4>
+      </div>
+      <div className="rounded-xl bg-[#FFF6EC] border border-[#F2DFC6] px-2 py-1.5 text-center text-[13px] text-[#3E2718] overflow-x-auto">
+        <MathText text={`$${formula}$`} />
+      </div>
+      {note && <p className="text-[12px] font-semibold text-[#4A3A2E] leading-relaxed">{note}</p>}
+      {children}
+    </section>
   );
 }

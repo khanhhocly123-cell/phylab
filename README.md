@@ -53,9 +53,9 @@ kéo xe bằng tay qua cổng cũng làm đồng hồ chạy — đặt xe xong 
    là đồng hồ đa năng (núm xoay, cổng cắm que đo), nguồn DC hoặc bảng mạch, **tự vẽ sơ đồ mạch** (nối dây
    giữa các kí hiệu, máy giải mạch thật để chỉ ra ampe kế mắc sai, đảo cực, K không nằm trên mạch
    chính…) và **ba bài tính gốc** (bắt đúng lỗi quen: quên đổi mA, đảo công thức). Làm đủ thao tác bắt
-   buộc mới mở khoá Phòng Lab. Bài 15: Hình 15.2 chạm-để-khám-phá, **máy nén khí** (bộ phận, núm lưu lượng,
-   lát cắt đệm khí dưới xe), thử đẩy xe ở từng nấc lưu lượng,
-   thanh trượt "xe lùi bao nhiêu cm khỏi cổng 1 thì a sai bao nhiêu", ba bài tính về hệ vật và a = 2s/t².
+   buộc mới mở khoá Phòng Lab. Bài 15: Tổng quan, Hình 15.2 chạm-để-khám-phá, **máy nén khí** (bộ phận, núm
+   lưu lượng, lát cắt đệm khí dưới xe), thử đẩy xe ở từng nấc (bắt buộc), đồng hồ A↔B và một trang giới thiệu
+   công thức (không bắt tính).
 3. **Phòng Lab.** Kéo dụng cụ lên bàn, nối dây, cân bằng, bật nguồn, chọn thang đo rồi đo. Sai
    thao tác thì số đo sai theo đúng vật lý: máng chưa cân bằng làm bi chậm hơn, để khoá K đóng lâu làm
    vật dẫn nóng lên và điện trở tăng, mắc ampe kế song song với pin thì không đóng được K vì dòng quá

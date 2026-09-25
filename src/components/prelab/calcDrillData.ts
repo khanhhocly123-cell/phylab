@@ -36,63 +36,7 @@ export interface CalcQuestion {
   solution: string;
 }
 
-export const CALC_DRILLS: Record<"ohm" | "emf" | "newton2", CalcQuestion[]> = {
-  // Bài 15 (Vật lí 10 KNTT): hệ vật, lực kéo và a = 2s/t² — số liệu lấy đúng Bảng 15.1.
-  newton2: [
-    {
-      id: "n2-system",
-      title: "Lực kéo & khối lượng hệ vật",
-      formula: "F = n_{treo}\\,m\\,g \\qquad M + m",
-      prompt: "Xe trượt $M = 200\\ \\text{g}$. Treo **2 quả** nặng ở đầu dây và đặt **2 quả** lên xe (mỗi quả $50\\ \\text{g}$; lấy $g \\approx 10\\ \\text{m/s}^2$ như SGK). Lực kéo $F$ và khối lượng hệ vật bằng bao nhiêu?",
-      fields: [
-        { key: "F", label: "F", unit: "N", answer: 1, tol: 0.025 },
-        { key: "M", label: "M + m", unit: "kg", answer: 0.4 },
-      ],
-      mistakes: [
-        { field: "F", value: 0.1, hint: "0,1 là khối lượng (kg) của 2 quả treo. Lực kéo là TRỌNG LƯỢNG: F = 0,1 kg × 10 m/s² = 1 N." },
-        { field: "F", value: 2, hint: "Chỉ các quả TREO mới kéo xe; quả đặt trên xe không tạo lực kéo." },
-        { field: "F", value: 100, hint: "Đổi gam sang kilôgam trước khi nhân g: 100 g = 0,1 kg." },
-        { field: "M", value: 0.3, hint: "Hệ vật gồm xe + quả trên xe + quả TREO: 0,2 + 4 × 0,05 = 0,4 kg." },
-        { field: "M", value: 0.2, hint: "0,2 kg mới là xe. Hệ vật còn cả 4 quả nặng (2 treo, 2 trên xe)." },
-        { field: "M", value: 400, hint: "Đổi gam sang kilôgam: 400 g = 0,4 kg." },
-      ],
-      hint: "SGK: vật là HỆ gồm xe trượt và các quả nặng; lực kéo F là trọng lượng các quả treo.",
-      solution: "$F = 2 \\times 0{,}05 \\times 10 = 1\\ \\text{N}$; $\\ M + m = 0{,}2 + 4 \\times 0{,}05 = 0{,}4\\ \\text{kg}$",
-    },
-    {
-      id: "n2-accel",
-      title: "Gia tốc từ thời gian đo",
-      formula: "s = \\tfrac{1}{2}at^2 \\;\\Rightarrow\\; a = \\dfrac{2s}{t^2}",
-      prompt: "Tấm chắn đặt sát cổng quang 1 ($v_0 = 0$), hai cổng cách nhau $s = 0{,}5\\ \\text{m}$. Đồng hồ MODE A↔B chỉ $t = 0{,}64\\ \\text{s}$. Gia tốc của hệ vật là bao nhiêu?",
-      fields: [{ key: "a", label: "a", unit: "m/s²", answer: 2.4414 }],
-      mistakes: [
-        { field: "a", value: 0.78125, hint: "s/t là tốc độ trung bình, chưa phải gia tốc." },
-        { field: "a", value: 1.5625, hint: "Em lấy 2s/t — còn thiếu bình phương của t." },
-        { field: "a", value: 1.2207, hint: "Thiếu hệ số 2: từ s = ½at² suy ra a = 2s/t²." },
-        { field: "a", value: 0.64, hint: "Đó là 2s·t. Công thức là 2s CHIA cho t²." },
-      ],
-      hint: "Từ $s = \\tfrac{1}{2}at^2$ suy ra $a = 2s/t^2$; với $s = 0{,}5\\ \\text{m}$ thì $a = 1/t^2$.",
-      solution: "$a = \\dfrac{2 \\times 0{,}5}{0{,}64^2} = \\dfrac{1}{0{,}4096} \\approx 2{,}44\\ \\text{m/s}^2$ — đúng cột 2 của Bảng 15.1",
-    },
-    {
-      id: "n2-transfer",
-      title: "Tăng F mà giữ nguyên M + m",
-      formula: "F\\uparrow,\\quad M + m = \\text{const}",
-      prompt: "Đang treo **2 quả**, trên xe **4 quả** ($F = 1\\ \\text{N}$, $M + m = 0{,}5\\ \\text{kg}$). Muốn $F = 2\\ \\text{N}$ mà vẫn giữ $M + m = 0{,}5\\ \\text{kg}$ thì treo bao nhiêu quả, để trên xe bao nhiêu quả?",
-      fields: [
-        { key: "h", label: "treo", unit: "quả", answer: 4, tol: 0.001 },
-        { key: "c", label: "trên xe", unit: "quả", answer: 2, tol: 0.001 },
-      ],
-      mistakes: [
-        { field: "c", value: 4, hint: "Giữ 4 quả trên xe rồi lấy thêm 2 quả từ hộp để treo thì M + m thành 0,6 kg. Hãy CHUYỂN 2 quả từ xe sang móc." },
-        { field: "h", value: 2, hint: "F = 2 N cần 4 quả treo (mỗi quả nặng 0,5 N)." },
-        { field: "h", value: 6, hint: "6 quả treo cho F = 3 N — đó là cột 5 của Bảng 15.1." },
-        { field: "c", value: 0, hint: "Bỏ hết quả trên xe thì M + m chỉ còn 0,4 kg. Chỉ chuyển đúng 2 quả sang móc." },
-      ],
-      hint: "Lực kéo chỉ do quả treo; khối lượng hệ tính cả quả treo và quả trên xe — chuyển quả từ xe sang móc thì F tăng mà M + m không đổi.",
-      solution: "Treo $4$ quả ($F = 4 \\times 0{,}5 = 2\\ \\text{N}$), để $2$ quả trên xe: $M + m = 0{,}2 + 6 \\times 0{,}05 = 0{,}5\\ \\text{kg}$",
-    },
-  ],
+export const CALC_DRILLS: Record<"ohm" | "emf", CalcQuestion[]> = {
   ohm: [
     {
       id: "ohm-i",

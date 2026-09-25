@@ -232,22 +232,21 @@ Phải xem hết các nấc, các cổng, vẽ đúng sơ đồ, làm đúng 3 b
   thì xem được lời giải. Số liệu cố ý khác sơ đồ và khác Lab để không lộ kết quả đo. Nấc Ω giải thích đúng cách đo điện trở: tự đổi thang, hở
 mạch hiện OL, chỉ đo khi đoạn mạch không có nguồn, không đo được điện trở trong của pin.
 
-**Bài 15** (`prelab/NewtonPrelab.tsx`) — 6 mục, bám SGK:
+**Bài 15** (`prelab/NewtonPrelab.tsx`) — 6 mục, bám SGK, nhẹ như các Prelab cơ học khác:
 
-1. **Hình 15.2 chạm để khám phá** — vẽ lại đúng bố trí SGK bằng các linh kiện của Phòng Lab, 10 điểm đánh
-   số (1)–(9) + "xe"; chạm vào số nào thì dụng cụ đó sáng lên kèm tên và vai trò; đếm đã khám phá x/10.
-2. **Máy nén khí** (bơm khí) — bật công tắc và vặn núm lưu lượng ngay trên hình; 6 nhãn a–f (công tắc, núm
+1. **Tổng quan** — mục tiêu, định luật 2 Newton, 4 phần sẽ làm quen, đường đi sau Prelab (như Bài 6, 11).
+2. **Hình 15.2 chạm để khám phá** — vẽ lại đúng bố trí SGK bằng các linh kiện của Phòng Lab, 10 điểm đánh số
+   (1)–(9) + "xe"; chạm vào số nào thì dụng cụ đó sáng lên kèm tên và vai trò.
+3. **Máy nén khí** (bơm khí) — bật công tắc và vặn núm lưu lượng ngay trên hình; 6 nhãn a–f (công tắc, núm
    lưu lượng, quạt thổi, ống dẫn khí, lỗ khí trên máng, đệm khí) chạm để xem vai trò; lát cắt phóng to dưới xe
    cho thấy khí phụt qua lỗ nâng đáy xe (tắt: xe cọ máng · nấc 1: đệm mỏng · nấc 2: ≈ 0,1 mm · nấc 3: dày hơn);
    3 lưu ý dùng máy (bật máy trước khi đặt xe, không bịt lỗ khí, tắt máy khi không đo).
-3. **Thử đệm khí** — "Đẩy nhẹ xe" ở từng nấc: máy tắt xe dừng sau ~12 cm (μ = 0,2), nấc 1 vẫn bị hãm (μ = 0,05),
-   nấc 2 xe trượt hết máng. Dẫn tới lí do phải đủ đệm khí: F phải gần như là hợp lực.
-4. **Đồng hồ MODE A↔B** — dùng lại `MC964Interactive`.
-5. **Vì sao sát cổng 1** (mục *Lưu ý* của SGK) — thanh trượt cho xe xuất phát lùi 0–5 cm khỏi cổng 1, chạy
-   mô hình thật (`newtonRun`) để thấy a = 2s/t² lệch bao nhiêu (lùi 2 cm → sai ~+35 %); kèm cách đo khác
-   của SGK: tấm chắn 1 cm, a = (v₂² − v₁²)/(2s).
-6. **Tính toán** (bắt buộc, `CALC_DRILLS.newton2`) — F và M + m của hệ (bắt lỗi quên nhân g, quên quả
-   treo), a = 2s/t² với t = 0,64 s (lỗi s/t, 2s/t, s/t²), tăng F mà giữ M + m (lỗi lấy thêm quả từ hộp).
+4. **Thử đệm khí** (bắt buộc) — "Đẩy nhẹ xe" ở ít nhất 2 nấc: máy tắt xe dừng sau ~12 cm (μ = 0,2), nấc 1 vẫn
+   bị hãm (μ = 0,05), nấc 2 xe trượt hết máng → F phải gần như là hợp lực.
+5. **Đồng hồ MODE A↔B** — dùng lại `MC964Interactive`.
+6. **Công thức** — chỉ giới thiệu, không bắt tính: F = n·m·g ≈ n × 0,5 N, M + m của hệ, a = 2s/t² (thanh kéo t
+   cho thấy a đổi ngay) và a = F/(M + m); kèm lí do đặt tấm chắn sát cổng 1 (lùi 3 cm là a sai hẳn — số lấy từ
+   mô hình thật).
 
 Nút "Vào phòng Lab" chỉ mở khi xong thao tác bắt buộc; Prelab đã qua được nhớ theo bài.
 
