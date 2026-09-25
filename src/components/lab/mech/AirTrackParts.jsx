@@ -458,24 +458,24 @@ export const Scale15 = memo(Scale15View);
 
 /* ============================== Biểu tượng khay dụng cụ ============================== */
 const ICON = {
-  track15: { vb: "196 214 170 56", draw: () => <AirTrack15 level /> },
-  pump15: { vb: "92 196 124 72", draw: () => <AirPump15 on={false} hose={false} /> },
-  pulley15: { vb: "780 218 38 50", draw: () => <Pulley15 /> },
-  glider15: { vb: "292 206 72 36", draw: () => <Glider15 xs={336} flag={false} /> },
+  track15: { vb: "196 216 170 66", draw: () => <AirTrack15 level /> },
+  pump15: { vb: "80 194 118 74", draw: () => <AirPump15 on={false} hose={false} /> },
+  pulley15: { vb: "778 220 42 58", draw: () => <Pulley15 /> },
+  glider15: { vb: "288 206 72 40", draw: () => <Glider15 xs={336} flag={false} /> },
   flag15: { vb: "300 190 44 30", draw: () => (<g><rect x="308" y="194" width="28" height="22" rx="1" fill="#111827" /><text x="322" y="208" textAnchor="middle" fontSize="7" fontWeight="900" fill="#fff" fontFamily={FONT}>10 cm</text></g>) },
   gate15a: { vb: "318 180 48 104", draw: () => <Photogate15 x={G1_X} label="1" /> },
   gate15b: { vb: "318 180 48 104", draw: () => <Photogate15 x={G1_X} label="2" /> },
   clock15: { vb: "-8 -2 316 142", draw: () => <MC964Face interactive={false} led="0.000" modeLabel="A↔B" modeAngle={25} scaleLabel="0,001 s" /> },
-  scale15: { vb: "184 360 130 64", draw: () => <Scale15 /> },
+  scale15: { vb: "184 366 130 66", draw: () => <Scale15 /> },
   weights15: { vb: "24 344 152 72", draw: () => <WeightBox15 left={10} /> },
 };
 
-/** Hình dụng cụ cho khay / ghost khi kéo / vật đang bay — cùng bản vẽ với bàn. */
+/** Hình dụng cụ cho khay / ghost khi kéo / vật đang bay — cùng bản vẽ với bàn, cắt theo viewBox (máng dài 594 đơn vị, icon chỉ lấy đầu máng). */
 export function AirTrackIcon({ kind, size = 34, x, y, style }) {
   const def = ICON[kind];
   if (!def) return null;
   return (
-    <svg x={x} y={y} width={size} height={size} viewBox={def.vb} preserveAspectRatio="xMidYMid meet" aria-hidden="true" style={{ overflow: "visible", ...style }}>
+    <svg x={x} y={y} width={size} height={size} viewBox={def.vb} preserveAspectRatio="xMidYMid meet" aria-hidden="true" style={{ overflow: "hidden", ...style }}>
       {def.draw()}
     </svg>
   );
